@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Фото и альбомы VK</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<div id="app">
+
+    <header class="header">
+
+        <div class="header-title">
+            📷 Фото и альбомы VK
+        </div>
+
+        <div id="user" class="user">
+            Загрузка...
+        </div>
+
+    </header>
+
+
+    <main class="main">
+
+        <!-- Левая панель -->
+
+        <aside class="sidebar">
+
+            <div class="sidebar-header">
+                <span>Мои альбомы</span>
+
+                <button
+                    id="refreshAlbums"
+                    class="icon-button"
+                    title="Обновить"
+                >
+                    ↻
+                </button>
+            </div>
+
+            <div id="albums" class="albums">
+
+                <div class="loading">
+                    Загружаем альбомы...
+                </div>
+
+            </div>
+
+        </aside>
+
+
+        <!-- Правая часть -->
+
+        <section class="content">
+
+            <div
+                id="albumHeader"
+                class="album-header hidden"
+            >
+
+                <div>
+
+                    <h1 id="albumTitle">
+                        Альбом
+                    </h1>
+
+                    <div
+                        id="albumDescription"
+                        class="album-description"
+                    ></div>
+
+                </div>
+
+                <div
+                    id="photoCount"
+                    class="photo-count"
+                ></div>
+
+            </div>
+
+
+            <div
+                id="photos"
+                class="photos"
+            >
+
+                <div class="empty">
+
+                    <div class="empty-icon">
+                        🖼️
+                    </div>
+
+                    <div>
+                        Выберите альбом
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+</div>
+
+
+<!-- VK Bridge -->
+
+<script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
+
+<!-- Наш код -->
+
+<script src="app.js"></script>
+
+</body>
+</html>
