@@ -5,121 +5,177 @@
 
     <meta
         name="viewport"
-        content="width=device-width, initial-scale=1.0"
+        content="width=device-width, initial-scale=1.0, viewport-fit=cover"
     >
 
-    <title>Фото и альбомы VK</title>
+    <title>Фотоальбомы VK</title>
 
-    <link rel="stylesheet" href="style.css">
+    <link
+        rel="stylesheet"
+        href="style.css"
+    >
+
+    <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
 </head>
 
 <body>
 
 <div id="app">
 
-    <header class="header">
+    <!-- ======================================
+         ВЕРХНЯЯ ПАНЕЛЬ
+         ====================================== -->
 
-        <div class="header-title">
-            📷 Фото и альбомы VK
+    <header class="topbar">
+
+        <button
+            id="backButton"
+            class="topbar-button hidden"
+            type="button"
+            title="Назад"
+        >
+            ←
+        </button>
+
+        <div class="topbar-icon">
+            ▣
         </div>
 
-        <div id="user" class="user">
+        <div
+            id="pageTitle"
+            class="topbar-title"
+        >
+            Фотоальбомы
+        </div>
+
+        <div
+            id="user"
+            class="topbar-user"
+        >
             Загрузка...
         </div>
+
+        <button
+            id="refreshAlbums"
+            class="topbar-button"
+            type="button"
+            title="Обновить"
+        >
+            ↻
+        </button>
 
     </header>
 
 
-    <main class="main">
+    <!-- ======================================
+         ЭКРАН АЛЬБОМОВ
+         ====================================== -->
 
-        <!-- Левая панель -->
+    <main
+        id="albumsScreen"
+        class="screen"
+    >
 
-        <aside class="sidebar">
+        <!-- ПОИСК -->
 
-            <div class="sidebar-header">
-                <span>Мои альбомы</span>
+        <div class="search-container">
+
+            <div class="search-box">
+
+                <span class="search-icon">
+                    🔎
+                </span>
+
+                <input
+                    id="albumSearch"
+                    type="search"
+                    placeholder="Найти альбом..."
+                    autocomplete="off"
+                    spellcheck="false"
+                >
 
                 <button
-                    id="refreshAlbums"
-                    class="icon-button"
-                    title="Обновить"
+                    id="clearSearch"
+                    class="clear-search hidden"
+                    type="button"
+                    title="Очистить"
                 >
-                    ↻
+                    ×
                 </button>
-            </div>
-
-            <div id="albums" class="albums">
-
-                <div class="loading">
-                    Загружаем альбомы...
-                </div>
 
             </div>
 
-        </aside>
+        </div>
 
 
-        <!-- Правая часть -->
+        <!-- АЛЬБОМЫ -->
 
-        <section class="content">
+        <div
+            id="albums"
+            class="albums-grid"
+        >
 
-            <div
-                id="albumHeader"
-                class="album-header hidden"
-            >
+            <div class="status-message">
+                Загружаем альбомы...
+            </div>
 
-                <div>
+        </div>
 
-                    <h1 id="albumTitle">
-                        Альбом
-                    </h1>
+    </main>
 
-                    <div
-                        id="albumDescription"
-                        class="album-description"
-                    ></div>
 
-                </div>
+    <!-- ======================================
+         ЭКРАН ФОТОГРАФИЙ
+         ====================================== -->
+
+    <main
+        id="photosScreen"
+        class="screen hidden"
+    >
+
+        <section
+            id="albumHeader"
+            class="album-header"
+        >
+
+            <div class="album-header-main">
+
+                <h1 id="albumTitle">
+                    Альбом
+                </h1>
 
                 <div
                     id="photoCount"
                     class="photo-count"
-                ></div>
-
-            </div>
-
-
-            <div
-                id="photos"
-                class="photos"
-            >
-
-                <div class="empty">
-
-                    <div class="empty-icon">
-                        🖼️
-                    </div>
-
-                    <div>
-                        Выберите альбом
-                    </div>
-
+                >
                 </div>
 
             </div>
 
+            <div
+                id="albumDescription"
+                class="album-description"
+            >
+            </div>
+
         </section>
+
+
+        <div
+            id="photos"
+            class="photos-grid"
+        >
+
+            <div class="status-message">
+                Выберите альбом
+            </div>
+
+        </div>
 
     </main>
 
 </div>
 
-
-<!-- VK Bridge -->
-
-<script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
-
-<!-- Наш код -->
 
 <script src="app.js"></script>
 
