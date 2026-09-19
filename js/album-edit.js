@@ -30,25 +30,38 @@ function fillForm(album) {
 
 async function fetchFreshAlbum(album) {
     const ownerId = Number(album?.owner_id) || getOwnerId();
+    const targetId = String(album.id);
 
     try {
         const result = await vkApi("photos.getAlbums", {
             owner_id: ownerId,
-            album_ids: String(album.id),
+            album_ids: targetId,
             need_system: 1,
             need_covers: 1,
             photo_sizes: 1
         });
 
-        const fresh = Array.isArray(result?.items) ? result.items[0] : null;
-        if (!fresh) return album;
+        const items = Array.isArray(result?.items) ? result.items : [];
+
+        // Ищем именно тот альбом, по которому было долгое нажатие.
+        const fresh = items.find(item =>
+            String(item.id) === targetId
+        );
+
+        if (!fresh) {
+            return album;
+        }
 
         return {
             ...album,
             ...fresh
         };
     } catch (error) {
-        console.warn("Не удалось обновить данные альбома перед редактированием:", error);
+        console.warn(
+            "Не удалось обновить данные альбома перед редактированием:",
+            error
+        );
+
         return album;
     }
 }
