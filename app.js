@@ -78,102 +78,20 @@ const clearSearchButton =
     document.getElementById("clearSearch");
 
 
-/* ==========================================
-   MENU
-   ========================================== */
+const menuButton =
+    document.getElementById("menuButton");
 
-function openMenu() {
+const mainMenu =
+    document.getElementById("mainMenu");
 
-    mainMenu.classList.remove("hidden");
+const menuContainer =
+    document.querySelector(".menu-container");
 
-    console.log("Menu opened");
-}
+const createAlbumMenuButton =
+    document.getElementById("createAlbumMenuButton");
 
-
-function closeMenu() {
-
-    mainMenu.classList.add("hidden");
-
-    console.log("Menu closed");
-}
-
-
-function toggleMenu() {
-
-    const isHidden =
-        mainMenu.classList.contains("hidden");
-
-    if (isHidden) {
-
-        openMenu();
-
-    } else {
-
-        closeMenu();
-
-    }
-}
-
-
-/*
- * Кнопка меню
- */
-
-menuButton.addEventListener(
-    "click",
-    event => {
-
-        event.preventDefault();
-        event.stopPropagation();
-
-        toggleMenu();
-
-    }
-);
-
-
-/*
- * Клики внутри меню не должны
- * закрывать его через document.
- */
-
-mainMenu.addEventListener(
-    "click",
-    event => {
-
-        event.stopPropagation();
-
-    }
-);
-
-
-/*
- * Клик в любом другом месте
- * закрывает меню.
- */
-
-document.addEventListener(
-    "click",
-    event => {
-
-        /*
-         * Если нажали на саму кнопку
-         * или внутри контейнера меню —
-         * ничего не делаем.
-         */
-
-        if (
-            menuContainer.contains(
-                event.target
-            )
-        ) {
-            return;
-        }
-
-        closeMenu();
-
-    }
-);
+const commentsMenuButton =
+    document.getElementById("commentsMenuButton");
 
 
 /* CREATE ALBUM */
@@ -550,43 +468,147 @@ function showCommentsScreen() {
    MENU
    ========================================== */
 
-function closeMenu() {
+/*
+ * ВАЖНО:
+ * Переносим само всплывающее меню непосредственно в <body>.
+ * Теперь оно не является дочерним элементом sticky-шапки и
+ * не может быть обрезано overflow/stacking context родителя.
+ */
+if (mainMenu && mainMenu.parentElement !== document.body) {
+    document.body.appendChild(mainMenu);
+}
 
-    mainMenu
-        .classList
-        .add("hidden");
+function openMenu() {
+
+    if (!mainMenu) {
+        console.error("mainMenu not found");
+        return;
+    }
+
+    /*
+     * Убираем и CSS-класс hidden, и HTML-атрибут hidden,
+     * если он случайно присутствует в index.html.
+     */
+    mainMenu.classList.remove("hidden");
+    mainMenu.hidden = false;
+    mainMenu.removeAttribute("hidden");
+
+    /*
+     * Критические свойства задаём inline.
+     * Это имеет приоритет над обычными правилами style.css.
+     */
+    Object.assign(
+        mainMenu.style,
+        {
+            display: "block",
+            position: "fixed",
+            top: "62px",
+            left: "8px",
+            width: "240px",
+            zIndex: "2147483647",
+            visibility: "visible",
+            opacity: "1",
+            transform: "none",
+            background: "#24272a",
+            color: "#ffffff"
+        }
+    );
+
+    console.log(
+        "Menu opened:",
+        mainMenu.getBoundingClientRect()
+    );
 }
 
 
-menuButton.addEventListener(
-    "click",
-    event => {
+function closeMenu() {
 
-        event.stopPropagation();
-
-        mainMenu
-            .classList
-            .toggle("hidden");
+    if (!mainMenu) {
+        return;
     }
-);
+
+    mainMenu.classList.add("hidden");
+
+    /*
+     * display удаляем из inline-стилей, чтобы .hidden
+     * снова полностью управлял закрытым состоянием.
+     */
+    mainMenu.style.removeProperty("display");
+}
 
 
-mainMenu.addEventListener(
-    "click",
-    event => {
+function toggleMenu() {
 
-        event.stopPropagation();
-
+    if (!mainMenu) {
+        return;
     }
-);
+
+    const isClosed =
+        mainMenu.classList.contains("hidden") ||
+        mainMenu.hidden ||
+        getComputedStyle(mainMenu).display === "none";
+
+    if (isClosed) {
+        openMenu();
+    } else {
+        closeMenu();
+    }
+}
+
+
+if (menuButton) {
+
+    menuButton.addEventListener(
+        "click",
+        event => {
+
+            event.preventDefault();
+            event.stopPropagation();
+
+            toggleMenu();
+        }
+    );
+}
+
+
+if (mainMenu) {
+
+    mainMenu.addEventListener(
+        "click",
+        event => {
+
+            /*
+             * Нажатие по самому popup не должно закрывать его
+             * раньше, чем обработается пункт меню.
+             */
+            event.stopPropagation();
+        }
+    );
+}
 
 
 document.addEventListener(
     "click",
-    () => {
+    event => {
+
+        if (
+            menuButton &&
+            (
+                event.target === menuButton ||
+                menuButton.contains(event.target)
+            )
+        ) {
+            return;
+        }
+
+        if (
+            mainMenu &&
+            mainMenu.contains(event.target)
+        ) {
+            return;
+        }
 
         closeMenu();
-
     }
 );
 
