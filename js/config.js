@@ -3,6 +3,7 @@ export const VK_API_VERSION = "5.199";
 
 export const CACHE_TTL = {
     albums: 5 * 60 * 1000,
+    albumIndex: 24 * 60 * 60 * 1000,
     photos: 10 * 60 * 1000,
     comments: 10 * 60 * 1000
 };

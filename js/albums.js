@@ -4,105 +4,321 @@ import { vkApi } from "./vk-api.js";
 import { getAlbumCover, escapeHtml, getErrorMessage } from "./helpers.js";
 import { openAlbum } from "./photos.js";
 import { CACHE_TTL } from "./config.js";
-import { cacheGet, cacheGetStale, cacheSet, albumsKey } from "./cache.js";
+import {
+    cacheGet,
+    cacheGetStale,
+    cacheSet,
+    albumsKey,
+    albumIndexKey
+} from "./cache.js";
 import { getOwnerId } from "./group-context.js";
 
-async function fetchAlbumsFromVK() {
-    const ownerId = getOwnerId();
-    console.log("ALBUM OWNER_ID:", ownerId);
+const PAGE_SIZE = 20;
+const INDEX_PAGE_SIZE = 100;
 
-    const result = await vkApi("photos.getAlbums", {
+let loadMoreObserver = null;
+let indexBuildPromise = null;
+
+function normalizeTitle(value) {
+    return String(value || "").trim().toLocaleLowerCase("ru");
+}
+
+function toIndexItem(album) {
+    return {
+        id: album.id,
+        owner_id: album.owner_id,
+        title: album.title || "",
+        description: album.description || "",
+        size: Number(album.size || 0),
+        can_upload: album.can_upload,
+        comments_disabled: album.comments_disabled,
+        upload_by_admins_only: album.upload_by_admins_only,
+        created: album.created,
+        updated: album.updated
+    };
+}
+
+function mergeAlbums(current, incoming) {
+    const map = new Map(current.map(album => [String(album.id), album]));
+    incoming.forEach(album => map.set(String(album.id), album));
+    return [...map.values()];
+}
+
+function mergeIndex(current, incoming) {
+    const map = new Map(current.map(album => [String(album.id), album]));
+    incoming.forEach(album => map.set(String(album.id), toIndexItem(album)));
+    return [...map.values()];
+}
+
+async function fetchAlbumPage(offset, count = PAGE_SIZE) {
+    const ownerId = getOwnerId();
+    return vkApi("photos.getAlbums", {
         owner_id: ownerId,
         need_system: 1,
         need_covers: 1,
         photo_sizes: 1,
-        count: 100
+        count,
+        offset
     });
+}
+
+async function fetchFirstPageFromVK() {
+    const ownerId = getOwnerId();
+    const result = await fetchAlbumPage(0, PAGE_SIZE);
 
     state.albums = result.items || [];
-    cacheSet(albumsKey(ownerId), state.albums);
+    state.albumsTotal = Number(result.count || state.albums.length);
+    state.albumsOffset = state.albums.length;
+    state.albumsHasMore = state.albumsOffset < state.albumsTotal;
+
+    cacheSet(albumsKey(ownerId), {
+        items: state.albums,
+        total: state.albumsTotal
+    });
+
+    // Первые 20 сразу добавляем и в поисковый индекс.
+    state.albumIndex = mergeIndex(state.albumIndex, state.albums);
     renderAlbums();
+
+    // Полный индекс строится в фоне и не задерживает показ экрана.
+    void ensureAlbumIndex();
+}
+
+function restoreAlbumsCache(cached) {
+    const items = Array.isArray(cached) ? cached : (cached?.items || []);
+    const total = Array.isArray(cached) ? items.length : Number(cached?.total || items.length);
+
+    state.albums = items;
+    state.albumsTotal = total;
+    state.albumsOffset = items.length;
+    state.albumsHasMore = items.length < total;
 }
 
 export async function loadAlbums({ force = false } = {}) {
     const ownerId = getOwnerId();
     const key = albumsKey(ownerId);
 
+    // Индекс живёт отдельно от экранного кэша.
+    if (!force) {
+        const cachedIndex = cacheGet(albumIndexKey(ownerId), CACHE_TTL.albumIndex);
+        if (Array.isArray(cachedIndex)) state.albumIndex = cachedIndex;
+    }
+
     if (!force) {
         const cached = cacheGet(key, CACHE_TTL.albums);
         if (cached) {
-            state.albums = cached;
+            restoreAlbumsCache(cached);
             renderAlbums();
+            void ensureAlbumIndex();
             return;
         }
 
         const stale = cacheGetStale(key);
         if (stale) {
-            state.albums = stale;
+            restoreAlbumsCache(stale);
             renderAlbums();
-            try { await fetchAlbumsFromVK(); }
+            try { await fetchFirstPageFromVK(); }
             catch (error) { console.warn("Фоновое обновление альбомов:", error); }
             return;
         }
     }
 
     dom.albums.innerHTML = '<div class="status-message">Загружаем альбомы сообщества...</div>';
-    await fetchAlbumsFromVK();
+    await fetchFirstPageFromVK();
+}
+
+export async function loadMoreAlbums() {
+    if (state.albumSearchText.trim()) return;
+    if (state.albumsLoadingMore || !state.albumsHasMore) return;
+
+    state.albumsLoadingMore = true;
+    renderAlbums();
+
+    try {
+        const result = await fetchAlbumPage(state.albumsOffset, PAGE_SIZE);
+        const items = result.items || [];
+
+        state.albums = mergeAlbums(state.albums, items);
+        state.albumsTotal = Number(result.count || state.albumsTotal || state.albums.length);
+        state.albumsOffset += items.length;
+        state.albumsHasMore = items.length > 0 && state.albumsOffset < state.albumsTotal;
+
+        state.albumIndex = mergeIndex(state.albumIndex, items);
+
+        const ownerId = getOwnerId();
+        cacheSet(albumsKey(ownerId), {
+            items: state.albums,
+            total: state.albumsTotal
+        });
+    } catch (error) {
+        console.warn("Не удалось догрузить альбомы:", error);
+    } finally {
+        state.albumsLoadingMore = false;
+        renderAlbums();
+    }
+}
+
+async function buildAlbumIndex() {
+    const ownerId = getOwnerId();
+    let index = [...state.albumIndex];
+    let offset = 0;
+    let total = Infinity;
+
+    state.albumIndexBuilding = true;
+
+    try {
+        while (offset < total) {
+            const result = await fetchAlbumPage(offset, INDEX_PAGE_SIZE);
+            const items = result.items || [];
+
+            total = Number(result.count || items.length);
+            index = mergeIndex(index, items);
+            state.albumIndex = index;
+
+            // Поиск начинает видеть новые названия сразу, не дожидаясь конца индексации.
+            if (state.albumSearchText.trim()) renderAlbums();
+
+            if (!items.length) break;
+            offset += items.length;
+
+            if (items.length < INDEX_PAGE_SIZE && offset >= total) break;
+        }
+
+        cacheSet(albumIndexKey(ownerId), index);
+        state.albumIndexReady = true;
+        return index;
+    } catch (error) {
+        console.warn("Не удалось обновить поисковый индекс альбомов:", error);
+        return index;
+    } finally {
+        state.albumIndexBuilding = false;
+        if (state.albumSearchText.trim()) renderAlbums();
+    }
+}
+
+async function ensureAlbumIndex({ force = false } = {}) {
+    const ownerId = getOwnerId();
+
+    if (!force) {
+        const cached = cacheGet(albumIndexKey(ownerId), CACHE_TTL.albumIndex);
+        if (Array.isArray(cached) && cached.length) {
+            state.albumIndex = cached;
+            state.albumIndexReady = true;
+            if (state.albumSearchText.trim()) renderAlbums();
+            return cached;
+        }
+    }
+
+    if (!indexBuildPromise) {
+        indexBuildPromise = buildAlbumIndex().finally(() => {
+            indexBuildPromise = null;
+        });
+    }
+
+    return indexBuildPromise;
 }
 
 function filtered() {
-    const q = state.albumSearchText.trim().toLocaleLowerCase("ru");
-    return q
-        ? state.albums.filter(a => String(a.title || "").toLocaleLowerCase("ru").includes(q))
-        : state.albums;
+    const q = normalizeTitle(state.albumSearchText);
+    if (!q) return state.albums;
+
+    // Поиск идёт по полному локальному индексу, а не только по 20 карточкам на экране.
+    const source = state.albumIndex.length ? state.albumIndex : state.albums;
+    return source.filter(album => normalizeTitle(album.title).includes(q));
+}
+
+function createAlbumCard(album) {
+    const card = document.createElement("div");
+    card.className = "album-card";
+
+    // Если этот альбом уже был загружен как полноценная карточка,
+    // берём её данные с обложкой. Для результата только из индекса
+    // используем обычный placeholder.
+    const fullAlbum = state.albums.find(item => String(item.id) === String(album.id));
+    const displayAlbum = fullAlbum || album;
+    const cover = getAlbumCover(displayAlbum);
+
+    if (cover) {
+        const img = document.createElement("img");
+        img.className = "album-cover";
+        img.src = cover;
+        img.alt = displayAlbum.title || "";
+        img.loading = "lazy";
+        card.appendChild(img);
+    } else {
+        const placeholder = document.createElement("div");
+        placeholder.className = "album-placeholder";
+        placeholder.textContent = "▣";
+        card.appendChild(placeholder);
+    }
+
+    const info = document.createElement("div");
+    info.className = "album-info";
+
+    const name = document.createElement("div");
+    name.className = "album-name";
+    name.textContent = displayAlbum.title || "Без названия";
+
+    const count = document.createElement("div");
+    count.className = "album-count";
+    count.textContent = String(displayAlbum.size || 0);
+
+    info.append(name, count);
+    card.appendChild(info);
+    card.addEventListener("click", () => openAlbum(displayAlbum));
+
+    return card;
+}
+
+function installLoadMoreSentinel() {
+    if (loadMoreObserver) {
+        loadMoreObserver.disconnect();
+        loadMoreObserver = null;
+    }
+
+    if (state.albumSearchText.trim() || !state.albumsHasMore) return;
+
+    const sentinel = document.createElement("div");
+    sentinel.className = "albums-load-more-sentinel";
+    sentinel.style.height = "1px";
+    sentinel.setAttribute("aria-hidden", "true");
+    dom.albums.appendChild(sentinel);
+
+    loadMoreObserver = new IntersectionObserver(entries => {
+        if (entries.some(entry => entry.isIntersecting)) {
+            void loadMoreAlbums();
+        }
+    }, { rootMargin: "500px 0px" });
+
+    loadMoreObserver.observe(sentinel);
 }
 
 export function renderAlbums() {
     dom.albums.innerHTML = "";
     const list = filtered();
+    const searching = Boolean(state.albumSearchText.trim());
 
     if (!list.length) {
-        dom.albums.innerHTML = `<div class="status-message">${
-            state.albumSearchText.trim() ? "Альбомы не найдены" : "Альбомов нет"
-        }</div>`;
+        if (searching && state.albumIndexBuilding) {
+            dom.albums.innerHTML = '<div class="status-message">Ищем по альбомам...</div>';
+        } else {
+            dom.albums.innerHTML = `<div class="status-message">${
+                searching ? "Альбомы не найдены" : "Альбомов нет"
+            }</div>`;
+        }
         return;
     }
 
-    list.forEach(album => {
-        const card = document.createElement("div");
-        card.className = "album-card";
+    list.forEach(album => dom.albums.appendChild(createAlbumCard(album)));
 
-        const cover = getAlbumCover(album);
-        if (cover) {
-            const img = document.createElement("img");
-            img.className = "album-cover";
-            img.src = cover;
-            img.alt = album.title || "";
-            img.loading = "lazy";
-            card.appendChild(img);
-        } else {
-            const placeholder = document.createElement("div");
-            placeholder.className = "album-placeholder";
-            placeholder.textContent = "▣";
-            card.appendChild(placeholder);
-        }
+    if (state.albumsLoadingMore && !searching) {
+        const loading = document.createElement("div");
+        loading.className = "status-message";
+        loading.textContent = "Загружаем ещё альбомы...";
+        dom.albums.appendChild(loading);
+    }
 
-        const info = document.createElement("div");
-        info.className = "album-info";
-
-        const name = document.createElement("div");
-        name.className = "album-name";
-        name.textContent = album.title || "Без названия";
-
-        const count = document.createElement("div");
-        count.className = "album-count";
-        count.textContent = String(album.size || 0);
-
-        info.append(name, count);
-        card.appendChild(info);
-        card.addEventListener("click", () => openAlbum(album));
-        dom.albums.appendChild(card);
-    });
+    installLoadMoreSentinel();
 }
 
 export function initAlbums() {
@@ -110,6 +326,11 @@ export function initAlbums() {
         state.albumSearchText = event.target.value;
         dom.clearSearch.classList.toggle("hidden", !state.albumSearchText);
         renderAlbums();
+
+        // Если это первый запуск и полный индекс ещё не построен — запускаем его сразу.
+        if (state.albumSearchText.trim() && !state.albumIndexReady) {
+            void ensureAlbumIndex();
+        }
     });
 
     dom.clearSearch.addEventListener("click", () => {
@@ -123,7 +344,9 @@ export function initAlbums() {
     dom.refreshAlbums.addEventListener("click", async () => {
         dom.refreshAlbums.disabled = true;
         try {
+            state.albumIndexReady = false;
             await loadAlbums({ force: true });
+            void ensureAlbumIndex({ force: true });
         } catch (error) {
             dom.albums.innerHTML =
                 `<div class="error">Не удалось обновить альбомы.<br><br>${escapeHtml(getErrorMessage(error))}</div>`;

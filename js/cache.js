@@ -113,3 +113,7 @@ export function albumsKey(ownerId) {
 export function commentsFeedKey(ownerId) {
     return `comments-feed:${ownerId}`;
 }
+
+export function albumIndexKey(ownerId) {
+    return `album-index:${ownerId}`;
+}
