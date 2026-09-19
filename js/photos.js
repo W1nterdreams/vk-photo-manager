@@ -1,11 +1,11 @@
-import { state } from "./state.js?v=20260919-merge01";
-import { dom } from "./dom.js?v=20260919-merge01";
-import { vkApi } from "./vk-api.js?v=20260919-merge01";
-import { getBestPhotoUrl, escapeHtml, getErrorMessage } from "./helpers.js?v=20260919-merge01";
-import { showPhotosScreen } from "./navigation.js?v=20260919-merge01";
-import { CACHE_TTL } from "./config.js?v=20260919-merge01";
-import { cacheGet, cacheGetStale, cacheSet, albumPhotosKey } from "./cache.js?v=20260919-merge01";
-import { getOwnerId } from "./group-context.js?v=20260919-merge01";
+import { state } from "./state.js?v=20260919-preview01";
+import { dom } from "./dom.js?v=20260919-preview01";
+import { vkApi } from "./vk-api.js?v=20260919-preview01";
+import { getPhotoPreviewUrl, escapeHtml, getErrorMessage } from "./helpers.js?v=20260919-preview01";
+import { showPhotosScreen } from "./navigation.js?v=20260919-preview01";
+import { CACHE_TTL } from "./config.js?v=20260919-preview01";
+import { cacheGet, cacheGetStale, cacheSet, albumPhotosKey } from "./cache.js?v=20260919-preview01";
+import { getOwnerId } from "./group-context.js?v=20260919-preview01";
 
 const PAGE_SIZE = 20;
 let photoScrollTicking = false;
@@ -201,7 +201,7 @@ export function renderPhotos() {
     state.photos.forEach(photo => {
         const card = document.createElement("div");
         card.className = "photo-card";
-        const url = getBestPhotoUrl(photo);
+        const url = getPhotoPreviewUrl(photo, 640);
 
         if (url) {
             const image = document.createElement("img");

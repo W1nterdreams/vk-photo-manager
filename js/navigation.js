@@ -1,4 +1,4 @@
-import {state} from "./state.js?v=20260919-merge01"; import {dom} from "./dom.js?v=20260919-merge01";
+import {state} from "./state.js?v=20260919-preview01"; import {dom} from "./dom.js?v=20260919-preview01";
 function hide(){dom.albumsScreen.classList.add("hidden");dom.photosScreen.classList.add("hidden");dom.commentsScreen.classList.add("hidden");}
 export function showAlbumsScreen(){hide();dom.albumsScreen.classList.remove("hidden");state.currentScreen="albums";state.currentAlbum=null;dom.pageTitle.textContent="Фотоальбомы";dom.backButton.classList.add("hidden");dom.refreshAlbums.classList.remove("hidden");window.scrollTo(0,0);}
 export function showPhotosScreen(){hide();dom.photosScreen.classList.remove("hidden");state.currentScreen="photos";dom.backButton.classList.remove("hidden");dom.refreshAlbums.classList.add("hidden");window.scrollTo(0,0);}

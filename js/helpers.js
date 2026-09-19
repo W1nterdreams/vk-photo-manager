@@ -51,6 +51,25 @@ export function getBestPhotoUrl(p) {
     return a[0]?.url || "";
 }
 
+export function getPhotoPreviewUrl(p, targetSize = 640) {
+    if (!Array.isArray(p?.sizes)) return "";
+
+    const sizes = [...p.sizes]
+        .filter(x => x?.url)
+        .map(x => ({
+            ...x,
+            maxSide: Math.max(Number(x.width || 0), Number(x.height || 0))
+        }))
+        .sort((a, b) => a.maxSide - b.maxSide);
+
+    if (!sizes.length) return "";
+
+    // Для сетки берём самый маленький вариант, который уже достаточно
+    // крупный для чёткой карточки. Если такого нет — берём максимальный.
+    const suitable = sizes.find(x => x.maxSide >= targetSize);
+    return (suitable || sizes[sizes.length - 1]).url || "";
+}
+
 export function getAlbumCover(a) {
     const s = [
         ...(Array.isArray(a?.sizes) ? a.sizes : []),
