@@ -1,14 +1,36 @@
+/* =========================================================
+   VK PHOTO MANAGER
+   style.css
+   ========================================================= */
+
+
+/* =========================================================
+   RESET
+   ========================================================= */
+
 * {
     box-sizing: border-box;
 }
 
-html,
-body {
+html {
     margin: 0;
     padding: 0;
 
     width: 100%;
     min-height: 100%;
+
+    background: #111315;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+
+    width: 100%;
+    min-height: 100vh;
+
+    background: #111315;
+    color: #ffffff;
 
     font-family:
         -apple-system,
@@ -18,12 +40,8 @@ body {
         Arial,
         sans-serif;
 
-    background: #111315;
-    color: #fff;
-}
-
-body {
-    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
 }
 
 button,
@@ -36,42 +54,67 @@ button {
     -webkit-tap-highlight-color: transparent;
 }
 
+img {
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
 .hidden {
     display: none !important;
 }
 
 
-/* APP */
+/* =========================================================
+   APP
+   ========================================================= */
 
 #app {
+    position: relative;
+
+    width: 100%;
     min-height: 100vh;
+
+    background: #111315;
+
+    overflow: visible;
 }
 
 
-/* ========================================
+/* =========================================================
    TOP BAR
-   ======================================== */
+   ========================================================= */
 
 .topbar {
     position: sticky;
     top: 0;
+
     z-index: 1000;
 
     display: flex;
     align-items: center;
 
+    width: 100%;
     min-height: 58px;
 
-    padding:
-        env(safe-area-inset-top)
-        8px
-        0;
+    padding-left: 6px;
+    padding-right: 6px;
 
     background: #39779b;
 
     box-shadow:
-        0 2px 8px rgba(0, 0, 0, .25);
+        0 2px 8px rgba(0, 0, 0, 0.30);
+
+    /*
+     * ВАЖНО:
+     * меню выходит за пределы шапки.
+     */
+    overflow: visible;
 }
+
+
+/* =========================================================
+   TOP BAR TITLE
+   ========================================================= */
 
 .topbar-title {
     flex: 1;
@@ -79,6 +122,9 @@ button {
     min-width: 0;
 
     padding-left: 5px;
+    padding-right: 5px;
+
+    color: #ffffff;
 
     font-size: 20px;
     font-weight: 600;
@@ -88,84 +134,176 @@ button {
     text-overflow: ellipsis;
 }
 
+
+/* =========================================================
+   USER
+   ========================================================= */
+
 .topbar-user {
-    max-width: 170px;
+    flex: 0 1 auto;
+
+    max-width: 180px;
+
+    margin-left: 8px;
+    margin-right: 4px;
+
+    color: rgba(255, 255, 255, 0.85);
 
     font-size: 13px;
-
-    opacity: .85;
 
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
+
+/* =========================================================
+   TOP BAR BUTTON
+   ========================================================= */
+
 .topbar-button {
     flex: 0 0 auto;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
 
     width: 44px;
     height: 44px;
 
     margin: 0 2px;
-
     padding: 0;
 
-    border: 0;
+    border: none;
     border-radius: 50%;
 
+    outline: none;
+
     background: transparent;
-    color: #fff;
+    color: #ffffff;
 
     font-size: 27px;
+    line-height: 1;
 
     cursor: pointer;
+
+    transition:
+        background 0.15s ease,
+        transform 0.08s ease;
 }
 
 .topbar-button:hover {
-    background: rgba(255, 255, 255, .12);
+    background:
+        rgba(255, 255, 255, 0.12);
 }
 
 .topbar-button:active {
-    transform: scale(.94);
+    transform: scale(0.92);
+
+    background:
+        rgba(255, 255, 255, 0.18);
 }
 
 
-/* ========================================
-   MENU
-   ======================================== */
+/* =========================================================
+   MENU CONTAINER
+   ========================================================= */
 
 .menu-container {
     position: relative;
 
+    z-index: 5000;
+
     flex: 0 0 auto;
+
+    overflow: visible;
 }
 
+
+/* =========================================================
+   MENU BUTTON
+   ========================================================= */
+
 .menu-button {
+    position: relative;
+
+    z-index: 5001;
+
     font-size: 25px;
 }
+
+
+/* =========================================================
+   POPUP MENU
+   ========================================================= */
 
 .main-menu {
     position: absolute;
 
-    top: 50px;
-    left: 4px;
+    /*
+     * Сразу под кнопкой.
+     */
+    top: calc(100% + 6px);
+    left: 2px;
 
-    z-index: 2000;
+    z-index: 99999;
 
-    width: 235px;
+    width: 240px;
 
     padding: 6px;
 
-    border: 1px solid #41464b;
+    border:
+        1px solid
+        rgba(255, 255, 255, 0.12);
+
     border-radius: 12px;
 
     background: #24272a;
 
     box-shadow:
-        0 8px 30px rgba(0, 0, 0, .55);
+        0 10px 35px
+        rgba(0, 0, 0, 0.65);
+
+    overflow: hidden;
 }
 
+
+/* маленький треугольник */
+
+.main-menu::before {
+    content: "";
+
+    position: absolute;
+
+    top: -6px;
+    left: 17px;
+
+    width: 12px;
+    height: 12px;
+
+    background: #24272a;
+
+    transform: rotate(45deg);
+
+    border-left:
+        1px solid
+        rgba(255, 255, 255, 0.12);
+
+    border-top:
+        1px solid
+        rgba(255, 255, 255, 0.12);
+}
+
+
+/* =========================================================
+   MENU ITEM
+   ========================================================= */
+
 .menu-item {
+    position: relative;
+
+    z-index: 2;
+
     display: flex;
     align-items: center;
 
@@ -173,19 +311,28 @@ button {
 
     width: 100%;
 
-    padding: 12px 10px;
+    min-height: 46px;
 
-    border: 0;
+    padding:
+        10px
+        11px;
+
+    border: none;
     border-radius: 8px;
 
-    background: transparent;
-    color: #fff;
+    outline: none;
 
-    text-align: left;
+    background: transparent;
+    color: #ffffff;
 
     font-size: 16px;
 
+    text-align: left;
+
     cursor: pointer;
+
+    transition:
+        background 0.12s ease;
 }
 
 .menu-item:hover {
@@ -196,50 +343,109 @@ button {
     background: #41464b;
 }
 
+
+/* =========================================================
+   MENU ICON
+   ========================================================= */
+
 .menu-item-icon {
-    display: inline-flex;
+    flex: 0 0 auto;
+
+    display: flex;
     align-items: center;
     justify-content: center;
 
     width: 25px;
 
-    font-size: 21px;
+    font-size: 20px;
 }
 
 
-/* ========================================
-   SEARCH
-   ======================================== */
+/* =========================================================
+   SCREEN
+   ========================================================= */
+
+.screen {
+    position: relative;
+
+    z-index: 1;
+
+    width: 100%;
+}
+
+
+/* =========================================================
+   SEARCH AREA
+   ========================================================= */
 
 .search-container {
     position: sticky;
+
     top: 58px;
+
     z-index: 100;
+
+    width: 100%;
 
     padding: 10px;
 
     background: #111315;
 }
 
+
+/* =========================================================
+   SEARCH BOX
+   ========================================================= */
+
 .search-box {
     display: flex;
     align-items: center;
 
+    width: 100%;
     height: 44px;
 
-    padding: 0 10px;
+    padding:
+        0
+        10px;
 
-    border: 1px solid #42464a;
+    border:
+        1px solid
+        #42464a;
+
     border-radius: 10px;
 
     background: #202326;
+
+    transition:
+        border-color 0.15s ease,
+        background 0.15s ease;
 }
+
+.search-box:focus-within {
+    border-color: #518fbb;
+
+    background: #25282b;
+}
+
+
+/* =========================================================
+   SEARCH ICON
+   ========================================================= */
 
 .search-icon {
+    flex: 0 0 auto;
+
     margin-right: 8px;
 
-    opacity: .7;
+    font-size: 17px;
+
+    opacity: 0.7;
 }
+
+
+/* =========================================================
+   SEARCH INPUT
+   ========================================================= */
 
 #albumSearch {
     flex: 1;
@@ -247,13 +453,14 @@ button {
     min-width: 0;
     height: 100%;
 
+    margin: 0;
     padding: 0;
 
-    border: 0;
+    border: none;
     outline: none;
 
     background: transparent;
-    color: #fff;
+    color: #ffffff;
 
     font-size: 17px;
 }
@@ -266,29 +473,50 @@ button {
     display: none;
 }
 
-.clear-search {
-    width: 30px;
-    height: 30px;
 
+/* =========================================================
+   CLEAR SEARCH
+   ========================================================= */
+
+.clear-search {
+    flex: 0 0 auto;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 28px;
+    height: 28px;
+
+    margin-left: 7px;
     padding: 0;
 
-    border: 0;
+    border: none;
     border-radius: 50%;
 
     background: #55595d;
-    color: #fff;
+    color: #ffffff;
 
-    font-size: 21px;
+    font-size: 20px;
+    line-height: 1;
 
     cursor: pointer;
 }
 
+.clear-search:hover {
+    background: #666b70;
+}
 
-/* ========================================
+
+/* =========================================================
    ALBUM GRID
-   ======================================== */
+   ========================================================= */
 
 .albums-grid {
+    position: relative;
+
+    z-index: 1;
+
     display: grid;
 
     grid-template-columns:
@@ -296,8 +524,18 @@ button {
 
     gap: 3px;
 
-    padding: 0 3px 3px;
+    width: 100%;
+
+    padding:
+        0
+        3px
+        3px;
 }
+
+
+/* =========================================================
+   ALBUM CARD
+   ========================================================= */
 
 .album-card {
     position: relative;
@@ -308,31 +546,55 @@ button {
 
     overflow: hidden;
 
-    border-radius: 3px;
+    border-radius: 4px;
 
     background: #303438;
 
     cursor: pointer;
 
     user-select: none;
+
+    transform: translateZ(0);
+
+    transition:
+        transform 0.1s ease,
+        opacity 0.1s ease;
 }
 
 .album-card:active {
-    transform: scale(.985);
+    transform: scale(0.985);
+
+    opacity: 0.9;
 }
+
+
+/* =========================================================
+   ALBUM IMAGE
+   ========================================================= */
 
 .album-cover {
     position: absolute;
+
     inset: 0;
+
+    display: block;
 
     width: 100%;
     height: 100%;
 
     object-fit: cover;
+
+    background: #303438;
 }
+
+
+/* =========================================================
+   ALBUM PLACEHOLDER
+   ========================================================= */
 
 .album-placeholder {
     position: absolute;
+
     inset: 0;
 
     display: flex;
@@ -346,25 +608,44 @@ button {
             #424a50
         );
 
-    font-size: 50px;
+    color:
+        rgba(255, 255, 255, 0.7);
 
-    opacity: .8;
+    font-size: 52px;
 }
+
+
+/* =========================================================
+   ALBUM GRADIENT
+   ========================================================= */
 
 .album-card::after {
     content: "";
 
     position: absolute;
-    inset: auto 0 0 0;
 
-    height: 60%;
+    z-index: 1;
+
+    left: 0;
+    right: 0;
+    bottom: 0;
+
+    height: 62%;
 
     background:
         linear-gradient(
-            transparent,
-            rgba(0, 0, 0, .85)
+            to bottom,
+            rgba(0, 0, 0, 0),
+            rgba(0, 0, 0, 0.86)
         );
+
+    pointer-events: none;
 }
+
+
+/* =========================================================
+   ALBUM INFO
+   ========================================================= */
 
 .album-info {
     position: absolute;
@@ -379,12 +660,21 @@ button {
     align-items: flex-end;
 
     gap: 8px;
+
+    pointer-events: none;
 }
+
+
+/* =========================================================
+   ALBUM NAME
+   ========================================================= */
 
 .album-name {
     flex: 1;
 
     min-width: 0;
+
+    color: #ffffff;
 
     font-size: 16px;
     font-weight: 500;
@@ -394,30 +684,41 @@ button {
     text-overflow: ellipsis;
 
     text-shadow:
-        0 1px 4px #000;
+        0 1px 4px
+        rgba(0, 0, 0, 0.95);
 }
+
+
+/* =========================================================
+   ALBUM COUNT
+   ========================================================= */
 
 .album-count {
     flex: 0 0 auto;
 
+    color: #ffffff;
+
     font-size: 15px;
 
     text-shadow:
-        0 1px 4px #000;
+        0 1px 4px
+        rgba(0, 0, 0, 0.95);
 }
 
 
-/* ========================================
+/* =========================================================
    ALBUM HEADER
-   ======================================== */
+   ========================================================= */
 
 .album-header {
-    padding: 14px;
+    width: 100%;
 
-    background: #1b1e20;
+    padding: 14px;
 
     border-bottom:
         1px solid #34383b;
+
+    background: #1b1e20;
 }
 
 .album-header-main {
@@ -430,16 +731,23 @@ button {
 .album-header h1 {
     flex: 1;
 
+    min-width: 0;
+
     margin: 0;
 
-    font-size: 20px;
+    color: #ffffff;
 
-    overflow: hidden;
+    font-size: 20px;
+    font-weight: 600;
+
     white-space: nowrap;
+    overflow: hidden;
     text-overflow: ellipsis;
 }
 
 .photo-count {
+    flex: 0 0 auto;
+
     color: #999fa4;
 
     font-size: 14px;
@@ -452,13 +760,15 @@ button {
 
     font-size: 14px;
 
+    line-height: 1.4;
+
     white-space: pre-wrap;
 }
 
 
-/* ========================================
-   PHOTOS
-   ======================================== */
+/* =========================================================
+   PHOTOS GRID
+   ========================================================= */
 
 .photos-grid {
     display: grid;
@@ -468,11 +778,20 @@ button {
 
     gap: 2px;
 
+    width: 100%;
+
     padding: 2px;
 }
 
+
+/* =========================================================
+   PHOTO CARD
+   ========================================================= */
+
 .photo-card {
     position: relative;
+
+    width: 100%;
 
     aspect-ratio: 1 / 1;
 
@@ -481,6 +800,8 @@ button {
     background: #25282b;
 
     cursor: pointer;
+
+    transform: translateZ(0);
 }
 
 .photo-card img {
@@ -490,22 +811,30 @@ button {
     height: 100%;
 
     object-fit: cover;
+
+    transition:
+        transform 0.1s ease,
+        opacity 0.1s ease;
 }
 
 .photo-card:active img {
-    opacity: .75;
+    transform: scale(0.97);
+
+    opacity: 0.8;
 }
 
 
-/* ========================================
-   COMMENTS
-   ======================================== */
+/* =========================================================
+   COMMENTS TOOLBAR
+   ========================================================= */
 
 .comments-toolbar {
     display: flex;
     align-items: center;
 
     gap: 10px;
+
+    width: 100%;
 
     padding: 12px;
 
@@ -518,23 +847,42 @@ button {
 .comments-title {
     flex: 1;
 
+    min-width: 0;
+
     font-size: 18px;
     font-weight: 600;
 }
 
+
+/* =========================================================
+   COMMENTS LIST
+   ========================================================= */
+
 .comments-list {
+    width: 100%;
+
     padding: 10px;
 }
+
+
+/* =========================================================
+   COMMENT CARD
+   ========================================================= */
 
 .comment-card {
     display: flex;
 
     gap: 11px;
 
+    width: 100%;
+
     margin-bottom: 9px;
+
     padding: 11px;
 
-    border: 1px solid #34383b;
+    border:
+        1px solid #34383b;
+
     border-radius: 11px;
 
     background: #1c1f21;
@@ -570,13 +918,15 @@ button {
 .comment-author {
     margin-bottom: 5px;
 
+    color: #ffffff;
+
     font-weight: 600;
 }
 
 .comment-text {
-    color: #ddd;
+    color: #dddddd;
 
-    line-height: 1.35;
+    line-height: 1.4;
 
     white-space: pre-wrap;
     word-break: break-word;
@@ -591,14 +941,14 @@ button {
 }
 
 
-/* ========================================
-   MODAL
-   ======================================== */
+/* =========================================================
+   MODAL OVERLAY
+   ========================================================= */
 
 .modal-overlay {
     position: fixed;
 
-    z-index: 5000;
+    z-index: 100000;
 
     inset: 0;
 
@@ -606,13 +956,23 @@ button {
     align-items: center;
     justify-content: center;
 
+    width: 100%;
+    height: 100%;
+
     padding: 16px;
 
     background:
-        rgba(0, 0, 0, .72);
+        rgba(0, 0, 0, 0.74);
 }
 
+
+/* =========================================================
+   MODAL WINDOW
+   ========================================================= */
+
 .modal {
+    position: relative;
+
     width: min(460px, 100%);
 
     max-height: 90vh;
@@ -621,18 +981,29 @@ button {
 
     padding: 17px;
 
-    border: 1px solid #41464b;
+    border:
+        1px solid #41464b;
+
     border-radius: 15px;
 
     background: #202326;
+    color: #ffffff;
 
     box-shadow:
-        0 15px 50px rgba(0, 0, 0, .6);
+        0 15px 50px
+        rgba(0, 0, 0, 0.7);
 }
+
+
+/* =========================================================
+   MODAL HEADER
+   ========================================================= */
 
 .modal-header {
     display: flex;
     align-items: center;
+
+    gap: 10px;
 
     margin-bottom: 18px;
 }
@@ -640,35 +1011,58 @@ button {
 .modal-title {
     flex: 1;
 
+    min-width: 0;
+
     font-size: 20px;
     font-weight: 600;
 }
 
+
+/* =========================================================
+   MODAL CLOSE
+   ========================================================= */
+
 .modal-close {
+    flex: 0 0 auto;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
     width: 34px;
     height: 34px;
 
     padding: 0;
 
-    border: 0;
+    border: none;
     border-radius: 50%;
 
     background: transparent;
-    color: #bbb;
+    color: #bbbbbb;
 
-    font-size: 28px;
+    font-size: 27px;
 
     cursor: pointer;
 }
 
 .modal-close:hover {
     background: #35393d;
+
+    color: #ffffff;
 }
+
+
+/* =========================================================
+   FORM
+   ========================================================= */
 
 .form-label {
     display: block;
 
-    margin: 13px 0 6px;
+    margin:
+        13px
+        0
+        6px;
 
     color: #b9bec2;
 
@@ -677,27 +1071,42 @@ button {
 
 .form-input,
 .form-textarea {
+    display: block;
+
     width: 100%;
 
-    border: 1px solid #454a4f;
+    margin: 0;
+
+    border:
+        1px solid #454a4f;
+
     border-radius: 9px;
 
     outline: none;
 
     background: #151719;
-    color: #fff;
+    color: #ffffff;
+
+    transition:
+        border-color 0.15s ease;
 }
 
 .form-input {
     height: 43px;
 
-    padding: 0 11px;
+    padding:
+        0
+        11px;
 }
 
 .form-textarea {
     min-height: 110px;
 
-    padding: 10px 11px;
+    padding:
+        10px
+        11px;
+
+    line-height: 1.4;
 
     resize: vertical;
 }
@@ -707,51 +1116,15 @@ button {
     border-color: #518fbb;
 }
 
-.modal-actions {
-    display: flex;
-    justify-content: flex-end;
-
-    gap: 8px;
-
-    margin-top: 19px;
+.form-input::placeholder,
+.form-textarea::placeholder {
+    color: #74797d;
 }
 
-.primary-button,
-.secondary-button {
-    min-height: 38px;
 
-    padding: 7px 15px;
-
-    border: 0;
-    border-radius: 8px;
-
-    color: #fff;
-
-    cursor: pointer;
-}
-
-.primary-button {
-    background: #39779b;
-}
-
-.primary-button:hover {
-    background: #4789af;
-}
-
-.secondary-button {
-    background: #3a3e42;
-}
-
-.secondary-button:hover {
-    background: #484d52;
-}
-
-.primary-button:disabled,
-.secondary-button:disabled {
-    cursor: default;
-
-    opacity: .5;
-}
+/* =========================================================
+   FORM ERROR
+   ========================================================= */
 
 .form-error {
     margin-top: 12px;
@@ -764,27 +1137,113 @@ button {
     color: #ffbaba;
 
     font-size: 14px;
+
+    word-break: break-word;
 }
 
 
-/* ========================================
+/* =========================================================
+   MODAL ACTIONS
+   ========================================================= */
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+
+    gap: 8px;
+
+    margin-top: 19px;
+}
+
+
+/* =========================================================
+   BUTTONS
+   ========================================================= */
+
+.primary-button,
+.secondary-button {
+    min-height: 38px;
+
+    padding:
+        7px
+        15px;
+
+    border: none;
+    border-radius: 8px;
+
+    outline: none;
+
+    color: #ffffff;
+
+    cursor: pointer;
+
+    transition:
+        background 0.12s ease,
+        opacity 0.12s ease;
+}
+
+.primary-button {
+    background: #39779b;
+}
+
+.primary-button:hover {
+    background: #4789af;
+}
+
+.primary-button:active {
+    background: #326986;
+}
+
+.secondary-button {
+    background: #3a3e42;
+}
+
+.secondary-button:hover {
+    background: #484d52;
+}
+
+.secondary-button:active {
+    background: #555a60;
+}
+
+.primary-button:disabled,
+.secondary-button:disabled {
+    cursor: default;
+
+    opacity: 0.5;
+}
+
+
+/* =========================================================
    STATUS
-   ======================================== */
+   ========================================================= */
 
 .status-message {
     grid-column: 1 / -1;
 
-    padding: 50px 20px;
+    width: 100%;
+
+    padding:
+        50px
+        20px;
 
     color: #aeb2b6;
 
+    font-size: 16px;
+
     text-align: center;
 }
+
+
+/* =========================================================
+   ERROR
+   ========================================================= */
 
 .error {
     grid-column: 1 / -1;
 
     margin: 15px;
+
     padding: 15px;
 
     border-radius: 10px;
@@ -792,13 +1251,15 @@ button {
     background: #3a2020;
     color: #ffb5b5;
 
+    line-height: 1.4;
+
     word-break: break-word;
 }
 
 
-/* ========================================
-   ADAPTIVE
-   ======================================== */
+/* =========================================================
+   TABLET
+   ========================================================= */
 
 @media (min-width: 700px) {
 
@@ -808,15 +1269,27 @@ button {
 
         gap: 5px;
 
-        padding: 0 5px 5px;
+        padding:
+            0
+            5px
+            5px;
     }
 
     .photos-grid {
         grid-template-columns:
             repeat(4, minmax(0, 1fr));
+
+        gap: 3px;
+
+        padding: 3px;
     }
 
 }
+
+
+/* =========================================================
+   DESKTOP
+   ========================================================= */
 
 @media (min-width: 1100px) {
 
@@ -832,7 +1305,17 @@ button {
 
 }
 
+
+/* =========================================================
+   SMALL MOBILE
+   ========================================================= */
+
 @media (max-width: 420px) {
+
+    .topbar {
+        padding-left: 3px;
+        padding-right: 3px;
+    }
 
     .topbar-user {
         display: none;
@@ -842,12 +1325,61 @@ button {
         font-size: 18px;
     }
 
+    .topbar-button {
+        width: 42px;
+        height: 42px;
+    }
+
+    .main-menu {
+        left: 1px;
+
+        width: 225px;
+    }
+
     .album-name {
         font-size: 14px;
     }
 
     .album-count {
         font-size: 14px;
+    }
+
+    .comment-photo {
+        width: 62px;
+        height: 62px;
+    }
+
+}
+
+
+/* =========================================================
+   VERY SMALL MOBILE
+   ========================================================= */
+
+@media (max-width: 340px) {
+
+    .topbar-title {
+        font-size: 16px;
+    }
+
+    .albums-grid {
+        gap: 2px;
+
+        padding:
+            0
+            2px
+            2px;
+    }
+
+    .album-info {
+        left: 6px;
+        right: 6px;
+        bottom: 6px;
+    }
+
+    .album-name,
+    .album-count {
+        font-size: 13px;
     }
 
 }
