@@ -112,13 +112,21 @@ async function fetchFirstPageFromVK() {
     const apiTotal = Number(result?.count);
 
     state.albums = items;
-    state.albumsTotal = Number.isFinite(apiTotal) && apiTotal >= 0
-        ? Math.max(apiTotal, items.length)
-        : items.length;
-    state.albumsOffset = items.length;
-    state.albumsHasMore = state.albumsOffset < state.albumsTotal || (
-        !Number.isFinite(apiTotal) && items.length === PAGE_SIZE
+    state.albumsTotal = Math.max(
+        Number.isFinite(apiTotal) && apiTotal >= 0 ? apiTotal : 0,
+        state.albumIndexReady ? state.albumIndex.length : 0,
+        items.length
     );
+    state.albumsOffset = items.length;
+
+    // Для ленивой загрузки не доверяем result.count как признаку конца.
+    // На больших сообществах VK может вернуть значение, которое не годится
+    // для остановки пагинации. Конец подтверждаем пустой страницей, либо
+    // полным поисковым индексом, если он уже построен.
+    state.albumsHasMore = items.length > 0;
+    if (state.albumIndexReady && state.albums.length >= state.albumIndex.length) {
+        state.albumsHasMore = false;
+    }
 
     cacheSet(albumsKey(ownerId), {
         items: state.albums,
@@ -140,11 +148,20 @@ function restoreAlbumsCache(cached) {
     const savedTotal = Array.isArray(cached) ? 0 : Number(cached?.total || 0);
 
     state.albums = items;
-    state.albumsTotal = Math.max(savedTotal, items.length);
-    state.albumsOffset = items.length;
-    state.albumsHasMore = savedTotal > items.length || (
-        savedTotal <= 0 && items.length >= PAGE_SIZE
+    state.albumsTotal = Math.max(
+        savedTotal,
+        state.albumIndexReady ? state.albumIndex.length : 0,
+        items.length
     );
+    state.albumsOffset = items.length;
+
+    // Старый кэш мог сохранить некорректный total. Поэтому при наличии
+    // хотя бы одного альбома разрешаем проверить следующую страницу.
+    // В худшем случае будет один пустой запрос, зато список не "застынет".
+    state.albumsHasMore = items.length > 0;
+    if (state.albumIndexReady && state.albums.length >= state.albumIndex.length) {
+        state.albumsHasMore = false;
+    }
 }
 
 async function revalidateVisibleAlbums() {
@@ -213,18 +230,21 @@ export async function loadMoreAlbums() {
         const addedCount = state.albums.length - beforeCount;
 
         const apiTotal = Number(result?.count);
-        if (Number.isFinite(apiTotal) && apiTotal >= 0) {
-            state.albumsTotal = Math.max(apiTotal, state.albums.length);
-        } else {
-            state.albumsTotal = Math.max(state.albumsTotal || 0, state.albums.length);
-        }
-
-        state.albumsOffset += items.length;
-        state.albumsHasMore = state.albumsOffset < state.albumsTotal || (
-            !Number.isFinite(apiTotal) && items.length === PAGE_SIZE
+        state.albumsTotal = Math.max(
+            Number.isFinite(apiTotal) && apiTotal >= 0 ? apiTotal : 0,
+            state.albumIndexReady ? state.albumIndex.length : 0,
+            state.albumsTotal || 0,
+            state.albums.length
         );
 
-        if (items.length > 0 && addedCount === 0) {
+        state.albumsOffset += items.length;
+
+        // Не останавливаем ленивую загрузку по result.count или по короткой
+        // странице. Надёжный конец — пустая страница. Если сервер повторил
+        // уже полученные album_id, тоже останавливаемся, чтобы не зациклиться.
+        state.albumsHasMore = items.length > 0 && addedCount > 0;
+
+        if (state.albumIndexReady && state.albums.length >= state.albumIndex.length) {
             state.albumsHasMore = false;
         }
 
@@ -284,6 +304,14 @@ async function buildAlbumIndex(generation) {
 
             if (generation !== indexBuildGeneration) return state.albumIndex;
             state.albumIndex = index;
+
+            // Как только индекс увидел альбомы за пределами уже показанных,
+            // не ждём завершения всей индексации: разрешаем обычной ленте
+            // продолжать ленивую догрузку.
+            if (index.length > state.albums.length) {
+                state.albumsTotal = Math.max(state.albumsTotal || 0, index.length);
+                state.albumsHasMore = true;
+            }
 
             // Результаты поиска появляются уже во время фоновой индексации.
             if (state.albumSearchText.trim()) renderAlbums();
@@ -443,7 +471,9 @@ function installLoadMoreSentinel() {
 
     const sentinel = document.createElement("div");
     sentinel.className = "albums-load-more-sentinel";
-    sentinel.style.height = "1px";
+    sentinel.style.height = "2px";
+    sentinel.style.width = "100%";
+    sentinel.style.gridColumn = "1 / -1";
     sentinel.setAttribute("aria-hidden", "true");
     dom.albums.appendChild(sentinel);
 
@@ -451,7 +481,11 @@ function installLoadMoreSentinel() {
         if (entries.some(entry => entry.isIntersecting)) {
             void loadMoreAlbums();
         }
-    }, { rootMargin: "500px 0px" });
+    }, {
+        root: null,
+        rootMargin: "700px 0px",
+        threshold: 0
+    });
 
     loadMoreObserver.observe(sentinel);
 }
@@ -500,8 +534,26 @@ export function renderAlbums() {
 }
 
 function isNearPageBottom(distance = 900) {
-    const doc = document.documentElement;
-    return window.innerHeight + window.scrollY >= doc.scrollHeight - distance;
+    const scrolling = document.scrollingElement || document.documentElement || document.body;
+    const viewportHeight = Math.max(
+        Number(window.visualViewport?.height || 0),
+        Number(window.innerHeight || 0),
+        Number(document.documentElement?.clientHeight || 0)
+    );
+    const scrollTop = Math.max(
+        Number(window.scrollY || 0),
+        Number(window.pageYOffset || 0),
+        Number(scrolling?.scrollTop || 0),
+        Number(document.documentElement?.scrollTop || 0),
+        Number(document.body?.scrollTop || 0)
+    );
+    const scrollHeight = Math.max(
+        Number(scrolling?.scrollHeight || 0),
+        Number(document.documentElement?.scrollHeight || 0),
+        Number(document.body?.scrollHeight || 0)
+    );
+
+    return viewportHeight + scrollTop >= scrollHeight - distance;
 }
 
 function handleAlbumScroll() {
@@ -523,7 +575,14 @@ function handleAlbumScroll() {
 }
 
 export function initAlbums() {
+    // В VK WebView событие прокрутки может приходить не только на window.
+    // Фотографии уже использовали такой набор обработчиков; для альбомов
+    // делаем то же самое, плюс следим за visualViewport на мобильных.
     window.addEventListener("scroll", handleAlbumScroll, { passive: true });
+    document.addEventListener("scroll", handleAlbumScroll, { passive: true, capture: true });
+    window.addEventListener("resize", handleAlbumScroll, { passive: true });
+    window.visualViewport?.addEventListener("scroll", handleAlbumScroll, { passive: true });
+    window.visualViewport?.addEventListener("resize", handleAlbumScroll, { passive: true });
 
     dom.albumSearch.addEventListener("input", event => {
         state.albumSearchText = event.target.value;

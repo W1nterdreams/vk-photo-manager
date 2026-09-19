@@ -1,7 +1,7 @@
 import { dom } from "./dom.js?v=20260920-threadsearch02";
 import { vkInit, loadUser, getAccessToken } from "./vk-api.js?v=20260920-threadsearch02";
 import { initGroupContext } from "./group-context.js?v=20260920-threadsearch02";
-import { initAlbums, loadAlbums } from "./albums.js?v=20260920-threadsearch02";
+import { initAlbums, loadAlbums } from "./albums.js?v=20260920-albumscroll03";
 import { openAlbum } from "./photos.js?v=20260920-threadsearch02";
 import { initMainMenu } from "./main-menu.js?v=20260920-threadsearch02";
 import { initAlbumCreate } from "./album-create.js?v=20260920-threadsearch02";
