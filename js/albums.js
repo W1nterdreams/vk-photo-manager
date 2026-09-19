@@ -12,6 +12,7 @@ import {
     albumIndexKey
 } from "./cache.js?v=20260919-nav03";
 import { getOwnerId } from "./group-context.js?v=20260919-nav03";
+import { bindAlbumLongPress } from "./album-menu.js?v=20260919-menu01";
 
 const PAGE_SIZE = 20;
 const INDEX_PAGE_SIZE = 100;
@@ -319,6 +320,10 @@ function createAlbumCard(album) {
 
     info.append(name, count);
     card.appendChild(info);
+
+    // Долгое нажатие открывает контекстное меню альбома.
+    // Обычный короткий тап по-прежнему открывает альбом.
+    bindAlbumLongPress(card, displayAlbum);
     card.addEventListener("click", () => openAlbum(displayAlbum));
 
     return card;

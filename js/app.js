@@ -1,7 +1,7 @@
 import { dom } from "./dom.js?v=20260919-nav03";
 import { vkInit, loadUser, getAccessToken } from "./vk-api.js?v=20260919-nav03";
 import { initGroupContext } from "./group-context.js?v=20260919-nav03";
-import { initAlbums, loadAlbums } from "./albums.js?v=20260919-nav03";
+import { initAlbums, loadAlbums } from "./albums.js?v=20260919-menu01";
 import { openAlbum } from "./photos.js?v=20260919-nav03";
 import { initMainMenu } from "./main-menu.js?v=20260919-nav03";
 import { initAlbumCreate } from "./album-create.js?v=20260919-nav03";
