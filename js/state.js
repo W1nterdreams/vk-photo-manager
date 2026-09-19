@@ -15,6 +15,10 @@ export const state = {
     albumIndexBuilding: false,
     currentAlbum: null,
     photos: [],
+    photosTotal: 0,
+    photosOffset: 0,
+    photosHasMore: false,
+    photosLoadingMore: false,
 
     albumSearchText: "",
     currentScreen: "albums"

@@ -18,6 +18,7 @@ const INDEX_PAGE_SIZE = 100;
 
 let loadMoreObserver = null;
 let indexBuildPromise = null;
+let albumScrollTicking = false;
 
 function normalizeTitle(value) {
     return String(value || "").trim().toLocaleLowerCase("ru");
@@ -79,6 +80,7 @@ async function fetchFirstPageFromVK() {
     // Первые 20 сразу добавляем и в поисковый индекс.
     state.albumIndex = mergeIndex(state.albumIndex, state.albums);
     renderAlbums();
+    setTimeout(handleAlbumScroll, 0);
 
     // Полный индекс строится в фоне и не задерживает показ экрана.
     void ensureAlbumIndex();
@@ -155,6 +157,7 @@ export async function loadMoreAlbums() {
     } finally {
         state.albumsLoadingMore = false;
         renderAlbums();
+        setTimeout(handleAlbumScroll, 0);
     }
 }
 
@@ -321,7 +324,32 @@ export function renderAlbums() {
     installLoadMoreSentinel();
 }
 
+function isNearPageBottom(distance = 900) {
+    const doc = document.documentElement;
+    return window.innerHeight + window.scrollY >= doc.scrollHeight - distance;
+}
+
+function handleAlbumScroll() {
+    if (albumScrollTicking) return;
+    albumScrollTicking = true;
+
+    requestAnimationFrame(() => {
+        albumScrollTicking = false;
+        if (
+            state.currentScreen === "albums" &&
+            !state.albumSearchText.trim() &&
+            state.albumsHasMore &&
+            !state.albumsLoadingMore &&
+            isNearPageBottom()
+        ) {
+            void loadMoreAlbums();
+        }
+    });
+}
+
 export function initAlbums() {
+    window.addEventListener("scroll", handleAlbumScroll, { passive: true });
+
     dom.albumSearch.addEventListener("input", event => {
         state.albumSearchText = event.target.value;
         dom.clearSearch.classList.toggle("hidden", !state.albumSearchText);
