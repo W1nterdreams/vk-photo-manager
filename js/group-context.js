@@ -10,6 +10,8 @@ function readGroupIdFromLaunchParams() {
 
 export async function initGroupContext() {
     const groupId = readGroupIdFromLaunchParams();
+    console.log("FULL URL:", window.location.href);
+    console.log("VK GROUP ID:", groupId);
 
     if (!groupId) {
         throw new Error(
