@@ -39,9 +39,9 @@ function savePhotosCache(album) {
 
 function restorePhotosCache(cached, album) {
     const items = Array.isArray(cached) ? cached : (cached?.items || []);
-    const total = Array.isArray(cached)
-        ? Number(album.size || items.length)
-        : Number(cached?.total ?? album.size ?? items.length);
+    const cachedTotal = Array.isArray(cached) ? 0 : Number(cached?.total || 0);
+    const albumTotal = Number(album.size || 0);
+    const total = Math.max(cachedTotal, albumTotal, items.length);
 
     state.photos = items;
     state.photosTotal = total;
@@ -52,9 +52,15 @@ function restorePhotosCache(cached, album) {
 async function fetchFirstPhotoPage(album) {
     const result = await fetchPhotoPage(album, 0, PAGE_SIZE);
     state.photos = result.items || [];
-    state.photosTotal = Number(result.count ?? album.size ?? state.photos.length);
+    state.photosTotal = Math.max(
+        Number(result.count || 0),
+        Number(album.size || 0),
+        state.photos.length
+    );
     state.photosOffset = state.photos.length;
-    state.photosHasMore = state.photosOffset < state.photosTotal;
+    state.photosHasMore =
+        state.photosOffset < state.photosTotal ||
+        state.photos.length === PAGE_SIZE;
     savePhotosCache(album);
     renderPhotos();
     updatePhotoCount();
@@ -128,9 +134,16 @@ export async function loadMorePhotos() {
         const items = result.items || [];
 
         state.photos = mergePhotos(state.photos, items);
-        state.photosTotal = Number(result.count ?? state.photosTotal ?? state.photos.length);
+        state.photosTotal = Math.max(
+            Number(result.count || 0),
+            Number(album.size || 0),
+            state.photosTotal || 0,
+            state.photos.length
+        );
         state.photosOffset += items.length;
-        state.photosHasMore = items.length > 0 && state.photosOffset < state.photosTotal;
+        state.photosHasMore =
+            items.length > 0 &&
+            (state.photosOffset < state.photosTotal || items.length === PAGE_SIZE);
         savePhotosCache(album);
     } catch (error) {
         console.warn("Не удалось догрузить фотографии:", error);
@@ -173,6 +186,8 @@ function initPhotoPagination() {
     if (photosInitialized) return;
     photosInitialized = true;
     window.addEventListener("scroll", handlePhotoScroll, { passive: true });
+    document.addEventListener("scroll", handlePhotoScroll, { passive: true, capture: true });
+    window.addEventListener("resize", handlePhotoScroll, { passive: true });
 }
 
 export function renderPhotos() {

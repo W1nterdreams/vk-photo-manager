@@ -68,9 +68,15 @@ async function fetchFirstPageFromVK() {
     const result = await fetchAlbumPage(0, PAGE_SIZE);
 
     state.albums = result.items || [];
-    state.albumsTotal = Number(result.count || state.albums.length);
+    state.albumsTotal = Math.max(
+        Number(result.count || 0),
+        state.albumIndex.length,
+        state.albums.length
+    );
     state.albumsOffset = state.albums.length;
-    state.albumsHasMore = state.albumsOffset < state.albumsTotal;
+    state.albumsHasMore =
+        state.albumsOffset < state.albumsTotal ||
+        state.albums.length === PAGE_SIZE;
 
     cacheSet(albumsKey(ownerId), {
         items: state.albums,
@@ -209,6 +215,25 @@ async function buildAlbumIndex() {
 
         cacheSet(albumIndexKey(ownerId), index);
         state.albumIndexReady = true;
+
+        // Индекс является дополнительным источником истины о количестве
+        // альбомов. Это важно для WebView VK: иногда первый ответ/старый кэш
+        // содержит count, равный только размеру первой страницы.
+        state.albumsTotal = Math.max(state.albumsTotal || 0, index.length);
+        state.albumsHasMore = state.albums.length < state.albumsTotal;
+
+        if (state.currentScreen === "albums" && !state.albumSearchText.trim()) {
+            renderAlbums();
+            setTimeout(handleAlbumScroll, 0);
+        }
+
+        console.log("Album index ready:", {
+            visible: state.albums.length,
+            total: state.albumsTotal,
+            index: index.length,
+            hasMore: state.albumsHasMore
+        });
+
         return index;
     } catch (error) {
         console.warn("Не удалось обновить поисковый индекс альбомов:", error);
@@ -227,7 +252,13 @@ async function ensureAlbumIndex({ force = false } = {}) {
         if (Array.isArray(cached) && cached.length) {
             state.albumIndex = cached;
             state.albumIndexReady = true;
+            state.albumsTotal = Math.max(state.albumsTotal || 0, cached.length);
+            state.albumsHasMore = state.albums.length < state.albumsTotal;
             if (state.albumSearchText.trim()) renderAlbums();
+            else if (state.currentScreen === "albums") {
+                renderAlbums();
+                setTimeout(handleAlbumScroll, 0);
+            }
             return cached;
         }
     }
