@@ -1950,3 +1950,35 @@ img {
         font-size: 11px;
     }
 }
+
+/* =========================================================
+   PHOTO COMMENT THREADS
+   ========================================================= */
+
+.photo-viewer-comment-reply {
+    margin-left: 30px;
+    padding-left: 14px;
+    border-left: 2px solid rgba(81, 143, 187, 0.55);
+    background: rgba(81, 143, 187, 0.045);
+}
+
+.photo-viewer-comment-reply::before {
+    content: "↳";
+    position: absolute;
+    left: -22px;
+    top: 13px;
+    color: #7fa9cc;
+    font-size: 15px;
+    line-height: 1;
+}
+
+@media (max-width: 420px) {
+    .photo-viewer-comment-reply {
+        margin-left: 22px;
+        padding-left: 11px;
+    }
+
+    .photo-viewer-comment-reply::before {
+        left: -18px;
+    }
+}
