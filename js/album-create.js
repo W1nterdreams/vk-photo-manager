@@ -54,8 +54,8 @@ async function createAlbum() {
 
 export function initAlbumCreate() {
     dom.createAlbumMenuButton.addEventListener("click", openModal);
-    dom.closeCreateAlbumButton.addEventListener("click", closeModal);
-    dom.cancelCreateAlbumButton.addEventListener("click", closeModal);
+    dom.closeCreateAlbum.addEventListener("click", closeModal);
+    dom.cancelCreateAlbum.addEventListener("click", closeModal);
     dom.submitCreateAlbum.addEventListener("click", createAlbum);
 
     dom.newAlbumTitle.addEventListener("keydown", event => {
