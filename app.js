@@ -78,26 +78,102 @@ const clearSearchButton =
     document.getElementById("clearSearch");
 
 
-/* MENU */
+/* ==========================================
+   MENU
+   ========================================== */
 
-const menuContainer =
-    document.getElementById("menuContainer");
+function openMenu() {
 
-const menuButton =
-    document.getElementById("menuButton");
+    mainMenu.classList.remove("hidden");
 
-const mainMenu =
-    document.getElementById("mainMenu");
+    console.log("Menu opened");
+}
 
-const createAlbumMenuButton =
-    document.getElementById(
-        "createAlbumMenuButton"
-    );
 
-const commentsMenuButton =
-    document.getElementById(
-        "commentsMenuButton"
-    );
+function closeMenu() {
+
+    mainMenu.classList.add("hidden");
+
+    console.log("Menu closed");
+}
+
+
+function toggleMenu() {
+
+    const isHidden =
+        mainMenu.classList.contains("hidden");
+
+    if (isHidden) {
+
+        openMenu();
+
+    } else {
+
+        closeMenu();
+
+    }
+}
+
+
+/*
+ * Кнопка меню
+ */
+
+menuButton.addEventListener(
+    "click",
+    event => {
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        toggleMenu();
+
+    }
+);
+
+
+/*
+ * Клики внутри меню не должны
+ * закрывать его через document.
+ */
+
+mainMenu.addEventListener(
+    "click",
+    event => {
+
+        event.stopPropagation();
+
+    }
+);
+
+
+/*
+ * Клик в любом другом месте
+ * закрывает меню.
+ */
+
+document.addEventListener(
+    "click",
+    event => {
+
+        /*
+         * Если нажали на саму кнопку
+         * или внутри контейнера меню —
+         * ничего не делаем.
+         */
+
+        if (
+            menuContainer.contains(
+                event.target
+            )
+        ) {
+            return;
+        }
+
+        closeMenu();
+
+    }
+);
 
 
 /* CREATE ALBUM */
