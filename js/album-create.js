@@ -1,4 +1,64 @@
-import {dom} from "./dom.js";import {vkApi} from "./vk-api.js";import {getErrorMessage} from "./helpers.js";import {loadAlbums} from "./albums.js";import {showAlbumsScreen} from "./navigation.js";import {closeMenu} from "./main-menu.js";
-function open(){closeMenu();dom.createAlbumError.classList.add("hidden");dom.createAlbumError.textContent="";dom.newAlbumTitle.value="";dom.newAlbumDescription.value="";dom.createAlbumModal.classList.remove("hidden");setTimeout(()=>dom.newAlbumTitle.focus(),50);}
-export function closeCreateAlbumModal(){dom.createAlbumModal.classList.add("hidden");}
-export function initAlbumCreate(){dom.createAlbumMenuButton.addEventListener("click",open);dom.closeCreateAlbum.addEventListener("click",closeCreateAlbumModal);dom.cancelCreateAlbum.addEventListener("click",closeCreateAlbumModal);dom.createAlbumModal.addEventListener("click",e=>{if(e.target===dom.createAlbumModal)closeCreateAlbumModal();});dom.createAlbumForm.addEventListener("submit",async e=>{e.preventDefault();const title=dom.newAlbumTitle.value.trim(),description=dom.newAlbumDescription.value.trim();if(!title)return;dom.createAlbumError.classList.add("hidden");dom.submitCreateAlbum.disabled=true;dom.submitCreateAlbum.textContent="Создаём...";try{await vkApi("photos.createAlbum",{title,description,privacy_view:"all",privacy_comment:"all",comments_disabled:0});closeCreateAlbumModal();await loadAlbums();showAlbumsScreen();}catch(err){dom.createAlbumError.textContent=getErrorMessage(err);dom.createAlbumError.classList.remove("hidden");}finally{dom.submitCreateAlbum.disabled=false;dom.submitCreateAlbum.textContent="Создать";}});}
+import { state } from "./state.js";
+import { dom } from "./dom.js";
+import { vkApi } from "./vk-api.js";
+import { getErrorMessage } from "./helpers.js";
+import { loadAlbums } from "./albums.js";
+import { closeMenu } from "./main-menu.js";
+import { getGroupId, getOwnerId } from "./group-context.js";
+import { cacheRemove } from "./cache.js";
+import { albumsKey } from "./cache.js";
+
+function openModal() {
+    closeMenu();
+    dom.newAlbumTitle.value = "";
+    dom.newAlbumDescription.value = "";
+    dom.createAlbumError.textContent = "";
+    dom.createAlbumModal.classList.remove("hidden");
+    dom.newAlbumTitle.focus();
+}
+
+function closeModal() {
+    dom.createAlbumModal.classList.add("hidden");
+    dom.createAlbumError.textContent = "";
+}
+
+async function createAlbum() {
+    const title = dom.newAlbumTitle.value.trim();
+    const description = dom.newAlbumDescription.value.trim();
+
+    if (!title) {
+        dom.createAlbumError.textContent = "Введите название альбома.";
+        return;
+    }
+
+    dom.submitCreateAlbum.disabled = true;
+    dom.createAlbumError.textContent = "";
+
+    try {
+        await vkApi("photos.createAlbum", {
+            title,
+            description,
+            group_id: getGroupId(),
+            comments_disabled: 0
+        });
+
+        cacheRemove(albumsKey(getOwnerId()));
+        closeModal();
+        await loadAlbums({ force: true });
+    } catch (error) {
+        dom.createAlbumError.textContent = getErrorMessage(error);
+    } finally {
+        dom.submitCreateAlbum.disabled = false;
+    }
+}
+
+export function initAlbumCreate() {
+    dom.createAlbumMenuButton.addEventListener("click", openModal);
+    dom.closeCreateAlbumButton.addEventListener("click", closeModal);
+    dom.cancelCreateAlbumButton.addEventListener("click", closeModal);
+    dom.submitCreateAlbum.addEventListener("click", createAlbum);
+
+    dom.newAlbumTitle.addEventListener("keydown", event => {
+        if (event.key === "Enter") createAlbum();
+    });
+}

@@ -5,10 +5,13 @@ import { getAlbumCover, escapeHtml, getErrorMessage } from "./helpers.js";
 import { openAlbum } from "./photos.js";
 import { CACHE_TTL } from "./config.js";
 import { cacheGet, cacheGetStale, cacheSet, albumsKey } from "./cache.js";
+import { getOwnerId } from "./group-context.js";
 
 async function fetchAlbumsFromVK() {
+    const ownerId = getOwnerId();
+
     const result = await vkApi("photos.getAlbums", {
-        owner_id: state.currentUser.id,
+        owner_id: ownerId,
         need_system: 1,
         need_covers: 1,
         photo_sizes: 1,
@@ -16,16 +19,16 @@ async function fetchAlbumsFromVK() {
     });
 
     state.albums = result.items || [];
-    cacheSet(albumsKey(state.currentUser.id), state.albums);
+    cacheSet(albumsKey(ownerId), state.albums);
     renderAlbums();
 }
 
 export async function loadAlbums({ force = false } = {}) {
-    const key = albumsKey(state.currentUser.id);
+    const ownerId = getOwnerId();
+    const key = albumsKey(ownerId);
 
     if (!force) {
         const cached = cacheGet(key, CACHE_TTL.albums);
-
         if (cached) {
             state.albums = cached;
             renderAlbums();
@@ -36,31 +39,20 @@ export async function loadAlbums({ force = false } = {}) {
         if (stale) {
             state.albums = stale;
             renderAlbums();
-
-            try {
-                await fetchAlbumsFromVK();
-            } catch (error) {
-                console.warn("Фоновое обновление альбомов не удалось:", error);
-            }
+            try { await fetchAlbumsFromVK(); }
+            catch (error) { console.warn("Фоновое обновление альбомов:", error); }
             return;
         }
     }
 
-    dom.albums.innerHTML =
-        '<div class="status-message">Загружаем альбомы...</div>';
-
+    dom.albums.innerHTML = '<div class="status-message">Загружаем альбомы сообщества...</div>';
     await fetchAlbumsFromVK();
 }
 
 function filtered() {
     const q = state.albumSearchText.trim().toLocaleLowerCase("ru");
-
     return q
-        ? state.albums.filter(album =>
-            String(album.title || "")
-                .toLocaleLowerCase("ru")
-                .includes(q)
-        )
+        ? state.albums.filter(a => String(a.title || "").toLocaleLowerCase("ru").includes(q))
         : state.albums;
 }
 
@@ -69,12 +61,9 @@ export function renderAlbums() {
     const list = filtered();
 
     if (!list.length) {
-        dom.albums.innerHTML =
-            `<div class="status-message">${
-                state.albumSearchText.trim()
-                    ? "Альбомы не найдены"
-                    : "Альбомов нет"
-            }</div>`;
+        dom.albums.innerHTML = `<div class="status-message">${
+            state.albumSearchText.trim() ? "Альбомы не найдены" : "Альбомов нет"
+        }</div>`;
         return;
     }
 
@@ -83,7 +72,6 @@ export function renderAlbums() {
         card.className = "album-card";
 
         const cover = getAlbumCover(album);
-
         if (cover) {
             const img = document.createElement("img");
             img.className = "album-cover";
@@ -111,7 +99,6 @@ export function renderAlbums() {
 
         info.append(name, count);
         card.appendChild(info);
-
         card.addEventListener("click", () => openAlbum(album));
         dom.albums.appendChild(card);
     });
@@ -134,14 +121,11 @@ export function initAlbums() {
 
     dom.refreshAlbums.addEventListener("click", async () => {
         dom.refreshAlbums.disabled = true;
-
         try {
             await loadAlbums({ force: true });
         } catch (error) {
             dom.albums.innerHTML =
-                `<div class="error">Не удалось обновить альбомы.<br><br>${
-                    escapeHtml(getErrorMessage(error))
-                }</div>`;
+                `<div class="error">Не удалось обновить альбомы.<br><br>${escapeHtml(getErrorMessage(error))}</div>`;
         } finally {
             dom.refreshAlbums.disabled = false;
         }

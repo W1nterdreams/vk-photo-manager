@@ -5,41 +5,28 @@ import { escapeHtml, getErrorMessage, getBestPhotoUrl } from "./helpers.js";
 import { showCommentsScreen } from "./navigation.js";
 import { closeMenu } from "./main-menu.js";
 import { CACHE_TTL, COMMENTS_DAYS } from "./config.js";
-import {
-    cacheGet,
-    cacheSet,
-    albumPhotosKey,
-    photoCommentsKey,
-    commentsFeedKey
-} from "./cache.js";
+import { cacheGet, cacheSet, albumPhotosKey, photoCommentsKey, commentsFeedKey } from "./cache.js";
+import { getOwnerId } from "./group-context.js";
 
 function cutoffTimestamp() {
-    return Math.floor(
-        (Date.now() - COMMENTS_DAYS * 24 * 60 * 60 * 1000) / 1000
-    );
+    return Math.floor((Date.now() - COMMENTS_DAYS * 86400000) / 1000);
 }
 
 function getAuthor(data) {
     const id = data.comment.from_id;
-
     if (id > 0) {
-        const profile = data.profiles.find(item => item.id === id);
-        if (profile) {
-            return `${profile.first_name || ""} ${profile.last_name || ""}`.trim();
-        }
+        const p = data.profiles.find(x => x.id === id);
+        if (p) return `${p.first_name || ""} ${p.last_name || ""}`.trim();
     }
-
     if (id < 0) {
-        const group = data.groups.find(item => item.id === Math.abs(id));
-        if (group) return group.name || "Сообщество";
+        const g = data.groups.find(x => x.id === Math.abs(id));
+        if (g) return g.name || "Сообщество";
     }
-
     return "Пользователь";
 }
 
 function renderComments(items) {
     dom.comments.innerHTML = "";
-
     if (!items.length) {
         dom.comments.innerHTML =
             `<div class="status-message">Комментариев за последние ${COMMENTS_DAYS} дней нет</div>`;
@@ -49,7 +36,6 @@ function renderComments(items) {
     items.forEach(data => {
         const card = document.createElement("div");
         card.className = "comment-card";
-
         const url = getBestPhotoUrl(data.photo);
 
         if (url) {
@@ -78,10 +64,8 @@ function renderComments(items) {
 
         const date = document.createElement("div");
         date.className = "comment-date";
-
         if (data.comment.date) {
-            date.textContent =
-                new Date(data.comment.date * 1000).toLocaleString("ru-RU");
+            date.textContent = new Date(data.comment.date * 1000).toLocaleString("ru-RU");
         }
 
         body.append(album, author, text, date);
@@ -91,15 +75,15 @@ function renderComments(items) {
 }
 
 async function getAlbumPhotos(album, force) {
-    const key = albumPhotosKey(state.currentUser.id, album.id);
-
+    const ownerId = getOwnerId();
+    const key = albumPhotosKey(ownerId, album.id);
     if (!force) {
         const cached = cacheGet(key, CACHE_TTL.photos);
         if (cached) return cached;
     }
 
     const result = await vkApi("photos.get", {
-        owner_id: state.currentUser.id,
+        owner_id: ownerId,
         album_id: album.id,
         photo_sizes: 1,
         count: 100
@@ -111,15 +95,15 @@ async function getAlbumPhotos(album, force) {
 }
 
 async function getPhotoComments(photo, force) {
-    const key = photoCommentsKey(state.currentUser.id, photo.id);
-
+    const ownerId = getOwnerId();
+    const key = photoCommentsKey(ownerId, photo.id);
     if (!force) {
         const cached = cacheGet(key, CACHE_TTL.comments);
         if (cached) return cached;
     }
 
     const result = await vkApi("photos.getComments", {
-        owner_id: state.currentUser.id,
+        owner_id: ownerId,
         photo_id: photo.id,
         extended: 1,
         count: 100,
@@ -131,42 +115,29 @@ async function getPhotoComments(photo, force) {
         profiles: result.profiles || [],
         groups: result.groups || []
     };
-
     cacheSet(key, data);
     return data;
 }
 
 async function buildCommentsFeed(force) {
+    const ownerId = getOwnerId();
     const cutoff = cutoffTimestamp();
     const all = [];
 
     for (const album of state.albums) {
-        let albumPhotos;
+        let photos;
+        try { photos = await getAlbumPhotos(album, force); }
+        catch (e) { console.warn("Фото альбома:", album.title, e); continue; }
 
-        try {
-            albumPhotos = await getAlbumPhotos(album, force);
-        } catch (error) {
-            console.warn("Не удалось получить фото альбома:", album.title, error);
-            continue;
-        }
-
-        for (const photo of albumPhotos) {
+        for (const photo of photos) {
             let result;
-
-            try {
-                result = await getPhotoComments(photo, force);
-            } catch (error) {
-                console.warn("Не удалось получить комментарии фото:", photo.id, error);
-                continue;
-            }
+            try { result = await getPhotoComments(photo, force); }
+            catch (e) { console.warn("Комментарии фото:", photo.id, e); continue; }
 
             for (const comment of result.items) {
                 if ((comment.date || 0) < cutoff) continue;
-
                 all.push({
-                    comment,
-                    photo,
-                    album,
+                    comment, photo, album,
                     profiles: result.profiles,
                     groups: result.groups
                 });
@@ -174,39 +145,27 @@ async function buildCommentsFeed(force) {
         }
     }
 
-    all.sort(
-        (a, b) => (b.comment.date || 0) - (a.comment.date || 0)
-    );
-
-    cacheSet(commentsFeedKey(state.currentUser.id), all);
+    all.sort((a, b) => (b.comment.date || 0) - (a.comment.date || 0));
+    cacheSet(commentsFeedKey(ownerId), all);
     return all;
 }
 
 export async function loadAllComments({ force = false } = {}) {
-    const feedKey = commentsFeedKey(state.currentUser.id);
+    const key = commentsFeedKey(getOwnerId());
 
     if (!force) {
-        const cachedFeed = cacheGet(feedKey, CACHE_TTL.comments);
-
-        if (cachedFeed) {
-            renderComments(cachedFeed);
-            return;
-        }
+        const cached = cacheGet(key, CACHE_TTL.comments);
+        if (cached) { renderComments(cached); return; }
     }
 
-    dom.comments.innerHTML =
-        '<div class="status-message">Загружаем комментарии...</div>';
-
+    dom.comments.innerHTML = '<div class="status-message">Загружаем комментарии...</div>';
     dom.refreshComments.disabled = true;
 
     try {
-        const all = await buildCommentsFeed(force);
-        renderComments(all);
+        renderComments(await buildCommentsFeed(force));
     } catch (error) {
         dom.comments.innerHTML =
-            `<div class="error">Не удалось загрузить комментарии.<br><br>${
-                escapeHtml(getErrorMessage(error))
-            }</div>`;
+            `<div class="error">Не удалось загрузить комментарии.<br><br>${escapeHtml(getErrorMessage(error))}</div>`;
     } finally {
         dom.refreshComments.disabled = false;
     }
@@ -219,7 +178,5 @@ export function initComments() {
         await loadAllComments();
     });
 
-    dom.refreshComments.addEventListener("click", () =>
-        loadAllComments({ force: true })
-    );
+    dom.refreshComments.addEventListener("click", () => loadAllComments({ force: true }));
 }
