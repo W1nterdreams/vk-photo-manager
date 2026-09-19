@@ -1,4 +1,4 @@
-import { getOwnerId } from "./group-context.js?v=20260919-nav03";
+import { getOwnerId } from "./group-context.js?v=20260919-photo01";
 
 const LONG_PRESS_MS = 520;
 const MOVE_CANCEL_PX = 12;

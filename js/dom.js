@@ -1,7 +1,9 @@
 const id = name => document.getElementById(name);
 export const dom = {
- user:id("user"), pageTitle:id("pageTitle"), albumsScreen:id("albumsScreen"), photosScreen:id("photosScreen"), commentsScreen:id("commentsScreen"),
+ user:id("user"), pageTitle:id("pageTitle"), albumsScreen:id("albumsScreen"), photosScreen:id("photosScreen"), commentsScreen:id("commentsScreen"), photoViewerScreen:id("photoViewerScreen"),
  albums:id("albums"), photos:id("photos"), comments:id("comments"), albumTitle:id("albumTitle"), albumDescription:id("albumDescription"), photoCount:id("photoCount"),
+ photoViewerImage:id("photoViewerImage"), photoViewerDescription:id("photoViewerDescription"), photoViewerLikes:id("photoViewerLikes"), photoViewerReposts:id("photoViewerReposts"), photoViewerComments:id("photoViewerComments"),
+ photoViewerReplyTarget:id("photoViewerReplyTarget"), photoViewerReplyCancel:id("photoViewerReplyCancel"), photoViewerCommentInput:id("photoViewerCommentInput"), photoViewerCommentError:id("photoViewerCommentError"), photoViewerCommentSubmit:id("photoViewerCommentSubmit"),
  refreshAlbums:id("refreshAlbums"), refreshComments:id("refreshComments"), backButton:id("backButton"), albumSearch:id("albumSearch"), clearSearch:id("clearSearch"),
  menuButton:id("menuButton"), mainMenu:id("mainMenu"), menuContainer:document.querySelector(".menu-container"), createAlbumMenuButton:id("createAlbumMenuButton"), commentsMenuButton:id("commentsMenuButton"),
  createAlbumModal:id("createAlbumModal"), createAlbumForm:id("createAlbumForm"), newAlbumTitle:id("newAlbumTitle"), newAlbumDescription:id("newAlbumDescription"), createAlbumError:id("createAlbumError"),

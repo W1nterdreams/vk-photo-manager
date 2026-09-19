@@ -1,13 +1,15 @@
-import { state } from "./state.js?v=20260919-nav03";
-import { dom } from "./dom.js?v=20260919-nav03";
+import { state } from "./state.js?v=20260919-photo01";
+import { dom } from "./dom.js?v=20260919-photo01";
 
 let openAlbumFromHistory = null;
+let openPhotoFromHistory = null;
 let navigationInitialized = false;
 
 function hideScreens() {
     dom.albumsScreen.classList.add("hidden");
     dom.photosScreen.classList.add("hidden");
     dom.commentsScreen.classList.add("hidden");
+    dom.photoViewerScreen.classList.add("hidden");
 }
 
 function setScrollLater(y = 0) {
@@ -24,6 +26,7 @@ export function showAlbumsScreen({ restoreScroll = 0 } = {}) {
 
     state.currentScreen = "albums";
     state.currentAlbum = null;
+    state.currentPhoto = null;
 
     dom.pageTitle.textContent = "Фотоальбомы";
     dom.backButton.classList.add("hidden");
@@ -38,6 +41,7 @@ export function showPhotosScreen({ restoreScroll = 0 } = {}) {
     dom.photosScreen.classList.remove("hidden");
 
     state.currentScreen = "photos";
+    state.currentPhoto = null;
 
     dom.backButton.classList.remove("hidden");
     dom.refreshAlbums.classList.add("hidden");
@@ -60,14 +64,38 @@ export function showCommentsScreen({ restoreScroll = 0 } = {}) {
     setScrollLater(restoreScroll);
 }
 
+export function showPhotoViewerScreen({ restoreScroll = 0 } = {}) {
+    hideScreens();
+    dom.photoViewerScreen.classList.remove("hidden");
+
+    state.currentScreen = "photo";
+
+    dom.pageTitle.textContent = "Фотография";
+    dom.backButton.classList.remove("hidden");
+    dom.refreshAlbums.classList.add("hidden");
+
+    setVkSwipeHistory(true);
+    setScrollLater(restoreScroll);
+}
+
 function saveCurrentScrollToHistory() {
     const current = history.state || {};
 
-    if (current.screen === "albums" || state.currentScreen === "albums") {
+    if (state.currentScreen === "albums") {
+        history.replaceState(
+            { ...current, screen: "albums", scrollY: window.scrollY },
+            "",
+            window.location.href
+        );
+        return;
+    }
+
+    if (state.currentScreen === "photos" && state.currentAlbum) {
         history.replaceState(
             {
                 ...current,
-                screen: "albums",
+                screen: "photos",
+                albumId: String(state.currentAlbum.id),
                 scrollY: window.scrollY
             },
             "",
@@ -103,6 +131,46 @@ export function pushCommentsHistory() {
     );
 }
 
+export function pushPhotoHistory(photo, album, { fromComments = false } = {}) {
+    const albumId = String(album?.id ?? photo?.album_id ?? "");
+    const photoId = String(photo?.id || "");
+    if (!albumId || !photoId) return;
+
+    if (fromComments) {
+        // Комментарии -> Общее фото -> назад должен вести в альбом,
+        // поэтому текущую запись "comments" заменяем записью альбома.
+        history.replaceState(
+            {
+                screen: "photos",
+                albumId,
+                scrollY: 0
+            },
+            "",
+            `#album-${albumId}`
+        );
+    } else {
+        saveCurrentScrollToHistory();
+    }
+
+    history.pushState(
+        {
+            screen: "photo",
+            albumId,
+            photoId,
+            scrollY: 0
+        },
+        "",
+        `#photo-${photoId}`
+    );
+}
+
+function findAlbum(albumId) {
+    const id = String(albumId || "");
+    return state.albums.find(item => String(item.id) === id) ||
+        state.albumIndex.find(item => String(item.id) === id) ||
+        (state.currentAlbum && String(state.currentAlbum.id) === id ? state.currentAlbum : null);
+}
+
 async function handlePopState(event) {
     const navState = event.state;
 
@@ -112,8 +180,7 @@ async function handlePopState(event) {
     }
 
     if (navState.screen === "photos") {
-        const albumId = String(navState.albumId || "");
-        const album = state.albums.find(item => String(item.id) === albumId);
+        const album = findAlbum(navState.albumId);
 
         if (album && typeof openAlbumFromHistory === "function") {
             await openAlbumFromHistory(album, {
@@ -123,8 +190,23 @@ async function handlePopState(event) {
             return;
         }
 
-        // Если альбом не найден в уже загруженной странице,
-        // безопасно возвращаемся к списку альбомов.
+        showAlbumsScreen();
+        return;
+    }
+
+    if (navState.screen === "photo") {
+        const album = findAlbum(navState.albumId);
+        if (album && typeof openPhotoFromHistory === "function") {
+            const photoId = Number(navState.photoId || 0);
+            const photo = state.photos.find(item => Number(item.id) === photoId) ||
+                (state.currentPhoto && Number(state.currentPhoto.id) === photoId
+                    ? state.currentPhoto
+                    : { id: photoId, album_id: Number(album.id) });
+
+            await openPhotoFromHistory(photo, album, { fromHistory: true });
+            return;
+        }
+
         showAlbumsScreen();
         return;
     }
@@ -137,11 +219,15 @@ async function handlePopState(event) {
     showAlbumsScreen();
 }
 
-export function initNavigation({ onOpenAlbumFromHistory } = {}) {
+export function initNavigation({
+    onOpenAlbumFromHistory,
+    onOpenPhotoFromHistory
+} = {}) {
     if (navigationInitialized) return;
     navigationInitialized = true;
 
     openAlbumFromHistory = onOpenAlbumFromHistory || null;
+    openPhotoFromHistory = onOpenPhotoFromHistory || null;
 
     history.replaceState(
         {
@@ -166,8 +252,6 @@ function setVkSwipeHistory(enabled) {
     try {
         if (!window.vkBridge?.send) return;
 
-        // Не ждём ответ Bridge: на некоторых мобильных клиентах
-        // неподдерживаемый/зависший вызов не должен блокировать запуск приложения.
         Promise.resolve(
             window.vkBridge.send("VKWebAppSetSwipeSettings", {
                 history: Boolean(enabled)

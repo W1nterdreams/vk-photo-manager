@@ -1,14 +1,15 @@
-import { dom } from "./dom.js?v=20260919-nav03";
-import { vkInit, loadUser, getAccessToken } from "./vk-api.js?v=20260919-nav03";
-import { initGroupContext } from "./group-context.js?v=20260919-nav03";
-import { initAlbums, loadAlbums } from "./albums.js?v=20260919-menu01";
-import { openAlbum } from "./photos.js?v=20260919-nav03";
-import { initMainMenu } from "./main-menu.js?v=20260919-nav03";
-import { initAlbumCreate } from "./album-create.js?v=20260919-nav03";
-import { initComments } from "./comments.js?v=20260919-nav03";
-import { initAlbumComments } from "./album-comments.js?v=20260919-commentfix05";
-import { initNavigation, showAlbumsScreen } from "./navigation.js?v=20260919-nav03";
-import { escapeHtml, getErrorMessage, logError } from "./helpers.js?v=20260919-nav03";
+import { dom } from "./dom.js?v=20260919-photo01";
+import { vkInit, loadUser, getAccessToken } from "./vk-api.js?v=20260919-photo01";
+import { initGroupContext } from "./group-context.js?v=20260919-photo01";
+import { initAlbums, loadAlbums } from "./albums.js?v=20260919-photo01";
+import { openAlbum } from "./photos.js?v=20260919-photo01";
+import { initMainMenu } from "./main-menu.js?v=20260919-photo01";
+import { initAlbumCreate } from "./album-create.js?v=20260919-photo01";
+import { initComments } from "./comments.js?v=20260919-photo01";
+import { initAlbumComments } from "./album-comments.js?v=20260919-photo01";
+import { initPhotoViewer, openPhotoViewer } from "./photo-viewer.js?v=20260919-photo01";
+import { initNavigation, showAlbumsScreen } from "./navigation.js?v=20260919-photo01";
+import { escapeHtml, getErrorMessage, logError } from "./helpers.js?v=20260919-photo01";
 
 async function startApp() {
     console.log("Starting VK Photo Manager in GROUP ADMIN mode...");
@@ -16,12 +17,14 @@ async function startApp() {
     try {
         initMainMenu();
         initNavigation({
-            onOpenAlbumFromHistory: openAlbum
+            onOpenAlbumFromHistory: openAlbum,
+            onOpenPhotoFromHistory: openPhotoViewer
         });
         initAlbums();
         initAlbumCreate();
         initComments();
         initAlbumComments();
+        initPhotoViewer();
 
         await vkInit();
         await loadUser();

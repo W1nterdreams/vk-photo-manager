@@ -1,11 +1,12 @@
-import { state } from "./state.js?v=20260919-nav03";
-import { dom } from "./dom.js?v=20260919-nav03";
-import { vkApi } from "./vk-api.js?v=20260919-nav03";
-import { getPhotoPreviewUrl, escapeHtml, getErrorMessage } from "./helpers.js?v=20260919-nav03";
-import { showPhotosScreen, pushAlbumHistory } from "./navigation.js?v=20260919-nav03";
-import { CACHE_TTL } from "./config.js?v=20260919-nav03";
-import { cacheGet, cacheGetStale, cacheSet, albumPhotosKey } from "./cache.js?v=20260919-nav03";
-import { getOwnerId } from "./group-context.js?v=20260919-nav03";
+import { state } from "./state.js?v=20260919-photo01";
+import { dom } from "./dom.js?v=20260919-photo01";
+import { vkApi } from "./vk-api.js?v=20260919-photo01";
+import { getPhotoPreviewUrl, escapeHtml, getErrorMessage } from "./helpers.js?v=20260919-photo01";
+import { showPhotosScreen, pushAlbumHistory } from "./navigation.js?v=20260919-photo01";
+import { CACHE_TTL } from "./config.js?v=20260919-photo01";
+import { cacheGet, cacheGetStale, cacheSet, albumPhotosKey } from "./cache.js?v=20260919-photo01";
+import { getOwnerId } from "./group-context.js?v=20260919-photo01";
+import { openPhotoViewer } from "./photo-viewer.js?v=20260919-photo01";
 
 const PAGE_SIZE = 20;
 let photoScrollTicking = false;
@@ -215,7 +216,9 @@ export function renderPhotos() {
             card.appendChild(image);
         }
 
-        card.addEventListener("click", () => console.log("Selected photo:", photo));
+        card.addEventListener("click", () => {
+            void openPhotoViewer(photo, state.currentAlbum);
+        });
         dom.photos.appendChild(card);
     });
 

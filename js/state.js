@@ -1,6 +1,7 @@
 export const state = {
     currentUser: null,
     accessToken: null,
+    accessScope: "",
 
     group: null,
 
@@ -14,6 +15,7 @@ export const state = {
     albumIndexReady: false,
     albumIndexBuilding: false,
     currentAlbum: null,
+    currentPhoto: null,
     photos: [],
     photosTotal: 0,
     photosOffset: 0,

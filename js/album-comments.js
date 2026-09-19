@@ -1,17 +1,20 @@
-import { dom } from "./dom.js?v=20260919-nav03";
-import { state } from "./state.js?v=20260919-nav03";
-import { vkApi } from "./vk-api.js?v=20260919-nav03";
+import { dom } from "./dom.js?v=20260919-photo01";
+import { state } from "./state.js?v=20260919-photo01";
+import { vkApi } from "./vk-api.js?v=20260919-photo01";
 import {
     escapeHtml,
     getPhotoPreviewUrl
-} from "./helpers.js?v=20260919-nav03";
+} from "./helpers.js?v=20260919-photo01";
 import {
     showCommentsScreen,
     pushCommentsHistory
-} from "./navigation.js?v=20260919-nav03";
-import { getOwnerId } from "./group-context.js?v=20260919-nav03";
-import { cacheGet, cacheSet } from "./cache.js?v=20260919-nav03";
-import { CACHE_TTL } from "./config.js?v=20260919-nav03";
+} from "./navigation.js?v=20260919-photo01";
+import { getOwnerId } from "./group-context.js?v=20260919-photo01";
+import { cacheGet, cacheSet } from "./cache.js?v=20260919-photo01";
+import { CACHE_TTL } from "./config.js?v=20260919-photo01";
+import { createPhotoComment, getPhotoCommentErrorText } from "./photo-comment-api.js?v=20260919-photo01";
+import { openVkProfile, openVkTarget } from "./vk-links.js?v=20260919-photo01";
+import { openPhotoViewer } from "./photo-viewer.js?v=20260919-photo01";
 
 const ALBUM_COMMENTS_DAYS = 3;
 const PAGE_SIZE = 100;
@@ -118,22 +121,6 @@ function apiMutation(method, params) {
     return withTimeout(vkApi(method, params), MUTATION_TIMEOUT_MS, method);
 }
 
-async function openVkLink(url) {
-    try {
-        if (window.vkBridge?.send) {
-            await window.vkBridge.send("VKWebAppOpenLink", { url });
-            return;
-        }
-    } catch (error) {
-        console.debug("VKWebAppOpenLink failed:", error);
-    }
-
-    try {
-        window.open(url, "_blank", "noopener,noreferrer");
-    } catch (_) {
-        location.href = url;
-    }
-}
 
 function updateCommentsTitle(album) {
     const title = commentsTitleElement();
@@ -417,7 +404,8 @@ async function loadPhotosForComments(comments, existing = new Map()) {
         try {
             const photos = await apiRead("photos.getById", {
                 photos: photosParam,
-                photo_sizes: 1
+                photo_sizes: 1,
+                extended: 1
             });
 
             for (const photo of Array.isArray(photos) ? photos : []) {
@@ -581,7 +569,7 @@ function appendRichCommentText(container, text) {
         link.textContent = label;
         link.addEventListener("click", event => {
             event.stopPropagation();
-            void openVkLink(`https://vk.com/${target}`);
+            openVkTarget(target);
         });
         container.appendChild(link);
 
@@ -600,11 +588,33 @@ function showInlineError(errorBox, error, prefix = "") {
     console.error(prefix || "Ошибка комментария", error);
 }
 
-function createReplyEditor(card, body, comment, mode = "reply") {
+function createReplyEditor(card, body, comment, mode = "reply", { photo = null, author = null } = {}) {
     clearReplyEditor();
 
     const container = document.createElement("div");
     container.className = "comment-reply-box";
+
+    if (mode === "reply") {
+        const target = document.createElement("div");
+        target.className = "comment-reply-target";
+
+        const prefix = document.createElement("span");
+        prefix.textContent = "Ответ для ";
+
+        const link = document.createElement("button");
+        link.type = "button";
+        link.className = "comment-reply-target-link";
+        link.textContent = author?.name || "пользователя";
+        if (author?.id) {
+            link.addEventListener("click", event => {
+                event.stopPropagation();
+                openVkProfile(author.id);
+            });
+        }
+
+        target.append(prefix, link);
+        container.appendChild(target);
+    }
 
     const textarea = document.createElement("textarea");
     textarea.className = "comment-reply-input";
@@ -626,7 +636,7 @@ function createReplyEditor(card, body, comment, mode = "reply") {
     submit.textContent = mode === "reply" ? "Ответить" : "Сохранить";
 
     const error = document.createElement("div");
-    error.className = "form-error hidden";
+    error.className = "form-error comment-reply-error hidden";
 
     submit.addEventListener("click", async () => {
         const message = textarea.value.trim();
@@ -651,11 +661,16 @@ function createReplyEditor(card, body, comment, mode = "reply") {
 
         try {
             if (mode === "reply") {
-                await apiMutation("photos.createComment", {
-                    owner_id: getOwnerId(),
-                    photo_id: photoId,
+                const replyPhoto = photo || {
+                    id: photoId,
+                    owner_id: getOwnerId()
+                };
+
+                await createPhotoComment({
+                    photo: replyPhoto,
+                    album: activeAlbum,
                     message,
-                    reply_to_comment: id
+                    replyToComment: id
                 });
             } else {
                 await apiMutation("photos.editComment", {
@@ -674,7 +689,17 @@ function createReplyEditor(card, body, comment, mode = "reply") {
                 });
             }
         } catch (apiError) {
-            showInlineError(error, apiError, mode === "reply" ? "Не удалось отправить ответ" : "Не удалось сохранить");
+            if (mode === "reply") {
+                error.textContent = getPhotoCommentErrorText(apiError, {
+                    photo: photo || { id: photoId, owner_id: getOwnerId() },
+                    album: activeAlbum,
+                    replyToComment: id
+                });
+                error.classList.remove("hidden");
+                console.error("Не удалось отправить ответ:", apiError);
+            } else {
+                showInlineError(error, apiError, "Не удалось сохранить");
+            }
         } finally {
             submit.disabled = false;
             cancel.disabled = false;
@@ -832,9 +857,15 @@ function createCommentCard(comment, data) {
 
     thumbWrap.addEventListener("click", event => {
         event.stopPropagation();
-        if (!photo?.id) return;
-        const ownerId = photo.owner_id || getOwnerId();
-        void openVkLink(`https://vk.com/photo${ownerId}_${photo.id}`);
+        if (!photoId) return;
+
+        const targetPhoto = photo || {
+            id: photoId,
+            owner_id: getOwnerId(),
+            album_id: Number(activeAlbum?.id || 0)
+        };
+
+        void openPhotoViewer(targetPhoto, activeAlbum, { fromComments: true });
     });
 
     const body = document.createElement("div");
@@ -849,7 +880,7 @@ function createCommentCard(comment, data) {
     authorBtn.textContent = author.name;
     authorBtn.addEventListener("click", event => {
         event.stopPropagation();
-        void openVkLink(author.url);
+        openVkProfile(author.id);
     });
 
     header.appendChild(authorBtn);
@@ -871,7 +902,7 @@ function createCommentCard(comment, data) {
     reply.textContent = "Ответить";
     reply.addEventListener("click", event => {
         event.stopPropagation();
-        createReplyEditor(card, body, comment, "reply");
+        createReplyEditor(card, body, comment, "reply", { photo, author });
     });
 
     meta.append(date, reply);

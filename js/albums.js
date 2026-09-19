@@ -1,18 +1,18 @@
-import { state } from "./state.js?v=20260919-nav03";
-import { dom } from "./dom.js?v=20260919-nav03";
-import { vkApi } from "./vk-api.js?v=20260919-nav03";
-import { getAlbumCover, escapeHtml, getErrorMessage } from "./helpers.js?v=20260919-nav03";
-import { openAlbum } from "./photos.js?v=20260919-nav03";
-import { CACHE_TTL } from "./config.js?v=20260919-nav03";
+import { state } from "./state.js?v=20260919-photo01";
+import { dom } from "./dom.js?v=20260919-photo01";
+import { vkApi } from "./vk-api.js?v=20260919-photo01";
+import { getAlbumCover, escapeHtml, getErrorMessage } from "./helpers.js?v=20260919-photo01";
+import { openAlbum } from "./photos.js?v=20260919-photo01";
+import { CACHE_TTL } from "./config.js?v=20260919-photo01";
 import {
     cacheGet,
     cacheGetStale,
     cacheSet,
     albumsKey,
     albumIndexKey
-} from "./cache.js?v=20260919-nav03";
-import { getOwnerId } from "./group-context.js?v=20260919-nav03";
-import { bindAlbumLongPress } from "./album-menu.js?v=20260919-menu01";
+} from "./cache.js?v=20260919-photo01";
+import { getOwnerId } from "./group-context.js?v=20260919-photo01";
+import { bindAlbumLongPress } from "./album-menu.js?v=20260919-photo01";
 
 const PAGE_SIZE = 20;
 const INDEX_PAGE_SIZE = 100;
