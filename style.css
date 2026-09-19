@@ -1982,3 +1982,55 @@ img {
         left: -18px;
     }
 }
+
+
+/* =========================================================
+   COMMENT THREADS + UNANSWERED
+   ========================================================= */
+
+.comment-card-rich {
+    position: relative;
+}
+
+.comment-card-rich.comment-thread-reply {
+    width: calc(100% - 28px);
+    margin-left: 28px;
+    padding-left: 12px;
+    border-left: 2px solid rgba(81, 143, 187, 0.62);
+    background: rgba(81, 143, 187, 0.055);
+}
+
+.comment-card-rich.comment-thread-reply::before {
+    content: "↳";
+    position: absolute;
+    left: -20px;
+    top: 13px;
+    color: #7fa9cc;
+    font-size: 15px;
+    line-height: 1;
+}
+
+/* Тёплая подсветка означает: это корневой комментарий пользователя,
+   и среди загруженной ветки на него пока нет ответа. */
+.comment-card-rich.comment-unanswered {
+    border-color: rgba(226, 168, 74, 0.72);
+    background: rgba(226, 168, 74, 0.085);
+    box-shadow: inset 3px 0 0 rgba(226, 168, 74, 0.72);
+}
+
+.photo-viewer-comment-unanswered {
+    background: rgba(226, 168, 74, 0.075);
+    box-shadow: inset 3px 0 0 rgba(226, 168, 74, 0.68);
+}
+
+@media (max-width: 420px) {
+    .comment-card-rich.comment-thread-reply {
+        width: calc(100% - 22px);
+        margin-left: 22px;
+        padding-left: 10px;
+    }
+
+    .comment-card-rich.comment-thread-reply::before {
+        left: -17px;
+    }
+}
