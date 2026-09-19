@@ -18,9 +18,11 @@ const PAGE_SIZE = 100;
 const MAX_COMMENTS = 30;
 const LONG_PRESS_MS = 460;
 const MOVE_TOLERANCE = 10;
-const READ_TIMEOUT_MS = 10000;
+const READ_TIMEOUT_MS = 7000;
+const PHOTO_LIST_TIMEOUT_MS = 10000;
 const MUTATION_TIMEOUT_MS = 15000;
-const CACHE_SCHEMA = 3;
+const DEEP_SCAN_CONCURRENCY = 6;
+const CACHE_SCHEMA = 4;
 
 let activeAlbum = null;
 let replyEditor = null;
@@ -142,39 +144,22 @@ function updateCommentsTitle(album) {
 async function loadRecentRawCommentsFast(album) {
     const ownerId = getOwnerId();
     const cutoff = cutoffTimestamp();
-    const recent = [];
-    let offset = 0;
 
-    while (recent.length < MAX_COMMENTS) {
-        const result = await apiRead("photos.getAllComments", {
-            owner_id: ownerId,
-            album_id: Number(album.id),
-            count: PAGE_SIZE,
-            offset
-        });
+    // Для последних 30 комментариев достаточно первой страницы из 100:
+    // getAllComments отсортирован от новых к старым.
+    const result = await apiRead("photos.getAllComments", {
+        owner_id: ownerId,
+        album_id: Number(album.id),
+        count: PAGE_SIZE,
+        offset: 0
+    }, READ_TIMEOUT_MS);
 
-        const items = Array.isArray(result?.items) ? result.items : [];
-        if (!items.length) break;
+    const items = Array.isArray(result?.items) ? result.items : [];
 
-        let reachedOld = false;
-
-        for (const comment of items) {
-            const date = Number(comment?.date || 0);
-            if (date < cutoff) {
-                reachedOld = true;
-                break;
-            }
-
-            recent.push(comment);
-            if (recent.length >= MAX_COMMENTS) break;
-        }
-
-        if (recent.length >= MAX_COMMENTS || reachedOld || items.length < PAGE_SIZE) break;
-        offset += items.length;
-    }
-
-    recent.sort((a, b) => Number(b.date || 0) - Number(a.date || 0));
-    return recent.slice(0, MAX_COMMENTS);
+    return items
+        .filter(comment => Number(comment?.date || 0) >= cutoffTimestamp())
+        .sort((a, b) => Number(b.date || 0) - Number(a.date || 0))
+        .slice(0, MAX_COMMENTS);
 }
 
 async function loadAlbumPhotosWithCommentCounts(album) {
@@ -191,7 +176,7 @@ async function loadAlbumPhotosWithCommentCounts(album) {
             extended: 1,
             count,
             offset
-        });
+        }, PHOTO_LIST_TIMEOUT_MS);
 
         const items = Array.isArray(result?.items) ? result.items : [];
         if (!items.length) break;
@@ -205,86 +190,198 @@ async function loadAlbumPhotosWithCommentCounts(album) {
     return all;
 }
 
-async function mapLimit(items, limit, worker) {
-    const results = new Array(items.length);
-    let nextIndex = 0;
+function commentKey(comment) {
+    return `${commentPhotoId(comment) || 0}:${commentId(comment) || 0}`;
+}
 
-    async function run() {
-        while (true) {
-            const index = nextIndex++;
-            if (index >= items.length) return;
+function mergeRecentComments(...lists) {
+    const cutoff = cutoffTimestamp();
+    const map = new Map();
 
-            try {
-                results[index] = await worker(items[index], index);
-            } catch (error) {
-                results[index] = { error };
-            }
+    for (const list of lists) {
+        for (const comment of Array.isArray(list) ? list : []) {
+            if (Number(comment?.date || 0) < cutoff) continue;
+            map.set(commentKey(comment), comment);
         }
     }
 
-    await Promise.all(Array.from({ length: Math.min(limit, items.length) }, run));
-    return results;
+    return [...map.values()]
+        .sort((a, b) => Number(b.date || 0) - Number(a.date || 0))
+        .slice(0, MAX_COMMENTS);
 }
 
-async function loadRecentRawCommentsFallback(album) {
-    const ownerId = getOwnerId();
-    const cutoff = cutoffTimestamp();
-    const photos = await loadAlbumPhotosWithCommentCounts(album);
-    const photosMap = new Map();
+function addProfilesToAuthors(authors, profiles = [], groups = []) {
+    for (const user of Array.isArray(profiles) ? profiles : []) {
+        const id = Number(user?.id || 0);
+        if (!id) continue;
+        authors.set(id, {
+            id,
+            name: `${user.first_name || ""} ${user.last_name || ""}`.trim() || `id${id}`,
+            url: getAuthorLinkById(id),
+            isGroup: false
+        });
+    }
 
+    for (const group of Array.isArray(groups) ? groups : []) {
+        const rawId = Number(group?.id || 0);
+        if (!rawId) continue;
+        const id = -Math.abs(rawId);
+        authors.set(id, {
+            id,
+            name: group.name || `club${rawId}`,
+            url: getAuthorLinkById(id),
+            isGroup: true
+        });
+    }
+}
+
+function normalizePhotoComments(items, photoId) {
+    const result = [];
+
+    for (const comment of Array.isArray(items) ? items : []) {
+        const normalized = {
+            ...comment,
+            photo_id: commentPhotoId(comment) || Number(photoId)
+        };
+        result.push(normalized);
+
+        // Если VK вложил часть ответов в thread.items, тоже учитываем их.
+        const threadItems = Array.isArray(comment?.thread?.items)
+            ? comment.thread.items
+            : [];
+
+        for (const reply of threadItems) {
+            result.push({
+                ...reply,
+                photo_id: commentPhotoId(reply) || Number(photoId)
+            });
+        }
+    }
+
+    return result;
+}
+
+async function deepScanAlbumComments(album, baseData, seq, key) {
+    let photos;
+
+    try {
+        photos = await loadAlbumPhotosWithCommentCounts(album);
+    } catch (error) {
+        console.warn("Не удалось получить список фотографий для полной проверки комментариев:", error);
+        return baseData;
+    }
+
+    if (!currentRequestIsValid(seq, album)) return baseData;
+
+    const photosMap = new Map(baseData.photos);
     for (const photo of photos) {
         if (photo?.id) photosMap.set(String(photo.id), photo);
     }
 
+    let comments = mergeRecentComments(baseData.comments);
+    const authors = new Map(baseData.authors);
+
+    // Уже на этом этапе обновляем карточки — поэтому миниатюры появляются
+    // независимо от photos.getById.
+    let current = { comments, photos: photosMap, authors, complete: false };
+    if (comments.length) renderComments(album, current);
+
     const candidates = photos.filter(photo => Number(photo?.comments?.count || 0) > 0);
+
     if (!candidates.length) {
-        return { comments: [], photos: photosMap };
+        current.complete = true;
+        cacheSet(key, serializeForCache(current));
+        if (currentRequestIsValid(seq, album)) renderComments(album, current);
+        return current;
     }
 
-    const batches = await mapLimit(candidates, 3, async photo => {
-        const result = await apiRead("photos.getComments", {
-            owner_id: ownerId,
-            photo_id: Number(photo.id),
-            count: PAGE_SIZE,
-            offset: 0,
-            sort: "desc"
-        });
+    let nextIndex = 0;
+    let finished = 0;
 
-        const items = Array.isArray(result?.items) ? result.items : [];
-        const recent = [];
+    async function worker() {
+        while (true) {
+            if (!currentRequestIsValid(seq, album)) return;
 
-        for (const comment of items) {
-            if (Number(comment?.date || 0) < cutoff) break;
-            recent.push({ ...comment, photo_id: Number(photo.id) });
+            const index = nextIndex++;
+            if (index >= candidates.length) return;
+
+            const photo = candidates[index];
+
+            try {
+                const response = await apiRead("photos.getComments", {
+                    owner_id: getOwnerId(),
+                    photo_id: Number(photo.id),
+                    count: MAX_COMMENTS,
+                    offset: 0,
+                    sort: "desc",
+                    extended: 1
+                }, READ_TIMEOUT_MS);
+
+                if (!currentRequestIsValid(seq, album)) return;
+
+                const found = normalizePhotoComments(response?.items, photo.id)
+                    .filter(comment => Number(comment?.date || 0) >= cutoffTimestamp());
+
+                comments = mergeRecentComments(comments, found);
+                addProfilesToAuthors(authors, response?.profiles, response?.groups);
+            } catch (error) {
+                console.warn(`Комментарии фото ${photo?.id}:`, error);
+            } finally {
+                finished += 1;
+
+                if (currentRequestIsValid(seq, album)) {
+                    current = {
+                        comments,
+                        photos: photosMap,
+                        authors,
+                        complete: false
+                    };
+
+                    // Перерисовываем при найденных комментариях и периодически
+                    // во время долгой проверки большого альбома.
+                    if (comments.length && !replyEditor && !commentMenuOverlay) {
+                        renderComments(album, current);
+                    }
+                }
+            }
         }
-
-        return recent;
-    });
-
-    const recent = [];
-    for (const item of batches) {
-        if (Array.isArray(item)) recent.push(...item);
     }
 
-    recent.sort((a, b) => Number(b.date || 0) - Number(a.date || 0));
-    return {
-        comments: recent.slice(0, MAX_COMMENTS),
-        photos: photosMap
-    };
-}
+    await Promise.all(
+        Array.from(
+            { length: Math.min(DEEP_SCAN_CONCURRENCY, candidates.length) },
+            () => worker()
+        )
+    );
 
-async function loadRawComments(album) {
+    if (!currentRequestIsValid(seq, album)) return current;
+
+    current = {
+        comments: mergeRecentComments(comments),
+        photos: photosMap,
+        authors,
+        complete: true
+    };
+
+    // Если часть авторов пришла только из быстрого getAllComments,
+    // добираем их одним компактным запросом.
     try {
-        const comments = await loadRecentRawCommentsFast(album);
-        if (comments.length) {
-            return { comments, photos: new Map(), source: "getAllComments" };
+        const extraAuthors = await loadAuthors(current.comments);
+        for (const [id, author] of extraAuthors) {
+            if (!current.authors.has(id)) current.authors.set(id, author);
         }
     } catch (error) {
-        console.warn("photos.getAllComments failed; fallback scan will be used:", error);
+        console.warn("Не удалось дополнить имена авторов:", error);
     }
 
-    const fallback = await loadRecentRawCommentsFallback(album);
-    return { ...fallback, source: "fallback" };
+    if (currentRequestIsValid(seq, album)) {
+        cacheSet(key, serializeForCache(current));
+        if (!replyEditor && !commentMenuOverlay) {
+            renderComments(album, current);
+        }
+    }
+
+    return current;
 }
 
 function photosFromCurrentState(comments) {
@@ -410,7 +507,8 @@ function serializeForCache(data) {
     return {
         comments: data.comments,
         photos: [...data.photos.entries()],
-        authors: [...data.authors.entries()]
+        authors: [...data.authors.entries()],
+        complete: Boolean(data.complete)
     };
 }
 
@@ -418,7 +516,8 @@ function restoreFromCache(data) {
     return {
         comments: Array.isArray(data?.comments) ? data.comments : [],
         photos: new Map(Array.isArray(data?.photos) ? data.photos : []),
-        authors: new Map(Array.isArray(data?.authors) ? data.authors : [])
+        authors: new Map(Array.isArray(data?.authors) ? data.authors : []),
+        complete: Boolean(data?.complete)
     };
 }
 
@@ -816,22 +915,21 @@ function currentRequestIsValid(seq, album) {
     return seq === loadSequence && activeAlbum && String(activeAlbum.id) === String(album.id);
 }
 
-async function enrichAndRender(album, baseData, seq, key) {
-    const [photosResult, authorsResult] = await Promise.allSettled([
-        loadPhotosForComments(baseData.comments, baseData.photos),
-        loadAuthors(baseData.comments)
-    ]);
+async function enrichFastAuthors(album, data, seq, key) {
+    try {
+        const authors = await loadAuthors(data.comments);
+        if (!currentRequestIsValid(seq, album)) return;
 
-    if (!currentRequestIsValid(seq, album)) return;
-
-    const data = {
-        comments: baseData.comments,
-        photos: photosResult.status === "fulfilled" ? photosResult.value : baseData.photos,
-        authors: authorsResult.status === "fulfilled" ? authorsResult.value : new Map()
-    };
-
-    cacheSet(key, serializeForCache(data));
-    renderComments(album, data);
+        const enriched = {
+            ...data,
+            authors,
+            complete: false
+        };
+        cacheSet(key, serializeForCache(enriched));
+        renderComments(album, enriched);
+    } catch (error) {
+        console.warn("Не удалось быстро получить имена авторов:", error);
+    }
 }
 
 export async function loadAlbumComments(album, { force = false } = {}) {
@@ -843,61 +941,91 @@ export async function loadAlbumComments(album, { force = false } = {}) {
     const seq = ++loadSequence;
     const key = cacheKey(album);
 
+    let baseData = {
+        comments: [],
+        photos: new Map(),
+        authors: new Map(),
+        complete: false
+    };
+
     if (!force) {
         const cached = cacheGet(key, CACHE_TTL.comments);
         if (cached) {
-            const restored = restoreFromCache(cached);
-            renderComments(album, restored);
+            baseData = restoreFromCache(cached);
+            renderComments(album, baseData);
 
-            // Кэш показываем сразу. Если в нём нет фото/имён, тихо дообогащаем.
-            if (restored.comments.length && (restored.photos.size === 0 || restored.authors.size === 0)) {
-                void enrichAndRender(album, restored, seq, key);
-            }
-            return;
+            if (baseData.complete) return;
         }
     }
 
-    dom.refreshComments.disabled = true;
-    dom.comments.innerHTML = `
-        <div class="status-message">
-            Загружаем последние ${MAX_COMMENTS} комментариев за ${ALBUM_COMMENTS_DAYS} дня...
-        </div>
-    `;
-
-    try {
-        const raw = await loadRawComments(album);
-        if (!currentRequestIsValid(seq, album)) return;
-
-        const baseData = {
-            comments: raw.comments,
-            photos: raw.photos || new Map(),
-            authors: new Map()
-        };
-
-        // Главное изменение: комментарии показываем СРАЗУ.
-        // Фото и имена больше не могут оставить экран на вечной "Загрузке".
-        renderComments(album, baseData);
-
-        if (!baseData.comments.length) {
-            cacheSet(key, serializeForCache(baseData));
-            return;
-        }
-
-        void enrichAndRender(album, baseData, seq, key);
-    } catch (error) {
-        if (!currentRequestIsValid(seq, album)) return;
-
+    // Кнопку обновления намеренно НЕ блокируем. Повторное нажатие
+    // создаёт новый seq, а результаты старой загрузки просто игнорируются.
+    if (!baseData.comments.length) {
         dom.comments.innerHTML = `
-            <div class="error">
-                Не удалось загрузить комментарии альбома.<br><br>
-                ${escapeHtml(describeError(error))}
+            <div class="status-message">
+                Загружаем последние ${MAX_COMMENTS} комментариев за ${ALBUM_COMMENTS_DAYS} дня...
             </div>
         `;
-    } finally {
-        if (currentRequestIsValid(seq, album)) {
-            dom.refreshComments.disabled = false;
+    }
+
+    try {
+        const fastComments = await loadRecentRawCommentsFast(album);
+        if (!currentRequestIsValid(seq, album)) return;
+
+        baseData = {
+            comments: mergeRecentComments(baseData.comments, fastComments),
+            photos: baseData.photos,
+            authors: baseData.authors,
+            complete: false
+        };
+
+        if (baseData.comments.length) {
+            renderComments(album, baseData);
+            void enrichFastAuthors(album, baseData, seq, key);
+        } else {
+            dom.comments.innerHTML = `
+                <div class="status-message">
+                    Проверяем фотографии альбома...
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.warn("Быстрая загрузка комментариев не удалась, запускаем полную проверку:", error);
+
+        if (currentRequestIsValid(seq, album) && !baseData.comments.length) {
+            dom.comments.innerHTML = `
+                <div class="status-message">
+                    Проверяем фотографии альбома...
+                </div>
+            `;
         }
     }
+
+    // Полная проверка ВСЕГДА идёт фоном и дополняет результат getAllComments.
+    // Поэтому частичный ответ VK больше не приводит к пропавшим комментариям.
+    void deepScanAlbumComments(album, baseData, seq, key).then(result => {
+        if (!currentRequestIsValid(seq, album)) return;
+
+        if (!result?.comments?.length) {
+            dom.comments.innerHTML = `
+                <div class="status-message">
+                    Комментариев за последние ${ALBUM_COMMENTS_DAYS} дня нет
+                </div>
+            `;
+        }
+    }).catch(error => {
+        console.warn("Полная проверка комментариев альбома завершилась ошибкой:", error);
+
+        if (currentRequestIsValid(seq, album) && !baseData.comments.length) {
+            dom.comments.innerHTML = `
+                <div class="error">
+                    Не удалось полностью проверить комментарии.<br><br>
+                    ${escapeHtml(describeError(error))}
+                    <br><br>Нажмите «Обновить», чтобы повторить.
+                </div>
+            `;
+        }
+    });
 }
 
 async function openAlbumComments(album) {
