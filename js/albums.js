@@ -9,6 +9,7 @@ import { getOwnerId } from "./group-context.js";
 
 async function fetchAlbumsFromVK() {
     const ownerId = getOwnerId();
+    console.log("ALBUM OWNER_ID:", ownerId);
 
     const result = await vkApi("photos.getAlbums", {
         owner_id: ownerId,
