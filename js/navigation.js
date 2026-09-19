@@ -1,5 +1,5 @@
-import { state } from "./state.js?v=20260920-cachethread01";
-import { dom } from "./dom.js?v=20260920-cachethread01";
+import { state } from "./state.js?v=20260920-threadsearch02";
+import { dom } from "./dom.js?v=20260920-threadsearch02";
 
 let openAlbumFromHistory = null;
 let openPhotoFromHistory = null;

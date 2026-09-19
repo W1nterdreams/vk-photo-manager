@@ -1,20 +1,20 @@
-import { dom } from "./dom.js?v=20260920-cachethread01";
-import { state } from "./state.js?v=20260920-cachethread01";
-import { vkApi } from "./vk-api.js?v=20260920-cachethread01";
+import { dom } from "./dom.js?v=20260920-threadsearch02";
+import { state } from "./state.js?v=20260920-threadsearch02";
+import { vkApi } from "./vk-api.js?v=20260920-threadsearch02";
 import {
     escapeHtml,
     getPhotoPreviewUrl
-} from "./helpers.js?v=20260920-cachethread01";
+} from "./helpers.js?v=20260920-threadsearch02";
 import {
     showCommentsScreen,
     pushCommentsHistory
-} from "./navigation.js?v=20260920-cachethread01";
-import { getOwnerId } from "./group-context.js?v=20260920-cachethread01";
-import { cacheGet, cacheSet, invalidateCommentCaches } from "./cache.js?v=20260920-cachethread01";
-import { CACHE_TTL } from "./config.js?v=20260920-cachethread01";
-import { createPhotoComment, getPhotoCommentErrorText } from "./photo-comment-api.js?v=20260920-cachethread01";
-import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260920-cachethread01";
-import { openPhotoViewer } from "./photo-viewer.js?v=20260920-cachethread01";
+} from "./navigation.js?v=20260920-threadsearch02";
+import { getOwnerId } from "./group-context.js?v=20260920-threadsearch02";
+import { cacheGet, cacheSet, invalidateCommentCaches } from "./cache.js?v=20260920-threadsearch02";
+import { CACHE_TTL } from "./config.js?v=20260920-threadsearch02";
+import { createPhotoComment, getPhotoCommentErrorText } from "./photo-comment-api.js?v=20260920-threadsearch02";
+import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260920-threadsearch02";
+import { openPhotoViewer } from "./photo-viewer.js?v=20260920-threadsearch02";
 
 const ALBUM_COMMENTS_DAYS = 3;
 const PAGE_SIZE = 100;
@@ -25,7 +25,7 @@ const READ_TIMEOUT_MS = 7000;
 const PHOTO_LIST_TIMEOUT_MS = 10000;
 const MUTATION_TIMEOUT_MS = 15000;
 const DEEP_SCAN_CONCURRENCY = 6;
-const CACHE_SCHEMA = 5;
+const CACHE_SCHEMA = 6;
 
 let activeAlbum = null;
 let replyEditor = null;
@@ -53,6 +53,109 @@ function commentPhotoId(comment) {
 function commentId(comment) {
     const id = Number(comment?.id || comment?.cid || 0);
     return Number.isFinite(id) && id > 0 ? id : null;
+}
+
+function threadParentIds(comment) {
+    const ids = new Set();
+
+    const stored = Number(comment?._parent_comment_id || 0);
+    if (stored > 0) ids.add(stored);
+
+    const direct = Number(comment?.reply_to_comment || comment?.reply_to_comment_id || 0);
+    if (direct > 0) ids.add(direct);
+
+    const stack = Array.isArray(comment?.parents_stack) ? comment.parents_stack : [];
+    for (const raw of stack) {
+        const id = Number(raw || 0);
+        if (id > 0) ids.add(id);
+    }
+
+    return [...ids];
+}
+
+function firstThreadParentId(comment) {
+    const ids = threadParentIds(comment);
+    return ids.length ? ids[ids.length - 1] : null;
+}
+
+function mentionedAuthorId(text) {
+    // VK часто оставляет в тексте ответа кликабельное упоминание вида
+    // [id123|Имя], даже если getAllComments не отдал parent id.
+    const match = String(text || "").match(/^\s*\[((?:id|club|public))(\d+)\|[^\]]+\]/i);
+    if (!match) return null;
+
+    const id = Number(match[2] || 0);
+    if (!id) return null;
+    return match[1].toLowerCase() === "id" ? id : -Math.abs(id);
+}
+
+function decorateCommentThreads(items) {
+    const result = (Array.isArray(items) ? items : []).map(comment => ({ ...comment }));
+    const byPhoto = new Map();
+
+    for (const comment of result) {
+        const photoKey = String(commentPhotoId(comment) || 0);
+        if (!byPhoto.has(photoKey)) byPhoto.set(photoKey, []);
+        byPhoto.get(photoKey).push(comment);
+    }
+
+    for (const group of byPhoto.values()) {
+        group.sort((a, b) => Number(b?.date || 0) - Number(a?.date || 0));
+
+        // Сначала определяем, что является ответом. Если VK дал явный parent —
+        // используем его. Если нет, аккуратно восстанавливаем ветку по первому
+        // VK-упоминанию и ближайшему более старому комментарию этого автора.
+        for (let i = 0; i < group.length; i += 1) {
+            const comment = group[i];
+            let parentId = firstThreadParentId(comment);
+
+            if (!parentId) {
+                const targetAuthorId = mentionedAuthorId(comment?.text);
+                if (targetAuthorId) {
+                    for (let j = i + 1; j < group.length; j += 1) {
+                        const candidate = group[j];
+                        if (Number(candidate?.from_id || 0) !== targetAuthorId) continue;
+                        const candidateId = commentId(candidate);
+                        if (!candidateId) continue;
+                        parentId = candidateId;
+                        break;
+                    }
+                }
+            }
+
+            comment._parent_comment_id = parentId || null;
+            comment._is_reply = Boolean(parentId);
+        }
+
+        // Собираем все comment_id, на которые уже есть ответ. parents_stack
+        // учитываем полностью, чтобы корень ветки тоже считался отвеченным.
+        const answered = new Set();
+        for (const comment of group) {
+            for (const id of threadParentIds(comment)) answered.add(String(id));
+            if (comment._parent_comment_id) answered.add(String(comment._parent_comment_id));
+        }
+
+        const currentUserId = Number(state.currentUser?.id || 0);
+        const communityOwnerId = Number(getOwnerId() || 0);
+
+        for (const comment of group) {
+            const id = commentId(comment);
+            const authorId = Number(comment?.from_id || 0);
+            const ownComment = Boolean(
+                (currentUserId && authorId === currentUserId) ||
+                (communityOwnerId && authorId === communityOwnerId)
+            );
+
+            comment._unanswered = Boolean(
+                !comment._is_reply &&
+                id &&
+                !ownComment &&
+                !answered.has(String(id))
+            );
+        }
+    }
+
+    return result.sort((a, b) => Number(b?.date || 0) - Number(a?.date || 0));
 }
 
 function normalizeGroupsResponse(response) {
@@ -237,10 +340,13 @@ function normalizePhotoComments(items, photoId) {
             ? comment.thread.items
             : [];
 
+        const rootId = commentId(normalized);
         for (const reply of threadItems) {
             result.push({
                 ...reply,
-                photo_id: commentPhotoId(reply) || Number(photoId)
+                photo_id: commentPhotoId(reply) || Number(photoId),
+                _parent_comment_id: firstThreadParentId(reply) || rootId || null,
+                _is_reply: true
             });
         }
     }
@@ -836,6 +942,8 @@ function installLongPress(card, handler) {
 function createCommentCard(comment, data) {
     const card = document.createElement("div");
     card.className = "comment-card comment-card-rich";
+    if (comment?._is_reply) card.classList.add("comment-thread-reply");
+    if (comment?._unanswered) card.classList.add("comment-unanswered");
 
     const photoId = commentPhotoId(comment);
     const photo = photoId ? data.photos.get(String(photoId)) : null;
@@ -952,7 +1060,8 @@ function renderComments(album, data) {
         return;
     }
 
-    for (const comment of data.comments) {
+    const decoratedComments = decorateCommentThreads(data.comments);
+    for (const comment of decoratedComments) {
         dom.comments.appendChild(createCommentCard(comment, data));
     }
 }

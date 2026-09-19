@@ -1,9 +1,9 @@
-import { state } from "./state.js?v=20260920-cachethread01";
-import { dom } from "./dom.js?v=20260920-cachethread01";
-import { vkApi } from "./vk-api.js?v=20260920-cachethread01";
-import { getAlbumCover, escapeHtml, getErrorMessage } from "./helpers.js?v=20260920-cachethread01";
-import { openAlbum } from "./photos.js?v=20260920-cachethread01";
-import { CACHE_TTL } from "./config.js?v=20260920-cachethread01";
+import { state } from "./state.js?v=20260920-threadsearch02";
+import { dom } from "./dom.js?v=20260920-threadsearch02";
+import { vkApi } from "./vk-api.js?v=20260920-threadsearch02";
+import { getAlbumCover, escapeHtml, getErrorMessage } from "./helpers.js?v=20260920-threadsearch02";
+import { openAlbum } from "./photos.js?v=20260920-threadsearch02";
+import { CACHE_TTL } from "./config.js?v=20260920-threadsearch02";
 import {
     cacheGet,
     cacheGetStale,
@@ -11,13 +11,13 @@ import {
     invalidateAlbumCaches,
     albumsKey,
     albumIndexKey
-} from "./cache.js?v=20260920-cachethread01";
-import { getOwnerId } from "./group-context.js?v=20260920-cachethread01";
-import { bindAlbumLongPress } from "./album-menu.js?v=20260920-cachethread01";
+} from "./cache.js?v=20260920-threadsearch02";
+import { getOwnerId } from "./group-context.js?v=20260920-threadsearch02";
+import { bindAlbumLongPress } from "./album-menu.js?v=20260920-threadsearch02";
 
 const PAGE_SIZE = 20;
 const INDEX_PAGE_SIZE = 100;
-const INDEX_CACHE_SCHEMA = 2;
+const INDEX_CACHE_SCHEMA = 3;
 
 let loadMoreObserver = null;
 let indexBuildPromise = null;
@@ -249,17 +249,21 @@ export async function loadMoreAlbums() {
 }
 
 async function buildAlbumIndex(generation) {
-    // ВАЖНО: строим индекс с нуля. Если сливать новый ответ со старым индексом,
-    // удалённый альбом навсегда останется в поиске.
+    // Строим индекс НЕ по result.count, а до первой реально пустой страницы.
+    // На больших сообществах photos.getAlbums может вернуть count, который
+    // нельзя безопасно использовать как условие остановки. Из-за этого старый
+    // вариант иногда останавливался после первых ~100 альбомов.
     let index = [];
     let offset = 0;
-    let total = Infinity;
+    let pages = 0;
+    let reportedTotal = 0;
+    const MAX_INDEX_PAGES = 200;
 
     state.albumIndexBuilding = true;
     state.albumIndexReady = false;
 
     try {
-        while (offset < total) {
+        while (pages < MAX_INDEX_PAGES) {
             if (generation !== indexBuildGeneration) return state.albumIndex;
 
             const result = await fetchAlbumPage(offset, INDEX_PAGE_SIZE);
@@ -267,33 +271,52 @@ async function buildAlbumIndex(generation) {
             const apiTotal = Number(result?.count);
 
             if (Number.isFinite(apiTotal) && apiTotal >= 0) {
-                total = apiTotal;
-            } else if (items.length < INDEX_PAGE_SIZE) {
-                total = offset + items.length;
+                reportedTotal = Math.max(reportedTotal, apiTotal);
             }
 
+            // Только пустая страница означает, что сервер действительно
+            // больше ничего не отдал. Короткая страница сама по себе не конец.
+            if (!items.length) break;
+
+            const before = index.length;
             index = mergeIndex(index, items);
+            const added = index.length - before;
 
             if (generation !== indexBuildGeneration) return state.albumIndex;
             state.albumIndex = index;
 
-            // Результаты поиска появляются по мере получения страниц по 100 штук.
+            // Результаты поиска появляются уже во время фоновой индексации.
             if (state.albumSearchText.trim()) renderAlbums();
 
-            if (!items.length) break;
             offset += items.length;
+            pages += 1;
 
-            if (items.length < INDEX_PAGE_SIZE && (!Number.isFinite(total) || offset >= total)) {
+            // Защита от сервера, который вдруг игнорирует offset и возвращает
+            // одну и ту же страницу: бесконечно такой запрос не повторяем.
+            if (added === 0) {
+                console.warn("Индексация альбомов остановлена: VK вернул страницу без новых album_id", {
+                    offset,
+                    pageItems: items.length,
+                    index: index.length
+                });
                 break;
             }
         }
 
         if (generation !== indexBuildGeneration) return state.albumIndex;
 
-        const finalTotal = Number.isFinite(total) ? total : index.length;
+        if (pages >= MAX_INDEX_PAGES) {
+            console.warn("Индексация альбомов достигла защитного лимита страниц", {
+                pages,
+                offset,
+                index: index.length
+            });
+        }
+
+        const finalTotal = Math.max(reportedTotal, index.length);
         state.albumIndex = index;
         state.albumIndexReady = true;
-        state.albumsTotal = Math.max(Number(finalTotal || 0), index.length, state.albums.length);
+        state.albumsTotal = Math.max(finalTotal, state.albums.length);
         state.albumsHasMore = state.albums.length < state.albumsTotal;
         persistCompleteIndex(index, state.albumsTotal);
 
@@ -302,8 +325,10 @@ async function buildAlbumIndex(generation) {
 
         console.log("Album index ready:", {
             visible: state.albums.length,
+            reportedTotal,
             total: state.albumsTotal,
             index: index.length,
+            pages,
             hasMore: state.albumsHasMore
         });
 

@@ -139,7 +139,7 @@ export function commentsFeedKey(ownerId) {
 }
 
 export function albumIndexKey(ownerId) {
-    return `album-index-v2:${ownerId}`;
+    return `album-index-v3:${ownerId}`;
 }
 
 export function invalidateAlbumCaches(ownerId) {

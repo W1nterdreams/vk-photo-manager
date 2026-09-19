@@ -1,15 +1,15 @@
-import { state } from "./state.js?v=20260920-cachethread01";
-import { dom } from "./dom.js?v=20260920-cachethread01";
-import { vkApi } from "./vk-api.js?v=20260920-cachethread01";
-import { getBestPhotoUrl, escapeHtml } from "./helpers.js?v=20260920-cachethread01";
-import { getOwnerId } from "./group-context.js?v=20260920-cachethread01";
+import { state } from "./state.js?v=20260920-threadsearch02";
+import { dom } from "./dom.js?v=20260920-threadsearch02";
+import { vkApi } from "./vk-api.js?v=20260920-threadsearch02";
+import { getBestPhotoUrl, escapeHtml } from "./helpers.js?v=20260920-threadsearch02";
+import { getOwnerId } from "./group-context.js?v=20260920-threadsearch02";
 import {
     showPhotoViewerScreen,
     pushPhotoHistory
-} from "./navigation.js?v=20260920-cachethread01";
-import { photoCommentOwnerId } from "./photo-comment-api.js?v=20260920-cachethread01";
-import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260920-cachethread01";
-import { invalidatePhotoActivityCaches } from "./cache.js?v=20260920-cachethread01";
+} from "./navigation.js?v=20260920-threadsearch02";
+import { photoCommentOwnerId } from "./photo-comment-api.js?v=20260920-threadsearch02";
+import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260920-threadsearch02";
+import { invalidatePhotoActivityCaches } from "./cache.js?v=20260920-threadsearch02";
 
 const COMMENT_PAGE_SIZE = 100;
 const LONG_PRESS_MS = 460;
@@ -344,6 +344,43 @@ function renderPhotoHeader(photo) {
     dom.photoViewerReposts.textContent = String(Number(photo?.reposts?.count || 0));
 }
 
+function unansweredPhotoCommentIds(items) {
+    const answered = new Set();
+
+    for (const comment of Array.isArray(items) ? items : []) {
+        const stack = Array.isArray(comment?.parents_stack) ? comment.parents_stack : [];
+        for (const raw of stack) {
+            const id = Number(raw || 0);
+            if (id > 0) answered.add(String(id));
+        }
+
+        const parent = Number(
+            comment?._parent_comment_id ||
+            comment?.reply_to_comment ||
+            comment?.reply_to_comment_id ||
+            0
+        );
+        if (parent > 0) answered.add(String(parent));
+    }
+
+    const currentUserId = Number(state.currentUser?.id || 0);
+    const communityOwnerId = Number(getOwnerId() || 0);
+    const result = new Set();
+
+    for (const comment of Array.isArray(items) ? items : []) {
+        if (comment?._is_reply) continue;
+        const id = commentId(comment);
+        if (!id || answered.has(String(id))) continue;
+
+        const authorId = Number(comment?.from_id || 0);
+        if (currentUserId && authorId === currentUserId) continue;
+        if (communityOwnerId && authorId === communityOwnerId) continue;
+        result.add(String(id));
+    }
+
+    return result;
+}
+
 function renderPhotoComments() {
     dom.photoViewerComments.innerHTML = "";
 
@@ -368,11 +405,15 @@ function renderPhotoComments() {
         return;
     }
 
+    const unansweredIds = unansweredPhotoCommentIds(comments);
+
     for (const comment of comments) {
         const card = document.createElement("div");
         card.className = "photo-viewer-comment";
         if (comment?._is_reply) {
             card.classList.add("photo-viewer-comment-reply");
+        } else if (unansweredIds.has(String(commentId(comment)))) {
+            card.classList.add("photo-viewer-comment-unanswered");
         }
 
         const top = document.createElement("div");
