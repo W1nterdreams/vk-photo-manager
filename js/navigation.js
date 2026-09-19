@@ -1,5 +1,5 @@
-import { state } from "./state.js?v=20260919-photo01";
-import { dom } from "./dom.js?v=20260919-photo01";
+import { state } from "./state.js?v=20260919-native01";
+import { dom } from "./dom.js?v=20260919-native01";
 
 let openAlbumFromHistory = null;
 let openPhotoFromHistory = null;
@@ -101,6 +101,19 @@ function saveCurrentScrollToHistory() {
             "",
             window.location.href
         );
+        return;
+    }
+
+    if (state.currentScreen === "comments") {
+        history.replaceState(
+            {
+                ...current,
+                screen: "comments",
+                scrollY: window.scrollY
+            },
+            "",
+            window.location.href
+        );
     }
 }
 
@@ -136,27 +149,18 @@ export function pushPhotoHistory(photo, album, { fromComments = false } = {}) {
     const photoId = String(photo?.id || "");
     if (!albumId || !photoId) return;
 
-    if (fromComments) {
-        // Комментарии -> Общее фото -> назад должен вести в альбом,
-        // поэтому текущую запись "comments" заменяем записью альбома.
-        history.replaceState(
-            {
-                screen: "photos",
-                albumId,
-                scrollY: 0
-            },
-            "",
-            `#album-${albumId}`
-        );
-    } else {
-        saveCurrentScrollToHistory();
-    }
+    // Всегда сохраняем экран-источник как отдельную запись истории.
+    // Поэтому:
+    //   Альбом -> Общее фото -> Назад = Альбом
+    //   Комментарии -> Общее фото -> Назад = Комментарии
+    saveCurrentScrollToHistory();
 
     history.pushState(
         {
             screen: "photo",
             albumId,
             photoId,
+            fromComments: Boolean(fromComments),
             scrollY: 0
         },
         "",

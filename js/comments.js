@@ -1,12 +1,12 @@
-import { state } from "./state.js?v=20260919-photo01";
-import { dom } from "./dom.js?v=20260919-photo01";
-import { vkApi } from "./vk-api.js?v=20260919-photo01";
-import { escapeHtml, getErrorMessage, getBestPhotoUrl } from "./helpers.js?v=20260919-photo01";
-import { showCommentsScreen } from "./navigation.js?v=20260919-photo01";
-import { closeMenu } from "./main-menu.js?v=20260919-photo01";
-import { CACHE_TTL, COMMENTS_DAYS } from "./config.js?v=20260919-photo01";
-import { cacheGet, cacheSet, albumPhotosKey, photoCommentsKey, commentsFeedKey } from "./cache.js?v=20260919-photo01";
-import { getOwnerId } from "./group-context.js?v=20260919-photo01";
+import { state } from "./state.js?v=20260919-native01";
+import { dom } from "./dom.js?v=20260919-native01";
+import { vkApi } from "./vk-api.js?v=20260919-native01";
+import { escapeHtml, getErrorMessage, getBestPhotoUrl } from "./helpers.js?v=20260919-native01";
+import { showCommentsScreen } from "./navigation.js?v=20260919-native01";
+import { closeMenu } from "./main-menu.js?v=20260919-native01";
+import { CACHE_TTL, COMMENTS_DAYS } from "./config.js?v=20260919-native01";
+import { cacheGet, cacheSet, albumPhotosKey, photoCommentsKey, commentsFeedKey } from "./cache.js?v=20260919-native01";
+import { getOwnerId } from "./group-context.js?v=20260919-native01";
 
 function cutoffTimestamp() {
     return Math.floor((Date.now() - COMMENTS_DAYS * 86400000) / 1000);

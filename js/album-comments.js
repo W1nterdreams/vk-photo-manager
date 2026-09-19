@@ -1,20 +1,20 @@
-import { dom } from "./dom.js?v=20260919-photo01";
-import { state } from "./state.js?v=20260919-photo01";
-import { vkApi } from "./vk-api.js?v=20260919-photo01";
+import { dom } from "./dom.js?v=20260919-native01";
+import { state } from "./state.js?v=20260919-native01";
+import { vkApi } from "./vk-api.js?v=20260919-native01";
 import {
     escapeHtml,
     getPhotoPreviewUrl
-} from "./helpers.js?v=20260919-photo01";
+} from "./helpers.js?v=20260919-native01";
 import {
     showCommentsScreen,
     pushCommentsHistory
-} from "./navigation.js?v=20260919-photo01";
-import { getOwnerId } from "./group-context.js?v=20260919-photo01";
-import { cacheGet, cacheSet } from "./cache.js?v=20260919-photo01";
-import { CACHE_TTL } from "./config.js?v=20260919-photo01";
-import { createPhotoComment, getPhotoCommentErrorText } from "./photo-comment-api.js?v=20260919-photo01";
-import { openVkProfile, openVkTarget } from "./vk-links.js?v=20260919-photo01";
-import { openPhotoViewer } from "./photo-viewer.js?v=20260919-photo01";
+} from "./navigation.js?v=20260919-native01";
+import { getOwnerId } from "./group-context.js?v=20260919-native01";
+import { cacheGet, cacheSet } from "./cache.js?v=20260919-native01";
+import { CACHE_TTL } from "./config.js?v=20260919-native01";
+import { createPhotoComment, getPhotoCommentErrorText } from "./photo-comment-api.js?v=20260919-native01";
+import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260919-native01";
+import { openPhotoViewer } from "./photo-viewer.js?v=20260919-native01";
 
 const ALBUM_COMMENTS_DAYS = 3;
 const PAGE_SIZE = 100;
@@ -902,7 +902,17 @@ function createCommentCard(comment, data) {
     reply.textContent = "Ответить";
     reply.addEventListener("click", event => {
         event.stopPropagation();
-        createReplyEditor(card, body, comment, "reply", { photo, author });
+
+        const targetPhoto = photo || {
+            id: photoId,
+            owner_id: getOwnerId(),
+            album_id: Number(activeAlbum?.id || 0)
+        };
+
+        // photos.createComment из Mini App блокируется VK для non-standalone
+        // приложений. Поэтому "Ответить" открывает эту фотографию в
+        // нативном VK, где ответ можно отправить штатным интерфейсом VK.
+        openVkPhoto(targetPhoto, getOwnerId());
     });
 
     meta.append(date, reply);
