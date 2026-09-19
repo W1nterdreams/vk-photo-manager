@@ -1856,3 +1856,36 @@ img {
         max-width: 100%;
     }
 }
+
+/* =========================================================
+   ALBUM EDIT CHECKBOXES
+   ========================================================= */
+
+.form-checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    margin-top: 16px;
+    color: #e7e9eb;
+    font-size: 15px;
+    line-height: 1.35;
+    cursor: pointer;
+    user-select: none;
+}
+
+.form-checkbox-row input[type="checkbox"] {
+    flex: 0 0 auto;
+    width: 20px;
+    height: 20px;
+    margin: 0;
+    accent-color: #518fbb;
+    cursor: pointer;
+}
+
+.form-checkbox-hint {
+    margin: 6px 0 0 30px;
+    color: #8e9499;
+    font-size: 12px;
+    line-height: 1.35;
+}

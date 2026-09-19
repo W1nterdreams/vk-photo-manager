@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <!-- CACHE_VERSION: 20260919-native02 -->
+    <!-- CACHE_VERSION: 20260919-albumedit01 -->
     <meta charset="UTF-8">
 
     <meta
@@ -11,7 +11,7 @@
 
     <title>Фотоальбомы VK</title>
 
-    <link rel="stylesheet" href="./style.css?v=20260919-native02">
+    <link rel="stylesheet" href="./style.css?v=20260919-albumedit01">
 
     <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
 </head>
@@ -397,7 +397,110 @@
 </div>
 
 
-<script type="module" src="./js/app.js?v=20260919-native02"></script>
+<!-- ==================================
+     РЕДАКТИРОВАНИЕ АЛЬБОМА
+     ================================== -->
+
+<div
+    id="editAlbumModal"
+    class="modal-overlay hidden"
+>
+
+    <div class="modal">
+
+        <div class="modal-header">
+
+            <div class="modal-title">
+                Редактировать альбом
+            </div>
+
+            <button
+                id="closeEditAlbum"
+                class="modal-close"
+                type="button"
+            >
+                ×
+            </button>
+
+        </div>
+
+        <form id="editAlbumForm">
+
+            <label class="form-label" for="editAlbumTitle">
+                Название
+            </label>
+
+            <input
+                id="editAlbumTitle"
+                class="form-input"
+                type="text"
+                maxlength="100"
+                required
+            >
+
+            <label class="form-label" for="editAlbumDescription">
+                Описание
+            </label>
+
+            <textarea
+                id="editAlbumDescription"
+                class="form-textarea"
+                maxlength="1000"
+            ></textarea>
+
+            <label class="form-checkbox-row">
+                <input
+                    id="editAlbumAllowComments"
+                    type="checkbox"
+                >
+                <span>Разрешить комментарии</span>
+            </label>
+
+            <label class="form-checkbox-row">
+                <input
+                    id="editAlbumAllowUploads"
+                    type="checkbox"
+                >
+                <span>Разрешить загрузку фотографий всем</span>
+            </label>
+
+            <div class="form-checkbox-hint">
+                Если выключено — загружать фотографии смогут только администраторы.
+            </div>
+
+            <div
+                id="editAlbumError"
+                class="form-error hidden"
+            ></div>
+
+            <div class="modal-actions">
+
+                <button
+                    id="cancelEditAlbum"
+                    class="secondary-button"
+                    type="button"
+                >
+                    Отмена
+                </button>
+
+                <button
+                    id="saveEditAlbum"
+                    class="primary-button"
+                    type="submit"
+                >
+                    Сохранить
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+
+<script type="module" src="./js/app.js?v=20260919-albumedit01"></script>
     
 </body>
 </html>
