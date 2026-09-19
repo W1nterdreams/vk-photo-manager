@@ -88,12 +88,15 @@ async function fetchFirstPageFromVK() {
 
 function restoreAlbumsCache(cached) {
     const items = Array.isArray(cached) ? cached : (cached?.items || []);
-    const total = Array.isArray(cached) ? items.length : Number(cached?.total || items.length);
+    const savedTotal = Array.isArray(cached) ? 0 : Number(cached?.total || 0);
 
     state.albums = items;
-    state.albumsTotal = total;
+    state.albumsTotal = Math.max(savedTotal, items.length);
     state.albumsOffset = items.length;
-    state.albumsHasMore = items.length < total;
+
+    // Старые версии приложения сохраняли в кэш только первые 20 альбомов
+    // без реального общего count. Такой кэш нельзя считать концом списка.
+    state.albumsHasMore = savedTotal > items.length || items.length >= PAGE_SIZE;
 }
 
 export async function loadAlbums({ force = false } = {}) {
@@ -140,10 +143,27 @@ export async function loadMoreAlbums() {
         const result = await fetchAlbumPage(state.albumsOffset, PAGE_SIZE);
         const items = result.items || [];
 
+        const beforeCount = state.albums.length;
         state.albums = mergeAlbums(state.albums, items);
-        state.albumsTotal = Number(result.count || state.albumsTotal || state.albums.length);
+        const addedCount = state.albums.length - beforeCount;
+
+        state.albumsTotal = Math.max(
+            Number(result.count || 0),
+            state.albumsTotal || 0,
+            state.albums.length
+        );
         state.albumsOffset += items.length;
-        state.albumsHasMore = items.length > 0 && state.albumsOffset < state.albumsTotal;
+
+        // Не полагаемся только на result.count: для старого кэша он мог быть потерян.
+        // Полная страница из 20 элементов означает, что пробуем следующую.
+        state.albumsHasMore =
+            items.length === PAGE_SIZE ||
+            state.albumsOffset < state.albumsTotal;
+
+        // Защита от зацикливания, если API неожиданно вернул ту же страницу.
+        if (items.length > 0 && addedCount === 0) {
+            state.albumsHasMore = false;
+        }
 
         state.albumIndex = mergeIndex(state.albumIndex, items);
 
@@ -322,6 +342,16 @@ export function renderAlbums() {
     }
 
     installLoadMoreSentinel();
+
+    // Если 20 карточек почти полностью помещаются в экран, scroll-события
+    // может вообще не быть. Проверяем возможность догрузки сразу после render.
+    if (!searching && state.albumsHasMore && !state.albumsLoadingMore) {
+        requestAnimationFrame(() => {
+            if (state.currentScreen === "albums" && isNearPageBottom()) {
+                void loadMoreAlbums();
+            }
+        });
+    }
 }
 
 function isNearPageBottom(distance = 900) {
