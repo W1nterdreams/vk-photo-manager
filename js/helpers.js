@@ -71,16 +71,26 @@ export function getPhotoPreviewUrl(p, targetSize = 640) {
 }
 
 export function getAlbumCover(a) {
-    const s = [
+    const sizes = [
         ...(Array.isArray(a?.sizes) ? a.sizes : []),
         ...(Array.isArray(a?.thumb?.sizes) ? a.thumb.sizes : [])
-    ]
-        .filter(x => x && (x.src || x.url))
-        .sort(
-            (a, b) =>
-                (b.width || 0) * (b.height || 0) -
-                (a.width || 0) * (a.height || 0)
+    ].filter(x => x && (x.src || x.url));
+
+    if (!sizes.length) return "";
+
+    const TARGET = 640;
+
+    const suitable = sizes
+        .filter(x => Math.max(x.width || 0, x.height || 0) >= TARGET)
+        .sort((a, b) =>
+            Math.max(a.width || 0, a.height || 0) -
+            Math.max(b.width || 0, b.height || 0)
         );
 
-    return s[0]?.src || s[0]?.url || "";
+    const selected = suitable[0] || sizes.sort((a, b) =>
+        (b.width || 0) * (b.height || 0) -
+        (a.width || 0) * (a.height || 0)
+    )[0];
+
+    return selected?.src || selected?.url || "";
 }
