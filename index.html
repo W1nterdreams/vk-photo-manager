@@ -10,10 +10,7 @@
 
     <title>Фотоальбомы VK</title>
 
-    <link
-        rel="stylesheet"
-        href="style.css"
-    >
+    <link rel="stylesheet" href="style.css">
 
     <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
 </head>
@@ -22,12 +19,10 @@
 
 <div id="app">
 
-    <!-- ======================================
-         ВЕРХНЯЯ ПАНЕЛЬ
-         ====================================== -->
-
+    <!-- ШАПКА -->
     <header class="topbar">
 
+        <!-- Назад -->
         <button
             id="backButton"
             class="topbar-button hidden"
@@ -37,9 +32,55 @@
             ←
         </button>
 
-        <div class="topbar-icon">
-            ▣
+        <!-- МЕНЮ -->
+        <div
+            id="menuContainer"
+            class="menu-container"
+        >
+
+            <button
+                id="menuButton"
+                class="topbar-button menu-button"
+                type="button"
+                title="Меню"
+            >
+                ☰
+            </button>
+
+            <!-- ВЫПАДАЮЩЕЕ МЕНЮ -->
+            <div
+                id="mainMenu"
+                class="main-menu hidden"
+            >
+
+                <button
+                    id="createAlbumMenuButton"
+                    class="menu-item"
+                    type="button"
+                >
+                    <span class="menu-item-icon">＋</span>
+
+                    <span>
+                        Создать альбом
+                    </span>
+                </button>
+
+                <button
+                    id="commentsMenuButton"
+                    class="menu-item"
+                    type="button"
+                >
+                    <span class="menu-item-icon">💬</span>
+
+                    <span>
+                        Комментарии
+                    </span>
+                </button>
+
+            </div>
+
         </div>
+
 
         <div
             id="pageTitle"
@@ -48,12 +89,14 @@
             Фотоальбомы
         </div>
 
+
         <div
             id="user"
             class="topbar-user"
         >
             Загрузка...
         </div>
+
 
         <button
             id="refreshAlbums"
@@ -67,16 +110,14 @@
     </header>
 
 
-    <!-- ======================================
+    <!-- ==============================
          ЭКРАН АЛЬБОМОВ
-         ====================================== -->
+         ============================== -->
 
     <main
         id="albumsScreen"
         class="screen"
     >
-
-        <!-- ПОИСК -->
 
         <div class="search-container">
 
@@ -98,7 +139,6 @@
                     id="clearSearch"
                     class="clear-search hidden"
                     type="button"
-                    title="Очистить"
                 >
                     ×
                 </button>
@@ -107,8 +147,6 @@
 
         </div>
 
-
-        <!-- АЛЬБОМЫ -->
 
         <div
             id="albums"
@@ -124,9 +162,9 @@
     </main>
 
 
-    <!-- ======================================
+    <!-- ==============================
          ЭКРАН ФОТОГРАФИЙ
-         ====================================== -->
+         ============================== -->
 
     <main
         id="photosScreen"
@@ -147,16 +185,14 @@
                 <div
                     id="photoCount"
                     class="photo-count"
-                >
-                </div>
+                ></div>
 
             </div>
 
             <div
                 id="albumDescription"
                 class="album-description"
-            >
-            </div>
+            ></div>
 
         </section>
 
@@ -173,6 +209,135 @@
         </div>
 
     </main>
+
+
+    <!-- ==============================
+         ЭКРАН КОММЕНТАРИЕВ
+         ============================== -->
+
+    <main
+        id="commentsScreen"
+        class="screen hidden"
+    >
+
+        <div class="comments-toolbar">
+
+            <div class="comments-title">
+                Комментарии к фотографиям
+            </div>
+
+            <button
+                id="refreshComments"
+                class="secondary-button"
+                type="button"
+            >
+                ↻ Обновить
+            </button>
+
+        </div>
+
+
+        <div
+            id="comments"
+            class="comments-list"
+        >
+
+            <div class="status-message">
+                Загрузка комментариев...
+            </div>
+
+        </div>
+
+    </main>
+
+</div>
+
+
+<!-- ==================================
+     СОЗДАНИЕ АЛЬБОМА
+     ================================== -->
+
+<div
+    id="createAlbumModal"
+    class="modal-overlay hidden"
+>
+
+    <div class="modal">
+
+        <div class="modal-header">
+
+            <div class="modal-title">
+                Создать альбом
+            </div>
+
+            <button
+                id="closeCreateAlbum"
+                class="modal-close"
+                type="button"
+            >
+                ×
+            </button>
+
+        </div>
+
+
+        <form id="createAlbumForm">
+
+            <label class="form-label">
+                Название
+            </label>
+
+            <input
+                id="newAlbumTitle"
+                class="form-input"
+                type="text"
+                maxlength="100"
+                placeholder="Название альбома"
+                required
+            >
+
+
+            <label class="form-label">
+                Описание
+            </label>
+
+            <textarea
+                id="newAlbumDescription"
+                class="form-textarea"
+                maxlength="1000"
+                placeholder="Описание альбома"
+            ></textarea>
+
+
+            <div
+                id="createAlbumError"
+                class="form-error hidden"
+            ></div>
+
+
+            <div class="modal-actions">
+
+                <button
+                    id="cancelCreateAlbum"
+                    class="secondary-button"
+                    type="button"
+                >
+                    Отмена
+                </button>
+
+                <button
+                    id="submitCreateAlbum"
+                    class="primary-button"
+                    type="submit"
+                >
+                    Создать
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
 
 </div>
 
