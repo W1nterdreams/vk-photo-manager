@@ -90,6 +90,18 @@ async function loadUser() {
                 "VKWebAppGetUserInfo"
             );
 
+        console.log(
+            "VKWebAppGetUserInfo result:",
+            result
+        );
+
+        if (!result || !result.id) {
+
+            throw new Error(
+                "VK не вернул данные пользователя"
+            );
+        }
+
         currentUser = result;
 
         const firstName =
@@ -103,8 +115,10 @@ async function loadUser() {
 
         console.log(
             "Current user:",
-            result
+            currentUser
         );
+
+        return true;
 
     } catch (error) {
 
@@ -113,8 +127,12 @@ async function loadUser() {
             error
         );
 
+        currentUser = null;
+
         userElement.textContent =
-            "Пользователь";
+            "Не удалось определить пользователя";
+
+        return false;
     }
 }
 
@@ -578,21 +596,22 @@ async function startApp() {
         "Starting VK Photo Manager..."
     );
 
-
     await vkInit();
 
+    const userLoaded =
+        await loadUser();
 
-    await loadUser();
+    if (!userLoaded) {
 
-
-    if (!currentUser) {
+        albumsElement.innerHTML =
+            `<div class="error">
+                Не удалось определить пользователя VK.
+            </div>`;
 
         return;
     }
 
-
     await loadAlbums();
-
 }
 
 
