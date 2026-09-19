@@ -7,11 +7,7 @@ import {
     showPhotoViewerScreen,
     pushPhotoHistory
 } from "./navigation.js?v=20260919-native01";
-import {
-    createPhotoComment,
-    getPhotoCommentErrorText,
-    photoCommentOwnerId
-} from "./photo-comment-api.js?v=20260919-native01";
+import { photoCommentOwnerId } from "./photo-comment-api.js?v=20260919-native01";
 import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260919-native01";
 
 const COMMENT_PAGE_SIZE = 100;
@@ -23,8 +19,6 @@ let activePhoto = null;
 let activeAlbum = null;
 let authors = new Map();
 let comments = [];
-let replyTarget = null;
-let editTarget = null;
 let contextOverlay = null;
 
 function normalizeGroupsResponse(response) {
@@ -234,48 +228,6 @@ function closeContextMenu() {
     contextOverlay = null;
 }
 
-function setComposerMode({ reply = null, edit = null } = {}) {
-    replyTarget = reply;
-    editTarget = edit;
-    dom.photoViewerCommentError.classList.add("hidden");
-    dom.photoViewerCommentError.textContent = "";
-
-    dom.photoViewerReplyTarget.innerHTML = "";
-    const hasTarget = Boolean(reply || edit);
-    dom.photoViewerReplyTarget.classList.toggle("hidden", !hasTarget);
-    dom.photoViewerReplyCancel.classList.toggle("hidden", !hasTarget);
-
-    if (edit) {
-        const label = document.createElement("span");
-        label.textContent = "Редактирование комментария";
-        dom.photoViewerReplyTarget.appendChild(label);
-        dom.photoViewerCommentInput.value = edit.text || "";
-    } else if (reply) {
-        const info = authorInfo(reply);
-        const prefix = document.createElement("span");
-        prefix.textContent = "Ответ для ";
-
-        const authorButton = document.createElement("button");
-        authorButton.type = "button";
-        authorButton.className = "photo-viewer-reply-author";
-        authorButton.textContent = info.name;
-        authorButton.addEventListener("click", () => openVkProfile(info.id));
-
-        dom.photoViewerReplyTarget.append(prefix, authorButton);
-        dom.photoViewerCommentInput.value = "";
-    } else {
-        dom.photoViewerCommentInput.value = "";
-    }
-
-    dom.photoViewerCommentInput.placeholder = edit
-        ? "Изменить комментарий..."
-        : reply
-            ? "Написать ответ..."
-            : "Написать комментарий...";
-
-    dom.photoViewerCommentInput.focus();
-}
-
 function makeMenuButton(text, action, danger = false) {
     const button = document.createElement("button");
     button.type = "button";
@@ -297,12 +249,6 @@ function openCommentContext(comment) {
     sheet.className = "context-menu-sheet";
 
     sheet.appendChild(makeMenuButton("Копировать", () => copyText(comment.text || "")));
-
-    if (userCanEdit(comment)) {
-        sheet.appendChild(makeMenuButton("Редактировать", async () => {
-            setComposerMode({ edit: comment });
-        }));
-    }
 
     sheet.appendChild(makeMenuButton("Удалить", async () => {
         if (!confirm("Удалить комментарий?")) return;
@@ -441,48 +387,6 @@ async function refreshPhotoComments() {
     }
 }
 
-async function submitComposer() {
-    const message = dom.photoViewerCommentInput.value.trim();
-    if (!message || !activePhoto) return;
-
-    dom.photoViewerCommentSubmit.disabled = true;
-    dom.photoViewerCommentError.classList.add("hidden");
-
-    try {
-        if (editTarget) {
-            await vkApi("photos.editComment", {
-                owner_id: photoCommentOwnerId(activePhoto),
-                comment_id: Number(editTarget.id),
-                message
-            });
-        } else {
-            await createPhotoComment({
-                photo: activePhoto,
-                album: activeAlbum,
-                message,
-                replyToComment: replyTarget ? Number(replyTarget.id) : null
-            });
-        }
-
-        setComposerMode();
-        await refreshPhotoComments();
-    } catch (error) {
-        const text = editTarget
-            ? String(error?.error_data?.error_msg || error?.error_msg || error?.message || error)
-            : getPhotoCommentErrorText(error, {
-                photo: activePhoto,
-                album: activeAlbum,
-                replyToComment: replyTarget ? Number(replyTarget.id) : null
-            });
-
-        dom.photoViewerCommentError.textContent = text;
-        dom.photoViewerCommentError.classList.remove("hidden");
-        console.error("Photo comment mutation failed:", error, { photo: activePhoto, album: activeAlbum });
-    } finally {
-        dom.photoViewerCommentSubmit.disabled = false;
-    }
-}
-
 export async function openPhotoViewer(photo, album, {
     fromHistory = false,
     fromComments = false
@@ -501,7 +405,6 @@ export async function openPhotoViewer(photo, album, {
     showPhotoViewerScreen();
     dom.pageTitle.textContent = "Фотография";
     dom.photoViewerComments.innerHTML = '<div class="status-message">Загружаем комментарии...</div>';
-    setComposerMode();
 
     try {
         const fullPhoto = await fetchPhoto(photo);
@@ -524,19 +427,4 @@ export async function openPhotoViewer(photo, album, {
 export function initPhotoViewer() {
     if (initialized) return;
     initialized = true;
-
-    dom.photoViewerCommentSubmit.addEventListener("click", () => {
-        void submitComposer();
-    });
-
-    dom.photoViewerReplyCancel.addEventListener("click", () => {
-        setComposerMode();
-    });
-
-    dom.photoViewerCommentInput.addEventListener("keydown", event => {
-        if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
-            event.preventDefault();
-            void submitComposer();
-        }
-    });
 }

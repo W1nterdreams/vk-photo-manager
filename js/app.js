@@ -7,7 +7,7 @@ import { initMainMenu } from "./main-menu.js?v=20260919-native01";
 import { initAlbumCreate } from "./album-create.js?v=20260919-native01";
 import { initComments } from "./comments.js?v=20260919-native01";
 import { initAlbumComments } from "./album-comments.js?v=20260919-native01";
-import { initPhotoViewer, openPhotoViewer } from "./photo-viewer.js?v=20260919-native01";
+import { initPhotoViewer, openPhotoViewer } from "./photo-viewer.js?v=20260919-native02";
 import { initNavigation, showAlbumsScreen } from "./navigation.js?v=20260919-native01";
 import { escapeHtml, getErrorMessage, logError } from "./helpers.js?v=20260919-native01";
 
