@@ -5,6 +5,7 @@ import { initAlbums, loadAlbums } from "./albums.js?v=20260919-native01";
 import { openAlbum } from "./photos.js?v=20260919-native01";
 import { initMainMenu } from "./main-menu.js?v=20260919-native01";
 import { initAlbumCreate } from "./album-create.js?v=20260919-native01";
+import { initAlbumEdit } from "./album-edit.js?v=20260919-albumedit01";
 import { initComments } from "./comments.js?v=20260919-native01";
 import { initAlbumComments } from "./album-comments.js?v=20260919-native01";
 import { initPhotoViewer, openPhotoViewer } from "./photo-viewer.js?v=20260919-native02";
@@ -22,6 +23,7 @@ async function startApp() {
         });
         initAlbums();
         initAlbumCreate();
+        initAlbumEdit();
         initComments();
         initAlbumComments();
         initPhotoViewer();
