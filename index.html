@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <!-- CACHE_VERSION: 20260919-commentfix05 -->
+    <!-- CACHE_VERSION: 20260919-photo01 -->
     <meta charset="UTF-8">
 
     <meta
@@ -11,7 +11,7 @@
 
     <title>Фотоальбомы VK</title>
 
-    <link rel="stylesheet" href="./style.css?v=20260919-commentfix05">
+    <link rel="stylesheet" href="./style.css?v=20260919-photo01">
 
     <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
 </head>
@@ -251,6 +251,94 @@
 
     </main>
 
+
+    <!-- ==============================
+         ОБЩЕЕ ФОТО
+         ============================== -->
+
+    <main
+        id="photoViewerScreen"
+        class="screen hidden"
+    >
+
+        <section class="photo-viewer-media">
+            <img
+                id="photoViewerImage"
+                class="photo-viewer-image"
+                alt="Фотография"
+            >
+        </section>
+
+        <div
+            id="photoViewerDescription"
+            class="photo-viewer-description hidden"
+        ></div>
+
+        <div class="photo-viewer-stats">
+            <div class="photo-viewer-stat">
+                <span class="photo-viewer-stat-icon">♡</span>
+                <span id="photoViewerLikes">0</span>
+            </div>
+
+            <div class="photo-viewer-stat">
+                <span class="photo-viewer-stat-icon">↗</span>
+                <span id="photoViewerReposts">0</span>
+            </div>
+        </div>
+
+        <section class="photo-viewer-comments-section">
+            <div class="photo-viewer-section-title">
+                Все комментарии
+            </div>
+
+            <div
+                id="photoViewerComments"
+                class="photo-viewer-comments"
+            >
+                <div class="status-message">
+                    Загрузка комментариев...
+                </div>
+            </div>
+        </section>
+
+        <section class="photo-viewer-composer">
+            <div class="photo-viewer-reply-row">
+                <div
+                    id="photoViewerReplyTarget"
+                    class="photo-viewer-reply-target hidden"
+                ></div>
+
+                <button
+                    id="photoViewerReplyCancel"
+                    class="photo-viewer-reply-cancel hidden"
+                    type="button"
+                    title="Отменить ответ"
+                >×</button>
+            </div>
+
+            <textarea
+                id="photoViewerCommentInput"
+                class="photo-viewer-comment-input"
+                maxlength="2048"
+                placeholder="Написать комментарий..."
+            ></textarea>
+
+            <div
+                id="photoViewerCommentError"
+                class="form-error photo-viewer-comment-error hidden"
+            ></div>
+
+            <div class="photo-viewer-composer-actions">
+                <button
+                    id="photoViewerCommentSubmit"
+                    class="primary-button"
+                    type="button"
+                >Отправить</button>
+            </div>
+        </section>
+
+    </main>
+
 </div>
 
 
@@ -343,7 +431,7 @@
 </div>
 
 
-<script type="module" src="./js/app.js?v=20260919-commentfix05"></script>
+<script type="module" src="./js/app.js?v=20260919-photo01"></script>
     
 </body>
 </html>
