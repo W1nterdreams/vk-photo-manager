@@ -3,7 +3,6 @@ import { state } from "./state.js?v=20260919-nav03";
 import { vkApi } from "./vk-api.js?v=20260919-nav03";
 import {
     escapeHtml,
-    getErrorMessage,
     getPhotoPreviewUrl
 } from "./helpers.js?v=20260919-nav03";
 import {
@@ -19,18 +18,21 @@ const PAGE_SIZE = 100;
 const MAX_COMMENTS = 30;
 const LONG_PRESS_MS = 460;
 const MOVE_TOLERANCE = 10;
+const READ_TIMEOUT_MS = 10000;
+const MUTATION_TIMEOUT_MS = 15000;
+const CACHE_SCHEMA = 3;
 
 let activeAlbum = null;
-let loading = false;
 let replyEditor = null;
 let commentMenuOverlay = null;
+let loadSequence = 0;
 
 function commentsTitleElement() {
     return document.querySelector(".comments-title");
 }
 
 function cacheKey(album) {
-    return `album-comments:${getOwnerId()}:${album.id}:${ALBUM_COMMENTS_DAYS}d:${MAX_COMMENTS}`;
+    return `album-comments:v${CACHE_SCHEMA}:${getOwnerId()}:${album.id}:${ALBUM_COMMENTS_DAYS}d:${MAX_COMMENTS}`;
 }
 
 function cutoffTimestamp() {
@@ -66,6 +68,54 @@ function getAuthorLinkById(id) {
     return "https://vk.com";
 }
 
+function describeError(error) {
+    if (!error) return "Неизвестная ошибка";
+    if (typeof error === "string") return error;
+
+    const candidates = [
+        error.message,
+        error.error_msg,
+        error.error?.error_msg,
+        error.error_data?.error_msg,
+        error.error_data?.error_reason,
+        error.data?.error_msg,
+        error.data?.message
+    ];
+
+    for (const value of candidates) {
+        if (typeof value === "string" && value.trim()) return value.trim();
+    }
+
+    try {
+        return JSON.stringify(error);
+    } catch (_) {
+        return String(error);
+    }
+}
+
+function withTimeout(promise, ms, label) {
+    let timer = null;
+
+    const timeout = new Promise((_, reject) => {
+        timer = setTimeout(() => {
+            reject(new Error(`${label}: превышено время ожидания (${Math.round(ms / 1000)} с)`));
+        }, ms);
+    });
+
+    return Promise.race([promise, timeout]).finally(() => {
+        if (timer) clearTimeout(timer);
+    });
+}
+
+function apiRead(method, params, timeout = READ_TIMEOUT_MS) {
+    return withTimeout(vkApi(method, params), timeout, method);
+}
+
+function apiMutation(method, params) {
+    // Мутации не повторяем автоматически: один клик = один запрос.
+    return withTimeout(vkApi(method, params), MUTATION_TIMEOUT_MS, method);
+}
+
 async function openVkLink(url) {
     try {
         if (window.vkBridge?.send) {
@@ -78,16 +128,14 @@ async function openVkLink(url) {
 
     try {
         window.open(url, "_blank", "noopener,noreferrer");
-    } catch (error) {
+    } catch (_) {
         location.href = url;
     }
 }
 
 function updateCommentsTitle(album) {
     const title = commentsTitleElement();
-    if (title) {
-        title.textContent = `Комментарии: ${album?.title || "Альбом"}`;
-    }
+    if (title) title.textContent = `Комментарии: ${album?.title || "Альбом"}`;
     dom.pageTitle.textContent = "Комментарии альбома";
 }
 
@@ -96,10 +144,9 @@ async function loadRecentRawCommentsFast(album) {
     const cutoff = cutoffTimestamp();
     const recent = [];
     let offset = 0;
-    let hitOldComment = false;
 
     while (recent.length < MAX_COMMENTS) {
-        const result = await vkApi("photos.getAllComments", {
+        const result = await apiRead("photos.getAllComments", {
             owner_id: ownerId,
             album_id: Number(album.id),
             count: PAGE_SIZE,
@@ -109,10 +156,12 @@ async function loadRecentRawCommentsFast(album) {
         const items = Array.isArray(result?.items) ? result.items : [];
         if (!items.length) break;
 
+        let reachedOld = false;
+
         for (const comment of items) {
             const date = Number(comment?.date || 0);
             if (date < cutoff) {
-                hitOldComment = true;
+                reachedOld = true;
                 break;
             }
 
@@ -120,10 +169,7 @@ async function loadRecentRawCommentsFast(album) {
             if (recent.length >= MAX_COMMENTS) break;
         }
 
-        if (recent.length >= MAX_COMMENTS || hitOldComment || items.length < PAGE_SIZE) {
-            break;
-        }
-
+        if (recent.length >= MAX_COMMENTS || reachedOld || items.length < PAGE_SIZE) break;
         offset += items.length;
     }
 
@@ -131,17 +177,19 @@ async function loadRecentRawCommentsFast(album) {
     return recent.slice(0, MAX_COMMENTS);
 }
 
-async function loadAllAlbumPhotos(album) {
+async function loadAlbumPhotosWithCommentCounts(album) {
     const ownerId = getOwnerId();
     const all = [];
     let offset = 0;
+    const count = 1000;
 
     while (true) {
-        const result = await vkApi("photos.get", {
+        const result = await apiRead("photos.get", {
             owner_id: ownerId,
             album_id: Number(album.id),
             photo_sizes: 1,
-            count: PAGE_SIZE,
+            extended: 1,
+            count,
             offset
         });
 
@@ -151,54 +199,71 @@ async function loadAllAlbumPhotos(album) {
         all.push(...items);
         offset += items.length;
 
-        if (items.length < PAGE_SIZE) break;
+        if (items.length < count) break;
     }
 
     return all;
 }
 
+async function mapLimit(items, limit, worker) {
+    const results = new Array(items.length);
+    let nextIndex = 0;
+
+    async function run() {
+        while (true) {
+            const index = nextIndex++;
+            if (index >= items.length) return;
+
+            try {
+                results[index] = await worker(items[index], index);
+            } catch (error) {
+                results[index] = { error };
+            }
+        }
+    }
+
+    await Promise.all(Array.from({ length: Math.min(limit, items.length) }, run));
+    return results;
+}
+
 async function loadRecentRawCommentsFallback(album) {
     const ownerId = getOwnerId();
     const cutoff = cutoffTimestamp();
-    const photos = await loadAllAlbumPhotos(album);
-    const recent = [];
+    const photos = await loadAlbumPhotosWithCommentCounts(album);
     const photosMap = new Map();
 
     for (const photo of photos) {
         if (photo?.id) photosMap.set(String(photo.id), photo);
+    }
 
-        let offset = 0;
-        while (true) {
-            const result = await vkApi("photos.getComments", {
-                owner_id: ownerId,
-                photo_id: Number(photo.id),
-                count: PAGE_SIZE,
-                offset,
-                sort: "desc"
-            });
+    const candidates = photos.filter(photo => Number(photo?.comments?.count || 0) > 0);
+    if (!candidates.length) {
+        return { comments: [], photos: photosMap };
+    }
 
-            const items = Array.isArray(result?.items) ? result.items : [];
-            if (!items.length) break;
+    const batches = await mapLimit(candidates, 3, async photo => {
+        const result = await apiRead("photos.getComments", {
+            owner_id: ownerId,
+            photo_id: Number(photo.id),
+            count: PAGE_SIZE,
+            offset: 0,
+            sort: "desc"
+        });
 
-            let hitOld = false;
+        const items = Array.isArray(result?.items) ? result.items : [];
+        const recent = [];
 
-            for (const comment of items) {
-                const date = Number(comment?.date || 0);
-                if (date < cutoff) {
-                    hitOld = true;
-                    break;
-                }
-
-                const normalized = {
-                    ...comment,
-                    photo_id: Number(photo.id)
-                };
-                recent.push(normalized);
-            }
-
-            if (hitOld || items.length < PAGE_SIZE) break;
-            offset += items.length;
+        for (const comment of items) {
+            if (Number(comment?.date || 0) < cutoff) break;
+            recent.push({ ...comment, photo_id: Number(photo.id) });
         }
+
+        return recent;
+    });
+
+    const recent = [];
+    for (const item of batches) {
+        if (Array.isArray(item)) recent.push(...item);
     }
 
     recent.sort((a, b) => Number(b.date || 0) - Number(a.date || 0));
@@ -208,18 +273,53 @@ async function loadRecentRawCommentsFallback(album) {
     };
 }
 
-async function loadPhotosForComments(comments) {
-    const ownerId = getOwnerId();
-    const ids = [...new Set(comments.map(commentPhotoId).filter(Boolean))];
+async function loadRawComments(album) {
+    try {
+        const comments = await loadRecentRawCommentsFast(album);
+        if (comments.length) {
+            return { comments, photos: new Map(), source: "getAllComments" };
+        }
+    } catch (error) {
+        console.warn("photos.getAllComments failed; fallback scan will be used:", error);
+    }
+
+    const fallback = await loadRecentRawCommentsFallback(album);
+    return { ...fallback, source: "fallback" };
+}
+
+function photosFromCurrentState(comments) {
+    const wanted = new Set(comments.map(commentPhotoId).filter(Boolean).map(String));
     const map = new Map();
+
+    for (const photo of Array.isArray(state.photos) ? state.photos : []) {
+        if (wanted.has(String(photo?.id))) {
+            map.set(String(photo.id), photo);
+        }
+    }
+
+    return map;
+}
+
+async function loadPhotosForComments(comments, existing = new Map()) {
+    const ownerId = getOwnerId();
+    const map = new Map(existing);
+
+    for (const [id, photo] of photosFromCurrentState(comments)) {
+        if (!map.has(id)) map.set(id, photo);
+    }
+
+    const ids = [...new Set(comments.map(commentPhotoId).filter(Boolean))]
+        .filter(id => !map.has(String(id)));
 
     for (let i = 0; i < ids.length; i += 500) {
         const chunk = ids.slice(i, i + 500);
         if (!chunk.length) continue;
 
+        const photosParam = chunk.map(id => `${ownerId}_${id}`).join(",");
+
         try {
-            const photos = await vkApi("photos.getById", {
-                photos: chunk.map(id => `${ownerId}_${id}`),
+            const photos = await apiRead("photos.getById", {
+                photos: photosParam,
                 photo_sizes: 1
             });
 
@@ -252,8 +352,8 @@ async function loadAuthors(comments) {
 
     if (userIds.length) {
         try {
-            const users = await vkApi("users.get", {
-                user_ids: userIds
+            const users = await apiRead("users.get", {
+                user_ids: userIds.join(",")
             });
 
             for (const user of Array.isArray(users) ? users : []) {
@@ -273,8 +373,8 @@ async function loadAuthors(comments) {
 
     if (groupIds.length) {
         try {
-            const response = await vkApi("groups.getById", {
-                group_ids: groupIds
+            const response = await apiRead("groups.getById", {
+                group_ids: groupIds.join(",")
             });
 
             for (const group of normalizeGroupsResponse(response)) {
@@ -297,6 +397,7 @@ async function loadAuthors(comments) {
 function authorInfo(comment, authors) {
     const id = Number(comment?.from_id || 0);
     if (authors.has(id)) return authors.get(id);
+
     return {
         id,
         name: id > 0 ? `Пользователь ${id}` : id < 0 ? `Сообщество ${Math.abs(id)}` : "Пользователь",
@@ -321,39 +422,8 @@ function restoreFromCache(data) {
     };
 }
 
-async function fetchAlbumComments(album) {
-    let comments = [];
-    let photos = new Map();
-
-    try {
-        comments = await loadRecentRawCommentsFast(album);
-    } catch (error) {
-        console.warn("photos.getAllComments failed, fallback scan will be used:", error);
-    }
-
-    if (comments.length) {
-        photos = await loadPhotosForComments(comments);
-    }
-
-    // Для альбомов, где fast-метод VK не отдаёт комментарии,
-    // делаем надёжный резервный проход по фото альбома.
-    if (!comments.length) {
-        const fallback = await loadRecentRawCommentsFallback(album);
-        comments = fallback.comments;
-        photos = fallback.photos;
-    }
-
-    comments.sort((a, b) => Number(b.date || 0) - Number(a.date || 0));
-    comments = comments.slice(0, MAX_COMMENTS);
-
-    const authors = await loadAuthors(comments);
-    return { comments, photos, authors };
-}
-
 function clearReplyEditor() {
-    if (replyEditor?.container?.remove) {
-        replyEditor.container.remove();
-    }
+    if (replyEditor?.container?.remove) replyEditor.container.remove();
     replyEditor = null;
 }
 
@@ -383,6 +453,7 @@ async function copyText(text) {
 }
 
 function userCanEditComment(comment) {
+    if (Number(comment?.can_edit || 0) === 1 || comment?.can_edit === true) return true;
     const currentId = Number(state.currentUser?.id || 0);
     return currentId > 0 && Number(comment?.from_id || 0) === currentId;
 }
@@ -400,6 +471,7 @@ function appendRichCommentText(container, text) {
 
     while ((match = re.exec(raw)) !== null) {
         const [full, target, label] = match;
+
         if (match.index > lastIndex) {
             container.appendChild(document.createTextNode(raw.slice(lastIndex, match.index)));
         }
@@ -420,6 +492,13 @@ function appendRichCommentText(container, text) {
     if (lastIndex < raw.length) {
         container.appendChild(document.createTextNode(raw.slice(lastIndex)));
     }
+}
+
+function showInlineError(errorBox, error, prefix = "") {
+    const message = describeError(error);
+    errorBox.textContent = prefix ? `${prefix}: ${message}` : message;
+    errorBox.classList.remove("hidden");
+    console.error(prefix || "Ошибка комментария", error);
 }
 
 function createReplyEditor(card, body, comment, mode = "reply") {
@@ -460,7 +539,12 @@ function createReplyEditor(card, body, comment, mode = "reply") {
 
         const photoId = commentPhotoId(comment);
         const id = commentId(comment);
-        if (!photoId || !id) return;
+
+        if (!photoId || !id) {
+            error.textContent = "VK не вернул ID фотографии или комментария. Обновите список.";
+            error.classList.remove("hidden");
+            return;
+        }
 
         submit.disabled = true;
         cancel.disabled = true;
@@ -468,14 +552,14 @@ function createReplyEditor(card, body, comment, mode = "reply") {
 
         try {
             if (mode === "reply") {
-                await vkApi("photos.createComment", {
+                await apiMutation("photos.createComment", {
                     owner_id: getOwnerId(),
                     photo_id: photoId,
                     message,
                     reply_to_comment: id
                 });
             } else {
-                await vkApi("photos.editComment", {
+                await apiMutation("photos.editComment", {
                     owner_id: getOwnerId(),
                     comment_id: id,
                     message
@@ -483,10 +567,15 @@ function createReplyEditor(card, body, comment, mode = "reply") {
             }
 
             clearReplyEditor();
-            if (activeAlbum) await loadAlbumComments(activeAlbum, { force: true });
+
+            // Ошибка повторной загрузки не должна выглядеть как ошибка отправки.
+            if (activeAlbum) {
+                void loadAlbumComments(activeAlbum, { force: true }).catch(refreshError => {
+                    console.warn("Комментарий отправлен, но список не обновился:", refreshError);
+                });
+            }
         } catch (apiError) {
-            error.textContent = getErrorMessage(apiError);
-            error.classList.remove("hidden");
+            showInlineError(error, apiError, mode === "reply" ? "Не удалось отправить ответ" : "Не удалось сохранить");
         } finally {
             submit.disabled = false;
             cancel.disabled = false;
@@ -508,17 +597,19 @@ async function deleteComment(comment) {
     const id = commentId(comment);
     if (!id) return;
 
-    const confirmed = window.confirm("Удалить этот комментарий?");
-    if (!confirmed) return;
+    if (!window.confirm("Удалить этот комментарий?")) return;
 
     try {
-        await vkApi("photos.deleteComment", {
+        await apiMutation("photos.deleteComment", {
             owner_id: getOwnerId(),
             comment_id: id
         });
-        if (activeAlbum) await loadAlbumComments(activeAlbum, { force: true });
+
+        if (activeAlbum) {
+            void loadAlbumComments(activeAlbum, { force: true });
+        }
     } catch (error) {
-        alert(`Не удалось удалить комментарий.\n\n${getErrorMessage(error)}`);
+        alert(`Не удалось удалить комментарий.\n\n${describeError(error)}`);
     }
 }
 
@@ -535,7 +626,7 @@ function createMenuButton(label, onClick, { dangerous = false } = {}) {
     return btn;
 }
 
-function openCommentMenu({ card, body, comment, author, photo }) {
+function openCommentMenu({ card, body, comment }) {
     closeCommentMenu();
 
     const overlay = document.createElement("div");
@@ -601,13 +692,10 @@ function installLongPress(card, handler) {
         if (dx > MOVE_TOLERANCE || dy > MOVE_TOLERANCE) clear();
     };
 
-    const onPointerUp = () => clear();
-    const onPointerCancel = () => clear();
-
     card.addEventListener("pointerdown", onPointerDown, { passive: true });
     card.addEventListener("pointermove", onPointerMove, { passive: true });
-    card.addEventListener("pointerup", onPointerUp, { passive: true });
-    card.addEventListener("pointercancel", onPointerCancel, { passive: true });
+    card.addEventListener("pointerup", clear, { passive: true });
+    card.addEventListener("pointercancel", clear, { passive: true });
     card.addEventListener("contextmenu", event => {
         event.preventDefault();
         handler(event);
@@ -691,7 +779,7 @@ function createCommentCard(comment, data) {
     body.append(header, text, meta);
 
     const wasLongPress = installLongPress(card, () => {
-        openCommentMenu({ card, body, comment, author, photo });
+        openCommentMenu({ card, body, comment });
     });
 
     card.addEventListener("click", event => {
@@ -724,23 +812,51 @@ function renderComments(album, data) {
     }
 }
 
+function currentRequestIsValid(seq, album) {
+    return seq === loadSequence && activeAlbum && String(activeAlbum.id) === String(album.id);
+}
+
+async function enrichAndRender(album, baseData, seq, key) {
+    const [photosResult, authorsResult] = await Promise.allSettled([
+        loadPhotosForComments(baseData.comments, baseData.photos),
+        loadAuthors(baseData.comments)
+    ]);
+
+    if (!currentRequestIsValid(seq, album)) return;
+
+    const data = {
+        comments: baseData.comments,
+        photos: photosResult.status === "fulfilled" ? photosResult.value : baseData.photos,
+        authors: authorsResult.status === "fulfilled" ? authorsResult.value : new Map()
+    };
+
+    cacheSet(key, serializeForCache(data));
+    renderComments(album, data);
+}
+
 export async function loadAlbumComments(album, { force = false } = {}) {
-    if (!album || loading) return;
+    if (!album) return;
 
     activeAlbum = album;
     updateCommentsTitle(album);
 
+    const seq = ++loadSequence;
     const key = cacheKey(album);
 
     if (!force) {
         const cached = cacheGet(key, CACHE_TTL.comments);
         if (cached) {
-            renderComments(album, restoreFromCache(cached));
+            const restored = restoreFromCache(cached);
+            renderComments(album, restored);
+
+            // Кэш показываем сразу. Если в нём нет фото/имён, тихо дообогащаем.
+            if (restored.comments.length && (restored.photos.size === 0 || restored.authors.size === 0)) {
+                void enrichAndRender(album, restored, seq, key);
+            }
             return;
         }
     }
 
-    loading = true;
     dom.refreshComments.disabled = true;
     dom.comments.innerHTML = `
         <div class="status-message">
@@ -749,19 +865,38 @@ export async function loadAlbumComments(album, { force = false } = {}) {
     `;
 
     try {
-        const data = await fetchAlbumComments(album);
-        cacheSet(key, serializeForCache(data));
-        renderComments(album, data);
+        const raw = await loadRawComments(album);
+        if (!currentRequestIsValid(seq, album)) return;
+
+        const baseData = {
+            comments: raw.comments,
+            photos: raw.photos || new Map(),
+            authors: new Map()
+        };
+
+        // Главное изменение: комментарии показываем СРАЗУ.
+        // Фото и имена больше не могут оставить экран на вечной "Загрузке".
+        renderComments(album, baseData);
+
+        if (!baseData.comments.length) {
+            cacheSet(key, serializeForCache(baseData));
+            return;
+        }
+
+        void enrichAndRender(album, baseData, seq, key);
     } catch (error) {
+        if (!currentRequestIsValid(seq, album)) return;
+
         dom.comments.innerHTML = `
             <div class="error">
                 Не удалось загрузить комментарии альбома.<br><br>
-                ${escapeHtml(getErrorMessage(error))}
+                ${escapeHtml(describeError(error))}
             </div>
         `;
     } finally {
-        loading = false;
-        dom.refreshComments.disabled = false;
+        if (currentRequestIsValid(seq, album)) {
+            dom.refreshComments.disabled = false;
+        }
     }
 }
 
@@ -790,6 +925,7 @@ export function initAlbumComments() {
 
     dom.commentsMenuButton.addEventListener("click", () => {
         activeAlbum = null;
+        ++loadSequence;
         clearReplyEditor();
         closeCommentMenu();
         const title = commentsTitleElement();
@@ -801,6 +937,7 @@ export function initAlbumComments() {
     });
 
     window.addEventListener("popstate", () => {
+        ++loadSequence;
         closeCommentMenu();
         clearReplyEditor();
     });
