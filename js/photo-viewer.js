@@ -1,14 +1,15 @@
-import { state } from "./state.js?v=20260919-ui02";
-import { dom } from "./dom.js?v=20260919-ui02";
-import { vkApi } from "./vk-api.js?v=20260919-ui02";
-import { getBestPhotoUrl, escapeHtml } from "./helpers.js?v=20260919-ui02";
-import { getOwnerId } from "./group-context.js?v=20260919-ui02";
+import { state } from "./state.js?v=20260920-cachethread01";
+import { dom } from "./dom.js?v=20260920-cachethread01";
+import { vkApi } from "./vk-api.js?v=20260920-cachethread01";
+import { getBestPhotoUrl, escapeHtml } from "./helpers.js?v=20260920-cachethread01";
+import { getOwnerId } from "./group-context.js?v=20260920-cachethread01";
 import {
     showPhotoViewerScreen,
     pushPhotoHistory
-} from "./navigation.js?v=20260919-ui02";
-import { photoCommentOwnerId } from "./photo-comment-api.js?v=20260919-ui02";
-import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260919-ui02";
+} from "./navigation.js?v=20260920-cachethread01";
+import { photoCommentOwnerId } from "./photo-comment-api.js?v=20260920-cachethread01";
+import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260920-cachethread01";
+import { invalidatePhotoActivityCaches } from "./cache.js?v=20260920-cachethread01";
 
 const COMMENT_PAGE_SIZE = 100;
 const LONG_PRESS_MS = 460;
@@ -51,15 +52,36 @@ function commentKey(comment) {
     return String(commentId(comment) || `${comment?.from_id || 0}:${comment?.date || 0}:${comment?.text || ""}`);
 }
 
+function parentCommentId(comment) {
+    const stack = Array.isArray(comment?.parents_stack) ? comment.parents_stack : [];
+    const fromStack = Number(stack[stack.length - 1] || 0);
+    if (fromStack > 0) return fromStack;
+
+    const direct = Number(comment?.reply_to_comment || comment?.reply_to_comment_id || 0);
+    return direct > 0 ? direct : null;
+}
+
+function normalizeCommentForThread(comment, forcedParentId = null) {
+    const parentId = Number(forcedParentId || parentCommentId(comment) || 0) || null;
+    return {
+        ...comment,
+        _is_reply: Boolean(parentId),
+        _parent_comment_id: parentId
+    };
+}
+
 function flattenComments(items) {
     const map = new Map();
 
     for (const item of Array.isArray(items) ? items : []) {
-        map.set(commentKey(item), item);
+        const root = normalizeCommentForThread(item);
+        map.set(commentKey(root), root);
 
+        const rootId = commentId(item);
         const threadItems = Array.isArray(item?.thread?.items) ? item.thread.items : [];
         for (const reply of threadItems) {
-            map.set(commentKey(reply), reply);
+            const normalizedReply = normalizeCommentForThread(reply, parentCommentId(reply) || rootId);
+            map.set(commentKey(normalizedReply), normalizedReply);
         }
     }
 
@@ -258,6 +280,11 @@ function openCommentContext(comment) {
                 owner_id: photoCommentOwnerId(activePhoto),
                 comment_id: Number(comment.id)
             });
+            invalidatePhotoActivityCaches(
+                photoCommentOwnerId(activePhoto),
+                Number(activePhoto?.album_id || activeAlbum?.id || 0),
+                Number(activePhoto?.id || 0)
+            );
             await refreshPhotoComments();
         } catch (error) {
             alert(`Не удалось удалить комментарий.\n\n${escapeHtml(String(error?.error_data?.error_msg || error?.error_msg || error?.message || error))}`);
@@ -344,6 +371,9 @@ function renderPhotoComments() {
     for (const comment of comments) {
         const card = document.createElement("div");
         card.className = "photo-viewer-comment";
+        if (comment?._is_reply) {
+            card.classList.add("photo-viewer-comment-reply");
+        }
 
         const top = document.createElement("div");
         top.className = "photo-viewer-comment-top";
@@ -403,6 +433,27 @@ async function refreshPhotoComments() {
     }
 }
 
+async function refreshAfterNativePhotoReturn(detail) {
+    if (!activePhoto || state.currentScreen !== "photo") return;
+    if (detail?.type !== "photo") return;
+    if (Number(detail?.photoId || 0) !== Number(activePhoto.id || 0)) return;
+
+    const ownerId = photoCommentOwnerId(activePhoto);
+    const albumId = Number(activePhoto?.album_id || activeAlbum?.id || detail?.albumId || 0);
+
+    invalidatePhotoActivityCaches(ownerId, albumId, Number(activePhoto.id || 0));
+
+    try {
+        const fullPhoto = await fetchPhoto(activePhoto);
+        activePhoto = fullPhoto;
+        state.currentPhoto = fullPhoto;
+        renderPhotoHeader(fullPhoto);
+        await refreshPhotoComments();
+    } catch (error) {
+        console.warn("Не удалось обновить фотографию после возврата из VK:", error);
+    }
+}
+
 export async function openPhotoViewer(photo, album, {
     fromHistory = false,
     fromComments = false
@@ -443,4 +494,8 @@ export async function openPhotoViewer(photo, album, {
 export function initPhotoViewer() {
     if (initialized) return;
     initialized = true;
+
+    window.addEventListener("vk-native-return", event => {
+        void refreshAfterNativePhotoReturn(event?.detail);
+    });
 }

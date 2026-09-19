@@ -1,10 +1,10 @@
-import { state } from "./state.js?v=20260919-ui02";
-import { dom } from "./dom.js?v=20260919-ui02";
-import { vkApi } from "./vk-api.js?v=20260919-ui02";
-import { getErrorMessage } from "./helpers.js?v=20260919-ui02";
-import { getOwnerId } from "./group-context.js?v=20260919-ui02";
-import { cacheSet, albumsKey, albumIndexKey } from "./cache.js?v=20260919-ui02";
-import { renderAlbums } from "./albums.js?v=20260919-ui02";
+import { state } from "./state.js?v=20260920-cachethread01";
+import { dom } from "./dom.js?v=20260920-cachethread01";
+import { vkApi } from "./vk-api.js?v=20260920-cachethread01";
+import { getErrorMessage } from "./helpers.js?v=20260920-cachethread01";
+import { getOwnerId } from "./group-context.js?v=20260920-cachethread01";
+import { cacheSet, cacheRemove, albumsKey, albumIndexKey } from "./cache.js?v=20260920-cachethread01";
+import { renderAlbums, ensureAlbumIndex } from "./albums.js?v=20260920-cachethread01";
 
 let activeAlbum = null;
 let opening = false;
@@ -111,9 +111,10 @@ function persistAlbumState() {
         total: state.albumsTotal
     });
 
-    if (state.albumIndex.length) {
-        cacheSet(albumIndexKey(ownerId), state.albumIndex);
-    }
+    // Индекс поиска нельзя сохранять, если он ещё строится: иначе частичные
+    // первые страницы превращаются в "полный" индекс на несколько минут.
+    cacheRemove(albumIndexKey(ownerId));
+    state.albumIndexReady = false;
 }
 
 async function saveAlbum(event) {
@@ -160,6 +161,10 @@ async function saveAlbum(event) {
         replaceAlbumInState(updated);
         persistAlbumState();
         renderAlbums();
+
+        // Перестраиваем полный поисковый индекс с сервера. Это одновременно
+        // защищает от гонки с фоновой индексацией, начатой до редактирования.
+        void ensureAlbumIndex({ force: true });
 
         dom.editAlbumModal.classList.add("hidden");
         activeAlbum = null;

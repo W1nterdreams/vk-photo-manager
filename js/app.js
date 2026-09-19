@@ -1,21 +1,26 @@
-import { dom } from "./dom.js?v=20260919-ui02";
-import { vkInit, loadUser, getAccessToken } from "./vk-api.js?v=20260919-ui02";
-import { initGroupContext } from "./group-context.js?v=20260919-ui02";
-import { initAlbums, loadAlbums } from "./albums.js?v=20260919-ui02";
-import { openAlbum } from "./photos.js?v=20260919-ui02";
-import { initMainMenu } from "./main-menu.js?v=20260919-ui02";
-import { initAlbumCreate } from "./album-create.js?v=20260919-ui02";
-import { initAlbumEdit } from "./album-edit.js?v=20260919-ui02";
-import { initAlbumDelete } from "./album-delete.js?v=20260919-ui02";
-import { initAlbumReorder } from "./album-reorder.js?v=20260919-ui02";
-import { initComments } from "./comments.js?v=20260919-ui02";
-import { initAlbumComments } from "./album-comments.js?v=20260919-ui02";
-import { initPhotoViewer, openPhotoViewer } from "./photo-viewer.js?v=20260920-commentdesc01";
-import { initNavigation, showAlbumsScreen } from "./navigation.js?v=20260919-ui02";
-import { escapeHtml, getErrorMessage, logError } from "./helpers.js?v=20260919-ui02";
+import { dom } from "./dom.js?v=20260920-cachethread01";
+import { vkInit, loadUser, getAccessToken } from "./vk-api.js?v=20260920-cachethread01";
+import { initGroupContext } from "./group-context.js?v=20260920-cachethread01";
+import { initAlbums, loadAlbums } from "./albums.js?v=20260920-cachethread01";
+import { openAlbum } from "./photos.js?v=20260920-cachethread01";
+import { initMainMenu } from "./main-menu.js?v=20260920-cachethread01";
+import { initAlbumCreate } from "./album-create.js?v=20260920-cachethread01";
+import { initAlbumEdit } from "./album-edit.js?v=20260920-cachethread01";
+import { initAlbumDelete } from "./album-delete.js?v=20260920-cachethread01";
+import { initAlbumReorder } from "./album-reorder.js?v=20260920-cachethread01";
+import { initComments } from "./comments.js?v=20260920-cachethread01";
+import { initAlbumComments } from "./album-comments.js?v=20260920-cachethread01";
+import { initPhotoViewer, openPhotoViewer } from "./photo-viewer.js?v=20260920-cachethread01";
+import { initNavigation, showAlbumsScreen } from "./navigation.js?v=20260920-cachethread01";
+import { escapeHtml, getErrorMessage, logError } from "./helpers.js?v=20260920-cachethread01";
+import { cleanupLegacyCache } from "./cache.js?v=20260920-cachethread01";
 
 async function startApp() {
     console.log("Starting VK Photo Manager in GROUP ADMIN mode...");
+
+    // Новая схема кэша: удаляем старые частичные индексы и устаревшие
+    // данные прошлых сборок до первого чтения localStorage.
+    cleanupLegacyCache();
 
     try {
         initMainMenu();

@@ -1,21 +1,30 @@
-import { state } from "./state.js?v=20260919-ui02";
-import { dom } from "./dom.js?v=20260919-ui02";
-import { vkApi } from "./vk-api.js?v=20260919-ui02";
-import { getPhotoPreviewUrl, escapeHtml, getErrorMessage } from "./helpers.js?v=20260919-ui02";
-import { showPhotosScreen, pushAlbumHistory } from "./navigation.js?v=20260919-ui02";
-import { CACHE_TTL } from "./config.js?v=20260919-ui02";
-import { cacheGet, cacheGetStale, cacheSet, albumPhotosKey } from "./cache.js?v=20260919-ui02";
-import { getOwnerId } from "./group-context.js?v=20260919-ui02";
-import { openPhotoViewer } from "./photo-viewer.js?v=20260919-ui02";
+import { state } from "./state.js?v=20260920-cachethread01";
+import { dom } from "./dom.js?v=20260920-cachethread01";
+import { vkApi } from "./vk-api.js?v=20260920-cachethread01";
+import { getPhotoPreviewUrl, escapeHtml, getErrorMessage } from "./helpers.js?v=20260920-cachethread01";
+import { showPhotosScreen, pushAlbumHistory } from "./navigation.js?v=20260920-cachethread01";
+import { CACHE_TTL } from "./config.js?v=20260920-cachethread01";
+import { cacheGet, cacheGetStale, cacheSet, albumPhotosKey } from "./cache.js?v=20260920-cachethread01";
+import { getOwnerId } from "./group-context.js?v=20260920-cachethread01";
+import { openPhotoViewer } from "./photo-viewer.js?v=20260920-cachethread01";
 
 const PAGE_SIZE = 20;
 let photoScrollTicking = false;
 let photosInitialized = false;
+let firstPageRefreshToken = 0;
 
 function mergePhotos(current, incoming) {
     const map = new Map(current.map(photo => [String(photo.id), photo]));
     incoming.forEach(photo => map.set(String(photo.id), photo));
     return [...map.values()];
+}
+
+function currentAlbumIs(album) {
+    return Boolean(
+        album &&
+        state.currentAlbum &&
+        String(album.id) === String(state.currentAlbum.id)
+    );
 }
 
 async function fetchPhotoPage(album, offset, count = PAGE_SIZE) {
@@ -38,6 +47,27 @@ function savePhotosCache(album) {
     });
 }
 
+function updateAlbumSize(album, total) {
+    const numericTotal = Math.max(0, Number(total || 0));
+    album.size = numericTotal;
+
+    state.albums = state.albums.map(item =>
+        String(item.id) === String(album.id)
+            ? { ...item, size: numericTotal }
+            : item
+    );
+
+    state.albumIndex = state.albumIndex.map(item =>
+        String(item.id) === String(album.id)
+            ? { ...item, size: numericTotal }
+            : item
+    );
+
+    if (state.currentAlbum && String(state.currentAlbum.id) === String(album.id)) {
+        state.currentAlbum = { ...state.currentAlbum, size: numericTotal };
+    }
+}
+
 function restorePhotosCache(cached, album) {
     const items = Array.isArray(cached) ? cached : (cached?.items || []);
     const cachedTotal = Array.isArray(cached) ? 0 : Number(cached?.total || 0);
@@ -50,22 +80,57 @@ function restorePhotosCache(cached, album) {
     state.photosHasMore = state.photosOffset < state.photosTotal;
 }
 
-async function fetchFirstPhotoPage(album) {
-    const result = await fetchPhotoPage(album, 0, PAGE_SIZE);
-    state.photos = result.items || [];
-    state.photosTotal = Math.max(
-        Number(result.count || 0),
-        Number(album.size || 0),
-        state.photos.length
-    );
+function applyFirstPage(album, result, { preserveLoadedTail = false } = {}) {
+    if (!currentAlbumIs(album)) return false;
+
+    const items = Array.isArray(result?.items) ? result.items : [];
+    const apiTotal = Number(result?.count);
+    const total = Number.isFinite(apiTotal) && apiTotal >= 0
+        ? Math.max(apiTotal, items.length)
+        : Math.max(Number(album.size || 0), items.length);
+
+    if (preserveLoadedTail && state.photos.length > PAGE_SIZE) {
+        const firstIds = new Set(items.map(photo => String(photo.id)));
+        const tail = state.photos
+            .slice(PAGE_SIZE)
+            .filter(photo => !firstIds.has(String(photo.id)));
+        state.photos = [...items, ...tail];
+    } else {
+        state.photos = items;
+    }
+
+    state.photosTotal = total;
     state.photosOffset = state.photos.length;
-    state.photosHasMore =
-        state.photosOffset < state.photosTotal ||
-        state.photos.length === PAGE_SIZE;
+    state.photosHasMore = state.photosOffset < state.photosTotal;
+    updateAlbumSize(album, total);
     savePhotosCache(album);
     renderPhotos();
     updatePhotoCount();
     setTimeout(handlePhotoScroll, 0);
+    return true;
+}
+
+async function fetchFirstPhotoPage(album) {
+    const result = await fetchPhotoPage(album, 0, PAGE_SIZE);
+    applyFirstPage(album, result, { preserveLoadedTail: false });
+}
+
+async function revalidateFirstPhotoPage(album) {
+    const token = ++firstPageRefreshToken;
+
+    try {
+        const result = await fetchPhotoPage(album, 0, PAGE_SIZE);
+        if (token !== firstPageRefreshToken || !currentAlbumIs(album)) return;
+        applyFirstPage(album, result, { preserveLoadedTail: true });
+    } catch (error) {
+        console.warn("Фоновое обновление фотографий:", error);
+    }
+}
+
+export async function refreshCurrentAlbumPhotos() {
+    const album = state.currentAlbum;
+    if (!album) return;
+    await revalidateFirstPhotoPage(album);
 }
 
 export async function openAlbum(album, { fromHistory = false, restoreScroll = 0 } = {}) {
@@ -95,6 +160,7 @@ export async function loadPhotos(album, { force = false } = {}) {
     const ownerId = getOwnerId();
     const key = albumPhotosKey(ownerId, album.id);
 
+    firstPageRefreshToken += 1;
     state.photos = [];
     state.photosTotal = Number(album.size || 0);
     state.photosOffset = 0;
@@ -102,22 +168,16 @@ export async function loadPhotos(album, { force = false } = {}) {
     state.photosLoadingMore = false;
 
     if (!force) {
-        const cached = cacheGet(key, CACHE_TTL.photos);
+        // Сначала мгновенно показываем любой имеющийся локальный снимок данных,
+        // затем ОБЯЗАТЕЛЬНО сверяем первую страницу с VK. Благодаря этому лайки
+        // и счётчики комментариев быстро обновляются после возврата к альбому.
+        const cached = cacheGet(key, CACHE_TTL.photos) || cacheGetStale(key);
         if (cached) {
             restorePhotosCache(cached, album);
             renderPhotos();
             updatePhotoCount();
             setTimeout(handlePhotoScroll, 0);
-            return;
-        }
-
-        const stale = cacheGetStale(key);
-        if (stale) {
-            restorePhotosCache(stale, album);
-            renderPhotos();
-            updatePhotoCount();
-            try { await fetchFirstPhotoPage(album); }
-            catch (error) { console.warn("Фоновое обновление фотографий:", error); }
+            void revalidateFirstPhotoPage(album);
             return;
         }
     }
@@ -136,19 +196,33 @@ export async function loadMorePhotos() {
 
     try {
         const result = await fetchPhotoPage(album, state.photosOffset, PAGE_SIZE);
-        const items = result.items || [];
+        const items = Array.isArray(result?.items) ? result.items : [];
 
+        const beforeCount = state.photos.length;
         state.photos = mergePhotos(state.photos, items);
-        state.photosTotal = Math.max(
-            Number(result.count || 0),
-            Number(album.size || 0),
-            state.photosTotal || 0,
-            state.photos.length
-        );
+        const addedCount = state.photos.length - beforeCount;
+
+        const apiTotal = Number(result?.count);
+        if (Number.isFinite(apiTotal) && apiTotal >= 0) {
+            state.photosTotal = Math.max(apiTotal, state.photos.length);
+        } else {
+            state.photosTotal = Math.max(
+                Number(album.size || 0),
+                state.photosTotal || 0,
+                state.photos.length
+            );
+        }
+
         state.photosOffset += items.length;
-        state.photosHasMore =
-            items.length > 0 &&
-            (state.photosOffset < state.photosTotal || items.length === PAGE_SIZE);
+        state.photosHasMore = state.photosOffset < state.photosTotal || (
+            !Number.isFinite(apiTotal) && items.length === PAGE_SIZE
+        );
+
+        if (items.length > 0 && addedCount === 0) {
+            state.photosHasMore = false;
+        }
+
+        updateAlbumSize(album, state.photosTotal);
         savePhotosCache(album);
     } catch (error) {
         console.warn("Не удалось догрузить фотографии:", error);

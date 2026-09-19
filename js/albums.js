@@ -1,24 +1,27 @@
-import { state } from "./state.js?v=20260919-ui02";
-import { dom } from "./dom.js?v=20260919-ui02";
-import { vkApi } from "./vk-api.js?v=20260919-ui02";
-import { getAlbumCover, escapeHtml, getErrorMessage } from "./helpers.js?v=20260919-ui02";
-import { openAlbum } from "./photos.js?v=20260919-ui02";
-import { CACHE_TTL } from "./config.js?v=20260919-ui02";
+import { state } from "./state.js?v=20260920-cachethread01";
+import { dom } from "./dom.js?v=20260920-cachethread01";
+import { vkApi } from "./vk-api.js?v=20260920-cachethread01";
+import { getAlbumCover, escapeHtml, getErrorMessage } from "./helpers.js?v=20260920-cachethread01";
+import { openAlbum } from "./photos.js?v=20260920-cachethread01";
+import { CACHE_TTL } from "./config.js?v=20260920-cachethread01";
 import {
     cacheGet,
     cacheGetStale,
     cacheSet,
+    invalidateAlbumCaches,
     albumsKey,
     albumIndexKey
-} from "./cache.js?v=20260919-ui02";
-import { getOwnerId } from "./group-context.js?v=20260919-ui02";
-import { bindAlbumLongPress } from "./album-menu.js?v=20260919-ui02";
+} from "./cache.js?v=20260920-cachethread01";
+import { getOwnerId } from "./group-context.js?v=20260920-cachethread01";
+import { bindAlbumLongPress } from "./album-menu.js?v=20260920-cachethread01";
 
 const PAGE_SIZE = 20;
 const INDEX_PAGE_SIZE = 100;
+const INDEX_CACHE_SCHEMA = 2;
 
 let loadMoreObserver = null;
 let indexBuildPromise = null;
+let indexBuildGeneration = 0;
 let albumScrollTicking = false;
 
 function normalizeTitle(value) {
@@ -52,6 +55,44 @@ function mergeIndex(current, incoming) {
     return [...map.values()];
 }
 
+function decodeIndexCache(value) {
+    if (!value) return null;
+
+    if (
+        value?.schema === INDEX_CACHE_SCHEMA &&
+        value?.complete === true &&
+        Array.isArray(value?.items)
+    ) {
+        return {
+            items: value.items,
+            total: Math.max(Number(value.total || 0), value.items.length),
+            complete: true
+        };
+    }
+
+    // Старый формат мог содержать всего первые 20 альбомов. Использовать его
+    // как полный индекс нельзя. Он годится только как временный источник данных.
+    if (Array.isArray(value)) {
+        return {
+            items: value,
+            total: value.length,
+            complete: false
+        };
+    }
+
+    return null;
+}
+
+function persistCompleteIndex(items, total = items.length) {
+    const ownerId = getOwnerId();
+    cacheSet(albumIndexKey(ownerId), {
+        schema: INDEX_CACHE_SCHEMA,
+        complete: true,
+        total: Math.max(Number(total || 0), items.length),
+        items
+    });
+}
+
 async function fetchAlbumPage(offset, count = PAGE_SIZE) {
     const ownerId = getOwnerId();
     return vkApi("photos.getAlbums", {
@@ -67,30 +108,31 @@ async function fetchAlbumPage(offset, count = PAGE_SIZE) {
 async function fetchFirstPageFromVK() {
     const ownerId = getOwnerId();
     const result = await fetchAlbumPage(0, PAGE_SIZE);
+    const items = Array.isArray(result?.items) ? result.items : [];
+    const apiTotal = Number(result?.count);
 
-    state.albums = result.items || [];
-    state.albumsTotal = Math.max(
-        Number(result.count || 0),
-        state.albumIndex.length,
-        state.albums.length
+    state.albums = items;
+    state.albumsTotal = Number.isFinite(apiTotal) && apiTotal >= 0
+        ? Math.max(apiTotal, items.length)
+        : items.length;
+    state.albumsOffset = items.length;
+    state.albumsHasMore = state.albumsOffset < state.albumsTotal || (
+        !Number.isFinite(apiTotal) && items.length === PAGE_SIZE
     );
-    state.albumsOffset = state.albums.length;
-    state.albumsHasMore =
-        state.albumsOffset < state.albumsTotal ||
-        state.albums.length === PAGE_SIZE;
 
     cacheSet(albumsKey(ownerId), {
         items: state.albums,
         total: state.albumsTotal
     });
 
-    // Первые 20 сразу добавляем и в поисковый индекс.
-    state.albumIndex = mergeIndex(state.albumIndex, state.albums);
+    // Пока полный индекс строится, первые карточки уже доступны поиску.
+    if (!state.albumIndexReady) {
+        state.albumIndex = mergeIndex(state.albumIndex, state.albums);
+    }
+
     renderAlbums();
     setTimeout(handleAlbumScroll, 0);
-
-    // Полный индекс строится в фоне и не задерживает показ экрана.
-    void ensureAlbumIndex();
+    return result;
 }
 
 function restoreAlbumsCache(cached) {
@@ -100,39 +142,55 @@ function restoreAlbumsCache(cached) {
     state.albums = items;
     state.albumsTotal = Math.max(savedTotal, items.length);
     state.albumsOffset = items.length;
+    state.albumsHasMore = savedTotal > items.length || (
+        savedTotal <= 0 && items.length >= PAGE_SIZE
+    );
+}
 
-    // Старые версии приложения сохраняли в кэш только первые 20 альбомов
-    // без реального общего count. Такой кэш нельзя считать концом списка.
-    state.albumsHasMore = savedTotal > items.length || items.length >= PAGE_SIZE;
+async function revalidateVisibleAlbums() {
+    try {
+        await fetchFirstPageFromVK();
+    } catch (error) {
+        console.warn("Фоновое обновление списка альбомов:", error);
+    }
 }
 
 export async function loadAlbums({ force = false } = {}) {
     const ownerId = getOwnerId();
     const key = albumsKey(ownerId);
 
-    // Индекс живёт отдельно от экранного кэша.
-    if (!force) {
-        const cachedIndex = cacheGet(albumIndexKey(ownerId), CACHE_TTL.albumIndex);
-        if (Array.isArray(cachedIndex)) state.albumIndex = cachedIndex;
+    if (force) {
+        invalidateAlbumCaches(ownerId);
+        state.albumIndex = [];
+        state.albumIndexReady = false;
+        state.albumIndexBuilding = false;
+        indexBuildGeneration += 1; // логически отменяем старую индексацию
+        indexBuildPromise = null;
+
+        dom.albums.innerHTML = '<div class="status-message">Обновляем альбомы сообщества...</div>';
+        await fetchFirstPageFromVK();
+        void ensureAlbumIndex({ force: true });
+        return;
     }
 
-    if (!force) {
-        const cached = cacheGet(key, CACHE_TTL.albums);
-        if (cached) {
-            restoreAlbumsCache(cached);
-            renderAlbums();
-            void ensureAlbumIndex();
-            return;
-        }
+    // Полный поисковый индекс поднимается независимо от ленивого списка карточек.
+    void ensureAlbumIndex();
 
-        const stale = cacheGetStale(key);
-        if (stale) {
-            restoreAlbumsCache(stale);
-            renderAlbums();
-            try { await fetchFirstPageFromVK(); }
-            catch (error) { console.warn("Фоновое обновление альбомов:", error); }
-            return;
-        }
+    const cached = cacheGet(key, CACHE_TTL.albums);
+    if (cached) {
+        restoreAlbumsCache(cached);
+        renderAlbums();
+        // Кэш показываем сразу, но первый экран всегда тихо сверяем с VK.
+        void revalidateVisibleAlbums();
+        return;
+    }
+
+    const stale = cacheGetStale(key);
+    if (stale) {
+        restoreAlbumsCache(stale);
+        renderAlbums();
+        void revalidateVisibleAlbums();
+        return;
     }
 
     dom.albums.innerHTML = '<div class="status-message">Загружаем альбомы сообщества...</div>';
@@ -148,31 +206,33 @@ export async function loadMoreAlbums() {
 
     try {
         const result = await fetchAlbumPage(state.albumsOffset, PAGE_SIZE);
-        const items = result.items || [];
+        const items = Array.isArray(result?.items) ? result.items : [];
 
         const beforeCount = state.albums.length;
         state.albums = mergeAlbums(state.albums, items);
         const addedCount = state.albums.length - beforeCount;
 
-        state.albumsTotal = Math.max(
-            Number(result.count || 0),
-            state.albumsTotal || 0,
-            state.albums.length
-        );
+        const apiTotal = Number(result?.count);
+        if (Number.isFinite(apiTotal) && apiTotal >= 0) {
+            state.albumsTotal = Math.max(apiTotal, state.albums.length);
+        } else {
+            state.albumsTotal = Math.max(state.albumsTotal || 0, state.albums.length);
+        }
+
         state.albumsOffset += items.length;
+        state.albumsHasMore = state.albumsOffset < state.albumsTotal || (
+            !Number.isFinite(apiTotal) && items.length === PAGE_SIZE
+        );
 
-        // Не полагаемся только на result.count: для старого кэша он мог быть потерян.
-        // Полная страница из 20 элементов означает, что пробуем следующую.
-        state.albumsHasMore =
-            items.length === PAGE_SIZE ||
-            state.albumsOffset < state.albumsTotal;
-
-        // Защита от зацикливания, если API неожиданно вернул ту же страницу.
         if (items.length > 0 && addedCount === 0) {
             state.albumsHasMore = false;
         }
 
-        state.albumIndex = mergeIndex(state.albumIndex, items);
+        // В память можно добавить данные сразу. Полный индекс на диске записывает
+        // только buildAlbumIndex(), когда точно получены ВСЕ страницы.
+        if (!state.albumIndexReady) {
+            state.albumIndex = mergeIndex(state.albumIndex, items);
+        }
 
         const ownerId = getOwnerId();
         cacheSet(albumsKey(ownerId), {
@@ -188,45 +248,57 @@ export async function loadMoreAlbums() {
     }
 }
 
-async function buildAlbumIndex() {
-    const ownerId = getOwnerId();
-    let index = [...state.albumIndex];
+async function buildAlbumIndex(generation) {
+    // ВАЖНО: строим индекс с нуля. Если сливать новый ответ со старым индексом,
+    // удалённый альбом навсегда останется в поиске.
+    let index = [];
     let offset = 0;
     let total = Infinity;
 
     state.albumIndexBuilding = true;
+    state.albumIndexReady = false;
 
     try {
         while (offset < total) {
-            const result = await fetchAlbumPage(offset, INDEX_PAGE_SIZE);
-            const items = result.items || [];
+            if (generation !== indexBuildGeneration) return state.albumIndex;
 
-            total = Number(result.count || items.length);
+            const result = await fetchAlbumPage(offset, INDEX_PAGE_SIZE);
+            const items = Array.isArray(result?.items) ? result.items : [];
+            const apiTotal = Number(result?.count);
+
+            if (Number.isFinite(apiTotal) && apiTotal >= 0) {
+                total = apiTotal;
+            } else if (items.length < INDEX_PAGE_SIZE) {
+                total = offset + items.length;
+            }
+
             index = mergeIndex(index, items);
+
+            if (generation !== indexBuildGeneration) return state.albumIndex;
             state.albumIndex = index;
 
-            // Поиск начинает видеть новые названия сразу, не дожидаясь конца индексации.
+            // Результаты поиска появляются по мере получения страниц по 100 штук.
             if (state.albumSearchText.trim()) renderAlbums();
 
             if (!items.length) break;
             offset += items.length;
 
-            if (items.length < INDEX_PAGE_SIZE && offset >= total) break;
+            if (items.length < INDEX_PAGE_SIZE && (!Number.isFinite(total) || offset >= total)) {
+                break;
+            }
         }
 
-        cacheSet(albumIndexKey(ownerId), index);
+        if (generation !== indexBuildGeneration) return state.albumIndex;
+
+        const finalTotal = Number.isFinite(total) ? total : index.length;
+        state.albumIndex = index;
         state.albumIndexReady = true;
-
-        // Индекс является дополнительным источником истины о количестве
-        // альбомов. Это важно для WebView VK: иногда первый ответ/старый кэш
-        // содержит count, равный только размеру первой страницы.
-        state.albumsTotal = Math.max(state.albumsTotal || 0, index.length);
+        state.albumsTotal = Math.max(Number(finalTotal || 0), index.length, state.albums.length);
         state.albumsHasMore = state.albums.length < state.albumsTotal;
+        persistCompleteIndex(index, state.albumsTotal);
 
-        if (state.currentScreen === "albums" && !state.albumSearchText.trim()) {
-            renderAlbums();
-            setTimeout(handleAlbumScroll, 0);
-        }
+        renderAlbums();
+        setTimeout(handleAlbumScroll, 0);
 
         console.log("Album index ready:", {
             visible: state.albums.length,
@@ -238,37 +310,50 @@ async function buildAlbumIndex() {
         return index;
     } catch (error) {
         console.warn("Не удалось обновить поисковый индекс альбомов:", error);
-        return index;
+        return state.albumIndex;
     } finally {
-        state.albumIndexBuilding = false;
-        if (state.albumSearchText.trim()) renderAlbums();
+        if (generation === indexBuildGeneration) {
+            state.albumIndexBuilding = false;
+            if (state.albumSearchText.trim()) renderAlbums();
+        }
     }
 }
 
-async function ensureAlbumIndex({ force = false } = {}) {
+export async function ensureAlbumIndex({ force = false } = {}) {
     const ownerId = getOwnerId();
 
     if (!force) {
-        const cached = cacheGet(albumIndexKey(ownerId), CACHE_TTL.albumIndex);
-        if (Array.isArray(cached) && cached.length) {
-            state.albumIndex = cached;
+        const fresh = decodeIndexCache(cacheGet(albumIndexKey(ownerId), CACHE_TTL.albumIndex));
+        if (fresh?.complete) {
+            state.albumIndex = fresh.items;
             state.albumIndexReady = true;
-            state.albumsTotal = Math.max(state.albumsTotal || 0, cached.length);
+            state.albumsTotal = Math.max(state.albumsTotal || 0, fresh.total, fresh.items.length);
             state.albumsHasMore = state.albums.length < state.albumsTotal;
             if (state.albumSearchText.trim()) renderAlbums();
-            else if (state.currentScreen === "albums") {
-                renderAlbums();
-                setTimeout(handleAlbumScroll, 0);
-            }
-            return cached;
+            return fresh.items;
         }
+
+        // Даже просроченный ПОЛНЫЙ индекс можно мгновенно показать, но он не
+        // считается готовым: ниже сразу запускается его пересборка с сервера.
+        const stale = decodeIndexCache(cacheGetStale(albumIndexKey(ownerId)));
+        if (stale?.complete) {
+            state.albumIndex = stale.items;
+            state.albumIndexReady = false;
+            state.albumsTotal = Math.max(state.albumsTotal || 0, stale.total, stale.items.length);
+            if (state.albumSearchText.trim()) renderAlbums();
+        }
+
+        if (indexBuildPromise) return indexBuildPromise;
+    } else {
+        indexBuildGeneration += 1;
+        indexBuildPromise = null;
+        state.albumIndexReady = false;
     }
 
-    if (!indexBuildPromise) {
-        indexBuildPromise = buildAlbumIndex().finally(() => {
-            indexBuildPromise = null;
-        });
-    }
+    const generation = ++indexBuildGeneration;
+    indexBuildPromise = buildAlbumIndex(generation).finally(() => {
+        if (generation === indexBuildGeneration) indexBuildPromise = null;
+    });
 
     return indexBuildPromise;
 }
@@ -277,7 +362,6 @@ function filtered() {
     const q = normalizeTitle(state.albumSearchText);
     if (!q) return state.albums;
 
-    // Поиск идёт по полному локальному индексу, а не только по 20 карточкам на экране.
     const source = state.albumIndex.length ? state.albumIndex : state.albums;
     return source.filter(album => normalizeTitle(album.title).includes(q));
 }
@@ -286,9 +370,6 @@ function createAlbumCard(album) {
     const card = document.createElement("div");
     card.className = "album-card";
 
-    // Если этот альбом уже был загружен как полноценная карточка,
-    // берём её данные с обложкой. Для результата только из индекса
-    // используем обычный placeholder.
     const fullAlbum = state.albums.find(item => String(item.id) === String(album.id));
     const displayAlbum = fullAlbum || album;
     const cover = getAlbumCover(displayAlbum);
@@ -321,8 +402,6 @@ function createAlbumCard(album) {
     info.append(name, count);
     card.appendChild(info);
 
-    // Долгое нажатие открывает контекстное меню альбома.
-    // Обычный короткий тап по-прежнему открывает альбом.
     bindAlbumLongPress(card, displayAlbum);
     card.addEventListener("click", () => openAlbum(displayAlbum));
 
@@ -359,7 +438,7 @@ export function renderAlbums() {
 
     if (!list.length) {
         if (searching && state.albumIndexBuilding) {
-            dom.albums.innerHTML = '<div class="status-message">Ищем по альбомам...</div>';
+            dom.albums.innerHTML = '<div class="status-message">Ищем по всем альбомам...</div>';
         } else {
             dom.albums.innerHTML = `<div class="status-message">${
                 searching ? "Альбомы не найдены" : "Альбомов нет"
@@ -377,10 +456,15 @@ export function renderAlbums() {
         dom.albums.appendChild(loading);
     }
 
+    if (searching && state.albumIndexBuilding) {
+        const loading = document.createElement("div");
+        loading.className = "status-message album-search-indexing";
+        loading.textContent = "Поиск продолжается по остальным альбомам...";
+        dom.albums.appendChild(loading);
+    }
+
     installLoadMoreSentinel();
 
-    // Если 20 карточек почти полностью помещаются в экран, scroll-события
-    // может вообще не быть. Проверяем возможность догрузки сразу после render.
     if (!searching && state.albumsHasMore && !state.albumsLoadingMore) {
         requestAnimationFrame(() => {
             if (state.currentScreen === "albums" && isNearPageBottom()) {
@@ -421,7 +505,6 @@ export function initAlbums() {
         dom.clearSearch.classList.toggle("hidden", !state.albumSearchText);
         renderAlbums();
 
-        // Если это первый запуск и полный индекс ещё не построен — запускаем его сразу.
         if (state.albumSearchText.trim() && !state.albumIndexReady) {
             void ensureAlbumIndex();
         }
@@ -438,9 +521,7 @@ export function initAlbums() {
     dom.refreshAlbums.addEventListener("click", async () => {
         dom.refreshAlbums.disabled = true;
         try {
-            state.albumIndexReady = false;
             await loadAlbums({ force: true });
-            void ensureAlbumIndex({ force: true });
         } catch (error) {
             dom.albums.innerHTML =
                 `<div class="error">Не удалось обновить альбомы.<br><br>${escapeHtml(getErrorMessage(error))}</div>`;

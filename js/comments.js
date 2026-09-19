@@ -1,19 +1,21 @@
-import { state } from "./state.js?v=20260919-ui02";
-import { dom } from "./dom.js?v=20260919-ui02";
-import { vkApi } from "./vk-api.js?v=20260919-ui02";
-import { escapeHtml, getErrorMessage, getPhotoPreviewUrl } from "./helpers.js?v=20260919-ui02";
-import { showCommentsScreen, pushCommentsHistory } from "./navigation.js?v=20260919-ui02";
-import { closeMenu } from "./main-menu.js?v=20260919-ui02";
-import { CACHE_TTL } from "./config.js?v=20260919-ui02";
-import { cacheGet, cacheSet } from "./cache.js?v=20260919-ui02";
-import { getOwnerId } from "./group-context.js?v=20260919-ui02";
-import { openVkProfile, openVkPhoto, openVkTarget } from "./vk-links.js?v=20260919-ui02";
-import { openPhotoViewer } from "./photo-viewer.js?v=20260919-ui02";
+import { state } from "./state.js?v=20260920-cachethread01";
+import { dom } from "./dom.js?v=20260920-cachethread01";
+import { vkApi } from "./vk-api.js?v=20260920-cachethread01";
+import { escapeHtml, getErrorMessage, getPhotoPreviewUrl } from "./helpers.js?v=20260920-cachethread01";
+import { showCommentsScreen, pushCommentsHistory } from "./navigation.js?v=20260920-cachethread01";
+import { closeMenu } from "./main-menu.js?v=20260920-cachethread01";
+import { CACHE_TTL } from "./config.js?v=20260920-cachethread01";
+import { cacheGet, cacheSet, invalidateCommentCaches } from "./cache.js?v=20260920-cachethread01";
+import { getOwnerId } from "./group-context.js?v=20260920-cachethread01";
+import { openVkProfile, openVkPhoto, openVkTarget } from "./vk-links.js?v=20260920-cachethread01";
+import { openPhotoViewer } from "./photo-viewer.js?v=20260920-cachethread01";
 
 const GLOBAL_COMMENTS_DAYS = 5;
 const PAGE_SIZE = 100;
 const READ_TIMEOUT_MS = 9000;
 const CACHE_SCHEMA = 2;
+
+let globalFeedActive = false;
 
 function cacheKey() {
     return `global-comments:v${CACHE_SCHEMA}:${getOwnerId()}:${GLOBAL_COMMENTS_DAYS}d`;
@@ -349,7 +351,7 @@ async function buildCommentsFeed() {
     return { comments, photos, authors };
 }
 
-export async function loadAllComments({ force = false } = {}) {
+export async function loadAllComments({ force = false, silent = false } = {}) {
     const key = cacheKey();
 
     if (!force) {
@@ -360,24 +362,30 @@ export async function loadAllComments({ force = false } = {}) {
         }
     }
 
-    dom.comments.innerHTML = `
-        <div class="status-message">
-            Загружаем комментарии всех альбомов за ${GLOBAL_COMMENTS_DAYS} дней...
-        </div>
-    `;
-    dom.refreshComments.disabled = true;
+    if (!silent) {
+        dom.comments.innerHTML = `
+            <div class="status-message">
+                Загружаем комментарии всех альбомов за ${GLOBAL_COMMENTS_DAYS} дней...
+            </div>
+        `;
+        dom.refreshComments.disabled = true;
+    }
 
     try {
         const data = await buildCommentsFeed();
         cacheSet(key, serializeData(data));
-        renderComments(data);
+        if (globalFeedActive && state.currentScreen === "comments") {
+            renderComments(data);
+        }
     } catch (error) {
-        dom.comments.innerHTML = `
-            <div class="error">
-                Не удалось загрузить комментарии.<br><br>
-                ${escapeHtml(getErrorMessage(error))}
-            </div>
-        `;
+        if (globalFeedActive && state.currentScreen === "comments") {
+            dom.comments.innerHTML = `
+                <div class="error">
+                    Не удалось загрузить комментарии.<br><br>
+                    ${escapeHtml(getErrorMessage(error))}
+                </div>
+            `;
+        }
     } finally {
         dom.refreshComments.disabled = false;
     }
@@ -385,11 +393,40 @@ export async function loadAllComments({ force = false } = {}) {
 
 export function initComments() {
     dom.commentsMenuButton.addEventListener("click", async () => {
+        globalFeedActive = true;
         closeMenu();
         pushCommentsHistory();
         showCommentsScreen();
         await loadAllComments();
     });
 
-    dom.refreshComments.addEventListener("click", () => loadAllComments({ force: true }));
+    // Если открыли комментарии конкретного альбома, общая лента больше не
+    // должна перерисовывать тот же экран своими фоновыми запросами.
+    window.addEventListener("album-menu-action", event => {
+        if (event?.detail?.action === "comments") globalFeedActive = false;
+    });
+
+    dom.refreshComments.addEventListener("click", () => {
+        if (!globalFeedActive) return;
+        void loadAllComments({ force: true });
+    });
+
+    window.addEventListener("vk-native-return", event => {
+        if (!globalFeedActive || state.currentScreen !== "comments") return;
+        if (event?.detail?.type !== "photo") return;
+
+        invalidateCommentCaches(getOwnerId(), {
+            photoId: Number(event.detail.photoId || 0)
+        });
+        void loadAllComments({ force: true, silent: true });
+    });
+
+    window.addEventListener("popstate", event => {
+        if (!globalFeedActive || event?.state?.screen !== "comments") return;
+        setTimeout(() => {
+            if (globalFeedActive && state.currentScreen === "comments") {
+                void loadAllComments({ force: true, silent: true });
+            }
+        }, 0);
+    });
 }

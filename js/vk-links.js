@@ -12,6 +12,55 @@ function isNativeVkClient() {
     );
 }
 
+let pendingNativeContext = null;
+let pendingWasHidden = false;
+let returnTimer = null;
+
+function armNativeReturn(context) {
+    if (!context) return;
+    pendingNativeContext = {
+        ...context,
+        openedAt: Date.now()
+    };
+    pendingWasHidden = false;
+}
+
+function emitNativeReturn() {
+    if (!pendingNativeContext || !pendingWasHidden) return;
+
+    const detail = pendingNativeContext;
+    pendingNativeContext = null;
+    pendingWasHidden = false;
+
+    window.dispatchEvent(new CustomEvent("vk-native-return", { detail }));
+}
+
+function scheduleNativeReturnCheck() {
+    if (returnTimer) clearTimeout(returnTimer);
+    returnTimer = setTimeout(() => {
+        returnTimer = null;
+        emitNativeReturn();
+    }, 250);
+}
+
+if (typeof document !== "undefined") {
+    document.addEventListener("visibilitychange", () => {
+        if (!pendingNativeContext) return;
+
+        if (document.hidden) {
+            pendingWasHidden = true;
+            return;
+        }
+
+        scheduleNativeReturnCheck();
+    });
+
+    window.addEventListener("focus", () => {
+        if (!pendingNativeContext || !pendingWasHidden) return;
+        scheduleNativeReturnCheck();
+    });
+}
+
 function targetToUrls(target) {
     const raw = String(target || "").trim();
 
@@ -64,13 +113,15 @@ export function photoTarget(photo, fallbackOwnerId = 0) {
     return `photo${ownerId}_${photoId}`;
 }
 
-export function openVkTarget(target) {
+export function openVkTarget(target, nativeContext = null) {
     const { web, native } = targetToUrls(target);
 
     if (!isNativeVkClient()) {
         window.open(web, "_blank", "noopener,noreferrer");
         return;
     }
+
+    armNativeReturn(nativeContext);
 
     let fallbackTimer = null;
 
@@ -87,7 +138,6 @@ export function openVkTarget(target) {
     document.addEventListener("visibilitychange", onVisibilityChange);
 
     try {
-        // На телефоне сначала принудительно пробуем нативную схему VK.
         window.location.href = native;
 
         fallbackTimer = setTimeout(() => {
@@ -113,5 +163,15 @@ export function openVkProfile(id) {
 export function openVkPhoto(photo, fallbackOwnerId = 0) {
     const target = photoTarget(photo, fallbackOwnerId);
     if (!target) return;
-    openVkTarget(target);
+
+    const photoId = Number(photo?.id || 0);
+    const ownerId = Number(photo?.owner_id || fallbackOwnerId || 0);
+    const albumId = Number(photo?.album_id || 0);
+
+    openVkTarget(target, {
+        type: "photo",
+        photoId,
+        ownerId,
+        albumId
+    });
 }

@@ -1,4 +1,4 @@
-import {dom} from "./dom.js?v=20260919-ui02";
+import {dom} from "./dom.js?v=20260920-cachethread01";
 export function openMenu(){if(!dom.mainMenu)return;dom.mainMenu.classList.remove("hidden");dom.mainMenu.hidden=false;dom.mainMenu.removeAttribute("hidden");Object.assign(dom.mainMenu.style,{display:"block",position:"fixed",top:"62px",left:"8px",width:"240px",zIndex:"2147483647",visibility:"visible",opacity:"1",transform:"none",background:"#24272a",color:"#fff"});}
 export function closeMenu(){if(!dom.mainMenu)return;dom.mainMenu.classList.add("hidden");dom.mainMenu.style.removeProperty("display");}
 export function initMainMenu(){if(dom.mainMenu&&dom.mainMenu.parentElement!==document.body)document.body.appendChild(dom.mainMenu);dom.menuButton?.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();const c=dom.mainMenu.classList.contains("hidden")||dom.mainMenu.hidden||getComputedStyle(dom.mainMenu).display==="none";c?openMenu():closeMenu();});dom.mainMenu?.addEventListener("click",e=>e.stopPropagation());document.addEventListener("click",e=>{if(dom.menuButton?.contains(e.target)||dom.mainMenu?.contains(e.target))return;closeMenu();});}

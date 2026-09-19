@@ -1,6 +1,6 @@
-import { getOwnerId } from "./group-context.js?v=20260919-ui02";
-import { openVkTarget } from "./vk-links.js?v=20260919-ui02";
-import { loadAlbums } from "./albums.js?v=20260919-ui02";
+import { getOwnerId } from "./group-context.js?v=20260920-cachethread01";
+import { openVkTarget } from "./vk-links.js?v=20260920-cachethread01";
+import { loadAlbums } from "./albums.js?v=20260920-cachethread01";
 
 let waitingForVkReturn = false;
 let refreshingAfterReturn = false;

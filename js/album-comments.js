@@ -1,20 +1,20 @@
-import { dom } from "./dom.js?v=20260919-ui02";
-import { state } from "./state.js?v=20260919-ui02";
-import { vkApi } from "./vk-api.js?v=20260919-ui02";
+import { dom } from "./dom.js?v=20260920-cachethread01";
+import { state } from "./state.js?v=20260920-cachethread01";
+import { vkApi } from "./vk-api.js?v=20260920-cachethread01";
 import {
     escapeHtml,
     getPhotoPreviewUrl
-} from "./helpers.js?v=20260919-ui02";
+} from "./helpers.js?v=20260920-cachethread01";
 import {
     showCommentsScreen,
     pushCommentsHistory
-} from "./navigation.js?v=20260919-ui02";
-import { getOwnerId } from "./group-context.js?v=20260919-ui02";
-import { cacheGet, cacheSet } from "./cache.js?v=20260919-ui02";
-import { CACHE_TTL } from "./config.js?v=20260919-ui02";
-import { createPhotoComment, getPhotoCommentErrorText } from "./photo-comment-api.js?v=20260919-ui02";
-import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260919-ui02";
-import { openPhotoViewer } from "./photo-viewer.js?v=20260919-ui02";
+} from "./navigation.js?v=20260920-cachethread01";
+import { getOwnerId } from "./group-context.js?v=20260920-cachethread01";
+import { cacheGet, cacheSet, invalidateCommentCaches } from "./cache.js?v=20260920-cachethread01";
+import { CACHE_TTL } from "./config.js?v=20260920-cachethread01";
+import { createPhotoComment, getPhotoCommentErrorText } from "./photo-comment-api.js?v=20260920-cachethread01";
+import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260920-cachethread01";
+import { openPhotoViewer } from "./photo-viewer.js?v=20260920-cachethread01";
 
 const ALBUM_COMMENTS_DAYS = 3;
 const PAGE_SIZE = 100;
@@ -681,6 +681,7 @@ function createReplyEditor(card, body, comment, mode = "reply", { photo = null, 
             }
 
             clearReplyEditor();
+            invalidateCommentCaches(getOwnerId(), { photoId });
 
             // Ошибка повторной загрузки не должна выглядеть как ошибка отправки.
             if (activeAlbum) {
@@ -727,6 +728,10 @@ async function deleteComment(comment) {
         await apiMutation("photos.deleteComment", {
             owner_id: getOwnerId(),
             comment_id: id
+        });
+
+        invalidateCommentCaches(getOwnerId(), {
+            photoId: commentPhotoId(comment) || 0
         });
 
         if (activeAlbum) {
@@ -973,7 +978,7 @@ async function enrichFastAuthors(album, data, seq, key) {
     }
 }
 
-export async function loadAlbumComments(album, { force = false } = {}) {
+export async function loadAlbumComments(album, { force = false, silent = false } = {}) {
     if (!album) return;
 
     activeAlbum = album;
@@ -994,11 +999,13 @@ export async function loadAlbumComments(album, { force = false } = {}) {
     // ВАЖНО: комментарии конкретного альбома получаем ОДНИМ методом
     // photos.getAllComments. VK сам возвращает их от новых к старым.
     // Мы НЕ перебираем фотографии альбома и НЕ вызываем getComments для каждой.
-    dom.comments.innerHTML = `
-        <div class="status-message">
-            Загружаем последние ${MAX_COMMENTS} комментариев за ${ALBUM_COMMENTS_DAYS} дня...
-        </div>
-    `;
+    if (!silent) {
+        dom.comments.innerHTML = `
+            <div class="status-message">
+                Загружаем последние ${MAX_COMMENTS} комментариев за ${ALBUM_COMMENTS_DAYS} дня...
+            </div>
+        `;
+    }
 
     try {
         const comments = await loadRecentRawCommentsFast(album);
@@ -1051,13 +1058,15 @@ export async function loadAlbumComments(album, { force = false } = {}) {
 
         if (!currentRequestIsValid(seq, album)) return;
 
-        dom.comments.innerHTML = `
-            <div class="error">
-                Не удалось загрузить комментарии альбома.<br><br>
-                ${escapeHtml(describeError(error))}
-                <br><br>Нажмите «Обновить», чтобы повторить.
-            </div>
-        `;
+        if (activeAlbum && String(activeAlbum.id) === String(album.id) && state.currentScreen === "comments") {
+            dom.comments.innerHTML = `
+                <div class="error">
+                    Не удалось загрузить комментарии альбома.<br><br>
+                    ${escapeHtml(describeError(error))}
+                    <br><br>Нажмите «Обновить», чтобы повторить.
+                </div>
+            `;
+        }
     }
 }
 
@@ -1097,9 +1106,29 @@ export function initAlbumComments() {
         closeCommentMenu();
     });
 
-    window.addEventListener("popstate", () => {
+    window.addEventListener("vk-native-return", event => {
+        if (!activeAlbum || state.currentScreen !== "comments") return;
+        if (event?.detail?.type !== "photo") return;
+
+        const returnedAlbumId = Number(event.detail.albumId || 0);
+        if (returnedAlbumId && returnedAlbumId !== Number(activeAlbum.id)) return;
+
+        invalidateCommentCaches(getOwnerId(), {
+            photoId: Number(event.detail.photoId || 0)
+        });
+        void loadAlbumComments(activeAlbum, { force: true, silent: true });
+    });
+
+    window.addEventListener("popstate", event => {
         ++loadSequence;
         closeCommentMenu();
         clearReplyEditor();
+
+        if (!activeAlbum || event?.state?.screen !== "comments") return;
+        setTimeout(() => {
+            if (activeAlbum && state.currentScreen === "comments") {
+                void loadAlbumComments(activeAlbum, { force: true, silent: true });
+            }
+        }, 0);
     });
 }
