@@ -1,12 +1,12 @@
-import { state } from "./state.js";
-import { dom } from "./dom.js";
-import { vkApi } from "./vk-api.js";
-import { escapeHtml, getErrorMessage, getBestPhotoUrl } from "./helpers.js";
-import { showCommentsScreen } from "./navigation.js";
-import { closeMenu } from "./main-menu.js";
-import { CACHE_TTL, COMMENTS_DAYS } from "./config.js";
-import { cacheGet, cacheSet, albumPhotosKey, photoCommentsKey, commentsFeedKey } from "./cache.js";
-import { getOwnerId } from "./group-context.js";
+import { state } from "./state.js?v=20260919-merge01";
+import { dom } from "./dom.js?v=20260919-merge01";
+import { vkApi } from "./vk-api.js?v=20260919-merge01";
+import { escapeHtml, getErrorMessage, getBestPhotoUrl } from "./helpers.js?v=20260919-merge01";
+import { showCommentsScreen } from "./navigation.js?v=20260919-merge01";
+import { closeMenu } from "./main-menu.js?v=20260919-merge01";
+import { CACHE_TTL, COMMENTS_DAYS } from "./config.js?v=20260919-merge01";
+import { cacheGet, cacheSet, albumPhotosKey, photoCommentsKey, commentsFeedKey } from "./cache.js?v=20260919-merge01";
+import { getOwnerId } from "./group-context.js?v=20260919-merge01";
 
 function cutoffTimestamp() {
     return Math.floor((Date.now() - COMMENTS_DAYS * 86400000) / 1000);

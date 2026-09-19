@@ -1,12 +1,12 @@
-import { dom } from "./dom.js";
-import { vkInit, loadUser, getAccessToken } from "./vk-api.js";
-import { initGroupContext } from "./group-context.js";
-import { initAlbums, loadAlbums } from "./albums.js";
-import { initMainMenu } from "./main-menu.js";
-import { initAlbumCreate } from "./album-create.js";
-import { initComments } from "./comments.js";
-import { initNavigation, showAlbumsScreen } from "./navigation.js";
-import { escapeHtml, getErrorMessage, logError } from "./helpers.js";
+import { dom } from "./dom.js?v=20260919-merge01";
+import { vkInit, loadUser, getAccessToken } from "./vk-api.js?v=20260919-merge01";
+import { initGroupContext } from "./group-context.js?v=20260919-merge01";
+import { initAlbums, loadAlbums } from "./albums.js?v=20260919-merge01";
+import { initMainMenu } from "./main-menu.js?v=20260919-merge01";
+import { initAlbumCreate } from "./album-create.js?v=20260919-merge01";
+import { initComments } from "./comments.js?v=20260919-merge01";
+import { initNavigation, showAlbumsScreen } from "./navigation.js?v=20260919-merge01";
+import { escapeHtml, getErrorMessage, logError } from "./helpers.js?v=20260919-merge01";
 
 async function startApp() {
     console.log("Starting VK Photo Manager in GROUP ADMIN mode...");

@@ -1,11 +1,11 @@
-import { state } from "./state.js";
-import { dom } from "./dom.js";
-import { vkApi } from "./vk-api.js";
-import { getBestPhotoUrl, escapeHtml, getErrorMessage } from "./helpers.js";
-import { showPhotosScreen } from "./navigation.js";
-import { CACHE_TTL } from "./config.js";
-import { cacheGet, cacheGetStale, cacheSet, albumPhotosKey } from "./cache.js";
-import { getOwnerId } from "./group-context.js";
+import { state } from "./state.js?v=20260919-merge01";
+import { dom } from "./dom.js?v=20260919-merge01";
+import { vkApi } from "./vk-api.js?v=20260919-merge01";
+import { getBestPhotoUrl, escapeHtml, getErrorMessage } from "./helpers.js?v=20260919-merge01";
+import { showPhotosScreen } from "./navigation.js?v=20260919-merge01";
+import { CACHE_TTL } from "./config.js?v=20260919-merge01";
+import { cacheGet, cacheGetStale, cacheSet, albumPhotosKey } from "./cache.js?v=20260919-merge01";
+import { getOwnerId } from "./group-context.js?v=20260919-merge01";
 
 const PAGE_SIZE = 20;
 let photoScrollTicking = false;

@@ -1,12 +1,12 @@
-import { state } from "./state.js";
-import { dom } from "./dom.js";
-import { vkApi } from "./vk-api.js";
-import { getErrorMessage } from "./helpers.js";
-import { loadAlbums } from "./albums.js";
-import { closeMenu } from "./main-menu.js";
-import { getGroupId, getOwnerId } from "./group-context.js";
-import { cacheRemove } from "./cache.js";
-import { albumsKey } from "./cache.js";
+import { state } from "./state.js?v=20260919-merge01";
+import { dom } from "./dom.js?v=20260919-merge01";
+import { vkApi } from "./vk-api.js?v=20260919-merge01";
+import { getErrorMessage } from "./helpers.js?v=20260919-merge01";
+import { loadAlbums } from "./albums.js?v=20260919-merge01";
+import { closeMenu } from "./main-menu.js?v=20260919-merge01";
+import { getGroupId, getOwnerId } from "./group-context.js?v=20260919-merge01";
+import { cacheRemove } from "./cache.js?v=20260919-merge01";
+import { albumsKey } from "./cache.js?v=20260919-merge01";
 
 function openModal() {
     closeMenu();

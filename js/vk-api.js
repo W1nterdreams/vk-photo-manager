@@ -1,4 +1,4 @@
-import {VK_APP_ID,VK_API_VERSION} from "./config.js"; import {state} from "./state.js"; import {dom} from "./dom.js"; import {logError} from "./helpers.js";
+import {VK_APP_ID,VK_API_VERSION} from "./config.js?v=20260919-merge01"; import {state} from "./state.js?v=20260919-merge01"; import {dom} from "./dom.js?v=20260919-merge01"; import {logError} from "./helpers.js?v=20260919-merge01";
 export async function vkInit(){await vkBridge.send("VKWebAppInit");}
 export async function loadUser(){const r=await vkBridge.send("VKWebAppGetUserInfo");state.currentUser=r;dom.user.textContent=`${r.first_name||""} ${r.last_name||""}`.trim()||"Пользователь";}
 export async function getAccessToken(){const r=await vkBridge.send("VKWebAppGetAuthToken",{app_id:VK_APP_ID,scope:"photos"});state.accessToken=r.access_token;if(!state.accessToken)throw new Error("VK не вернул access token.");}
