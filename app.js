@@ -2,7 +2,7 @@
 
 
 /* ==========================================
-   НАСТРОЙКИ
+   CONFIG
    ========================================== */
 
 const VK_APP_ID = 54771516;
@@ -10,7 +10,7 @@ const VK_API_VERSION = "5.199";
 
 
 /* ==========================================
-   СОСТОЯНИЕ
+   STATE
    ========================================== */
 
 let currentUser = null;
@@ -21,6 +21,8 @@ let currentAlbum = null;
 let photos = [];
 
 let albumSearchText = "";
+
+let currentScreen = "albums";
 
 
 /* ==========================================
@@ -39,14 +41,17 @@ const albumsScreen =
 const photosScreen =
     document.getElementById("photosScreen");
 
+const commentsScreen =
+    document.getElementById("commentsScreen");
+
 const albumsElement =
     document.getElementById("albums");
 
 const photosElement =
     document.getElementById("photos");
 
-const albumHeaderElement =
-    document.getElementById("albumHeader");
+const commentsElement =
+    document.getElementById("comments");
 
 const albumTitleElement =
     document.getElementById("albumTitle");
@@ -60,6 +65,9 @@ const photoCountElement =
 const refreshAlbumsButton =
     document.getElementById("refreshAlbums");
 
+const refreshCommentsButton =
+    document.getElementById("refreshComments");
+
 const backButton =
     document.getElementById("backButton");
 
@@ -70,9 +78,85 @@ const clearSearchButton =
     document.getElementById("clearSearch");
 
 
+/* MENU */
+
+const menuContainer =
+    document.getElementById("menuContainer");
+
+const menuButton =
+    document.getElementById("menuButton");
+
+const mainMenu =
+    document.getElementById("mainMenu");
+
+const createAlbumMenuButton =
+    document.getElementById(
+        "createAlbumMenuButton"
+    );
+
+const commentsMenuButton =
+    document.getElementById(
+        "commentsMenuButton"
+    );
+
+
+/* CREATE ALBUM */
+
+const createAlbumModal =
+    document.getElementById(
+        "createAlbumModal"
+    );
+
+const createAlbumForm =
+    document.getElementById(
+        "createAlbumForm"
+    );
+
+const newAlbumTitle =
+    document.getElementById(
+        "newAlbumTitle"
+    );
+
+const newAlbumDescription =
+    document.getElementById(
+        "newAlbumDescription"
+    );
+
+const createAlbumError =
+    document.getElementById(
+        "createAlbumError"
+    );
+
+const submitCreateAlbum =
+    document.getElementById(
+        "submitCreateAlbum"
+    );
+
+const closeCreateAlbumButton =
+    document.getElementById(
+        "closeCreateAlbum"
+    );
+
+const cancelCreateAlbumButton =
+    document.getElementById(
+        "cancelCreateAlbum"
+    );
+
+
 /* ==========================================
-   ОШИБКИ
+   HELPERS
    ========================================== */
+
+function escapeHtml(value) {
+
+    return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+}
+
 
 function getErrorMessage(error) {
 
@@ -134,28 +218,13 @@ function logError(title, error) {
         );
 
     } catch {
-        // ничего
+        /* nothing */
     }
 }
 
 
 /* ==========================================
-   HTML
-   ========================================== */
-
-function escapeHtml(value) {
-
-    return String(value ?? "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
-}
-
-
-/* ==========================================
-   VK BRIDGE
+   VK
    ========================================== */
 
 async function vkInit() {
@@ -170,10 +239,6 @@ async function vkInit() {
 }
 
 
-/* ==========================================
-   ПОЛЬЗОВАТЕЛЬ
-   ========================================== */
-
 async function loadUser() {
 
     const result =
@@ -181,18 +246,15 @@ async function loadUser() {
             "VKWebAppGetUserInfo"
         );
 
-    currentUser = result;
+    currentUser =
+        result;
 
     const name =
         `${result.first_name || ""} ${result.last_name || ""}`
             .trim();
 
-    if (userElement) {
-
-        userElement.textContent =
-            name || "Пользователь";
-
-    }
+    userElement.textContent =
+        name || "Пользователь";
 
     console.log(
         "Current user:",
@@ -201,22 +263,17 @@ async function loadUser() {
 }
 
 
-/* ==========================================
-   ACCESS TOKEN
-   ========================================== */
-
 async function getAccessToken() {
-
-    console.log(
-        "Получаем photos access token..."
-    );
 
     const result =
         await vkBridge.send(
             "VKWebAppGetAuthToken",
             {
-                app_id: VK_APP_ID,
-                scope: "photos"
+                app_id:
+                    VK_APP_ID,
+
+                scope:
+                    "photos"
             }
         );
 
@@ -232,14 +289,10 @@ async function getAccessToken() {
     }
 
     console.log(
-        "Access token получен"
+        "Photos access token получен"
     );
 }
 
-
-/* ==========================================
-   VK API
-   ========================================== */
 
 async function vkApi(
     method,
@@ -311,15 +364,162 @@ async function vkApi(
 
 
 /* ==========================================
-   ОБЛОЖКА АЛЬБОМА
+   SCREEN CONTROL
+   ========================================== */
+
+function hideScreens() {
+
+    albumsScreen
+        .classList
+        .add("hidden");
+
+    photosScreen
+        .classList
+        .add("hidden");
+
+    commentsScreen
+        .classList
+        .add("hidden");
+}
+
+
+function showAlbumsScreen() {
+
+    hideScreens();
+
+    albumsScreen
+        .classList
+        .remove("hidden");
+
+    currentScreen =
+        "albums";
+
+    currentAlbum =
+        null;
+
+    pageTitleElement.textContent =
+        "Фотоальбомы";
+
+    backButton
+        .classList
+        .add("hidden");
+
+    refreshAlbumsButton
+        .classList
+        .remove("hidden");
+
+    window.scrollTo(
+        0,
+        0
+    );
+}
+
+
+function showPhotosScreen() {
+
+    hideScreens();
+
+    photosScreen
+        .classList
+        .remove("hidden");
+
+    currentScreen =
+        "photos";
+
+    backButton
+        .classList
+        .remove("hidden");
+
+    refreshAlbumsButton
+        .classList
+        .add("hidden");
+
+    window.scrollTo(
+        0,
+        0
+    );
+}
+
+
+function showCommentsScreen() {
+
+    hideScreens();
+
+    commentsScreen
+        .classList
+        .remove("hidden");
+
+    currentScreen =
+        "comments";
+
+    pageTitleElement.textContent =
+        "Комментарии";
+
+    backButton
+        .classList
+        .remove("hidden");
+
+    refreshAlbumsButton
+        .classList
+        .add("hidden");
+
+    window.scrollTo(
+        0,
+        0
+    );
+}
+
+
+/* ==========================================
+   MENU
+   ========================================== */
+
+function closeMenu() {
+
+    mainMenu
+        .classList
+        .add("hidden");
+}
+
+
+menuButton.addEventListener(
+    "click",
+    event => {
+
+        event.stopPropagation();
+
+        mainMenu
+            .classList
+            .toggle("hidden");
+    }
+);
+
+
+mainMenu.addEventListener(
+    "click",
+    event => {
+
+        event.stopPropagation();
+
+    }
+);
+
+
+document.addEventListener(
+    "click",
+    () => {
+
+        closeMenu();
+
+    }
+);
+
+
+/* ==========================================
+   ALBUM COVER
    ========================================== */
 
 function getAlbumCover(album) {
-
-    /*
-     * При need_covers=1 VK обычно
-     * возвращает sizes.
-     */
 
     if (
         Array.isArray(album.sizes) &&
@@ -329,74 +529,72 @@ function getAlbumCover(album) {
         const sizes =
             album.sizes
                 .filter(
-                    item =>
-                        item &&
-                        item.src
+                    size =>
+                        size &&
+                        (
+                            size.src ||
+                            size.url
+                        )
                 )
                 .sort(
-                    (a, b) => {
-
-                        const areaA =
-                            (a.width || 0) *
-                            (a.height || 0);
-
-                        const areaB =
+                    (a, b) =>
+                        (
                             (b.width || 0) *
-                            (b.height || 0);
-
-                        return areaB - areaA;
-                    }
+                            (b.height || 0)
+                        ) -
+                        (
+                            (a.width || 0) *
+                            (a.height || 0)
+                        )
                 );
 
         if (sizes.length) {
 
-            return sizes[0].src;
+            return (
+                sizes[0].src ||
+                sizes[0].url
+            );
 
         }
 
     }
 
 
-    /*
-     * В некоторых ответах может быть thumb.
-     */
+    if (
+        album.thumb &&
+        Array.isArray(
+            album.thumb.sizes
+        )
+    ) {
 
-    if (album.thumb) {
-
-        if (
-            Array.isArray(album.thumb.sizes)
-        ) {
-
-            const sizes =
-                album.thumb.sizes
-                    .filter(
-                        item =>
-                            item &&
-                            (
-                                item.url ||
-                                item.src
-                            )
-                    )
-                    .sort(
-                        (a, b) =>
-                            (
-                                (b.width || 0) *
-                                (b.height || 0)
-                            ) -
-                            (
-                                (a.width || 0) *
-                                (a.height || 0)
-                            )
-                    );
-
-            if (sizes.length) {
-
-                return (
-                    sizes[0].url ||
-                    sizes[0].src
+        const sizes =
+            album.thumb.sizes
+                .filter(
+                    size =>
+                        size &&
+                        (
+                            size.url ||
+                            size.src
+                        )
+                )
+                .sort(
+                    (a, b) =>
+                        (
+                            (b.width || 0) *
+                            (b.height || 0)
+                        ) -
+                        (
+                            (a.width || 0) *
+                            (a.height || 0)
+                        )
                 );
 
-            }
+        if (sizes.length) {
+
+            return (
+                sizes[0].url ||
+                sizes[0].src
+            );
 
         }
 
@@ -408,7 +606,7 @@ function getAlbumCover(album) {
 
 
 /* ==========================================
-   ЗАГРУЗКА АЛЬБОМОВ
+   ALBUMS
    ========================================== */
 
 async function loadAlbums() {
@@ -418,7 +616,6 @@ async function loadAlbums() {
             Загружаем альбомы...
         </div>
     `;
-
 
     const result =
         await vkApi(
@@ -441,24 +638,17 @@ async function loadAlbums() {
             }
         );
 
-
     albums =
         result.items || [];
-
 
     console.log(
         "Albums:",
         albums
     );
 
-
     renderAlbums();
 }
 
-
-/* ==========================================
-   ПОИСК АЛЬБОМОВ
-   ========================================== */
 
 function getFilteredAlbums() {
 
@@ -467,18 +657,9 @@ function getFilteredAlbums() {
             .trim()
             .toLocaleLowerCase("ru");
 
-
     if (!search) {
-
-        /*
-         * Возвращаем исходный массив.
-         * То есть порядок VK не меняем.
-         */
-
         return albums;
-
     }
-
 
     return albums.filter(
         album => {
@@ -489,61 +670,45 @@ function getFilteredAlbums() {
                 )
                     .toLocaleLowerCase("ru");
 
-
             return title.includes(
                 search
             );
-
         }
     );
 }
 
 
-/* ==========================================
-   ОТРИСОВКА АЛЬБОМОВ
-   ========================================== */
-
 function renderAlbums() {
 
-    albumsElement.innerHTML = "";
+    albumsElement.innerHTML =
+        "";
 
-
-    const filteredAlbums =
+    const visibleAlbums =
         getFilteredAlbums();
 
+    if (!visibleAlbums.length) {
 
-    if (!filteredAlbums.length) {
-
-        if (albumSearchText.trim()) {
-
-            albumsElement.innerHTML = `
-                <div class="status-message">
-                    Альбомы не найдены
-                </div>
-            `;
-
-        } else {
-
-            albumsElement.innerHTML = `
-                <div class="status-message">
-                    Альбомов нет
-                </div>
-            `;
-
-        }
+        albumsElement.innerHTML = `
+            <div class="status-message">
+                ${
+                    albumSearchText.trim()
+                        ? "Альбомы не найдены"
+                        : "Альбомов нет"
+                }
+            </div>
+        `;
 
         return;
     }
 
 
-    filteredAlbums.forEach(
+    visibleAlbums.forEach(
         album => {
 
             const card =
                 document.createElement(
                     "div"
                 );
-
 
             card.className =
                 "album-card";
@@ -555,36 +720,27 @@ function renderAlbums() {
                 );
 
 
-            /*
-             * Обложка.
-             */
-
             if (cover) {
 
-                const img =
+                const image =
                     document.createElement(
                         "img"
                     );
 
-
-                img.className =
+                image.className =
                     "album-cover";
 
-
-                img.src =
+                image.src =
                     cover;
 
-
-                img.alt =
+                image.alt =
                     album.title || "";
 
-
-                img.loading =
+                image.loading =
                     "lazy";
 
-
                 card.appendChild(
-                    img
+                    image
                 );
 
             } else {
@@ -594,31 +750,22 @@ function renderAlbums() {
                         "div"
                     );
 
-
                 placeholder.className =
                     "album-placeholder";
-
 
                 placeholder.textContent =
                     "▣";
 
-
                 card.appendChild(
                     placeholder
                 );
-
             }
 
-
-            /*
-             * Название + количество.
-             */
 
             const info =
                 document.createElement(
                     "div"
                 );
-
 
             info.className =
                 "album-info";
@@ -629,10 +776,8 @@ function renderAlbums() {
                     "div"
                 );
 
-
             name.className =
                 "album-name";
-
 
             name.textContent =
                 album.title ||
@@ -644,10 +789,8 @@ function renderAlbums() {
                     "div"
                 );
 
-
             count.className =
                 "album-count";
-
 
             count.textContent =
                 String(
@@ -655,15 +798,10 @@ function renderAlbums() {
                 );
 
 
-            info.appendChild(
-                name
-            );
-
-
-            info.appendChild(
+            info.append(
+                name,
                 count
             );
-
 
             card.appendChild(
                 info
@@ -692,7 +830,7 @@ function renderAlbums() {
 
 
 /* ==========================================
-   ПОИСК — СОБЫТИЯ
+   SEARCH
    ========================================== */
 
 albumSearch.addEventListener(
@@ -702,31 +840,14 @@ albumSearch.addEventListener(
         albumSearchText =
             event.target.value;
 
-
-        /*
-         * Показываем крестик,
-         * когда есть текст.
-         */
-
-        if (
-            albumSearchText.length > 0
-        ) {
-
-            clearSearchButton
-                .classList
-                .remove("hidden");
-
-        } else {
-
-            clearSearchButton
-                .classList
-                .add("hidden");
-
-        }
-
+        clearSearchButton
+            .classList
+            .toggle(
+                "hidden",
+                !albumSearchText
+            );
 
         renderAlbums();
-
     }
 );
 
@@ -745,18 +866,194 @@ clearSearchButton.addEventListener(
             .classList
             .add("hidden");
 
-
         renderAlbums();
 
-
         albumSearch.focus();
+    }
+);
+
+
+/* ==========================================
+   CREATE ALBUM
+   ========================================== */
+
+function openCreateAlbumModal() {
+
+    closeMenu();
+
+    createAlbumError
+        .classList
+        .add("hidden");
+
+    createAlbumError.textContent =
+        "";
+
+    newAlbumTitle.value =
+        "";
+
+    newAlbumDescription.value =
+        "";
+
+    createAlbumModal
+        .classList
+        .remove("hidden");
+
+    setTimeout(
+        () => {
+
+            newAlbumTitle.focus();
+
+        },
+        50
+    );
+}
+
+
+function closeCreateAlbumModal() {
+
+    createAlbumModal
+        .classList
+        .add("hidden");
+}
+
+
+createAlbumMenuButton.addEventListener(
+    "click",
+    openCreateAlbumModal
+);
+
+
+closeCreateAlbumButton.addEventListener(
+    "click",
+    closeCreateAlbumModal
+);
+
+
+cancelCreateAlbumButton.addEventListener(
+    "click",
+    closeCreateAlbumModal
+);
+
+
+createAlbumModal.addEventListener(
+    "click",
+    event => {
+
+        if (
+            event.target ===
+            createAlbumModal
+        ) {
+
+            closeCreateAlbumModal();
+
+        }
+
+    }
+);
+
+
+createAlbumForm.addEventListener(
+    "submit",
+    async event => {
+
+        event.preventDefault();
+
+
+        const title =
+            newAlbumTitle.value.trim();
+
+        const description =
+            newAlbumDescription.value.trim();
+
+
+        if (!title) {
+            return;
+        }
+
+
+        createAlbumError
+            .classList
+            .add("hidden");
+
+
+        submitCreateAlbum.disabled =
+            true;
+
+        submitCreateAlbum.textContent =
+            "Создаём...";
+
+
+        try {
+
+            const result =
+                await vkApi(
+                    "photos.createAlbum",
+                    {
+                        title:
+                            title,
+
+                        description:
+                            description,
+
+                        privacy_view:
+                            "all",
+
+                        privacy_comment:
+                            "all",
+
+                        comments_disabled:
+                            0
+                    }
+                );
+
+
+            console.log(
+                "Album created:",
+                result
+            );
+
+
+            closeCreateAlbumModal();
+
+
+            /*
+             * После создания сразу
+             * перечитываем альбомы.
+             */
+
+            await loadAlbums();
+
+
+            showAlbumsScreen();
+
+
+        } catch (error) {
+
+            createAlbumError.textContent =
+                getErrorMessage(
+                    error
+                );
+
+            createAlbumError
+                .classList
+                .remove("hidden");
+
+        } finally {
+
+            submitCreateAlbum.disabled =
+                false;
+
+            submitCreateAlbum.textContent =
+                "Создать";
+
+        }
 
     }
 );
 
 
 /* ==========================================
-   ОТКРЫТИЕ АЛЬБОМА
+   PHOTOS
    ========================================== */
 
 async function openAlbum(album) {
@@ -764,61 +1061,28 @@ async function openAlbum(album) {
     currentAlbum =
         album;
 
-
-    /*
-     * Переключаем экран.
-     */
-
-    albumsScreen
-        .classList
-        .add("hidden");
-
-
-    photosScreen
-        .classList
-        .remove("hidden");
-
-
-    backButton
-        .classList
-        .remove("hidden");
-
-
-    refreshAlbumsButton
-        .classList
-        .add("hidden");
-
+    showPhotosScreen();
 
     pageTitleElement.textContent =
         album.title ||
         "Альбом";
 
-
     albumTitleElement.textContent =
         album.title ||
         "Альбом";
-
 
     albumDescriptionElement.textContent =
         album.description ||
         "";
 
-
     photoCountElement.textContent =
         `${album.size || 0} фото`;
-
 
     photosElement.innerHTML = `
         <div class="status-message">
             Загружаем фотографии...
         </div>
     `;
-
-
-    window.scrollTo(
-        0,
-        0
-    );
 
 
     try {
@@ -831,68 +1095,21 @@ async function openAlbum(album) {
 
         photosElement.innerHTML = `
             <div class="error">
+
                 Не удалось загрузить фотографии.
+
                 <br><br>
+
                 ${escapeHtml(
                     getErrorMessage(error)
                 )}
+
             </div>
         `;
 
     }
 }
 
-
-/* ==========================================
-   НАЗАД К АЛЬБОМАМ
-   ========================================== */
-
-function showAlbumsScreen() {
-
-    currentAlbum =
-        null;
-
-
-    photosScreen
-        .classList
-        .add("hidden");
-
-
-    albumsScreen
-        .classList
-        .remove("hidden");
-
-
-    backButton
-        .classList
-        .add("hidden");
-
-
-    refreshAlbumsButton
-        .classList
-        .remove("hidden");
-
-
-    pageTitleElement.textContent =
-        "Фотоальбомы";
-
-
-    window.scrollTo(
-        0,
-        0
-    );
-}
-
-
-backButton.addEventListener(
-    "click",
-    showAlbumsScreen
-);
-
-
-/* ==========================================
-   ЗАГРУЗКА ФОТО
-   ========================================== */
 
 async function loadPhotos(album) {
 
@@ -917,28 +1134,15 @@ async function loadPhotos(album) {
             }
         );
 
-
     photos =
         result.items || [];
 
-
-    console.log(
-        "Photos:",
-        photos
-    );
-
-
     renderPhotos();
-
 
     photoCountElement.textContent =
         `${photos.length} фото`;
 }
 
-
-/* ==========================================
-   URL ФОТО
-   ========================================== */
 
 function getBestPhotoUrl(photo) {
 
@@ -946,18 +1150,15 @@ function getBestPhotoUrl(photo) {
         !photo ||
         !Array.isArray(photo.sizes)
     ) {
-
         return "";
-
     }
-
 
     const sizes =
         photo.sizes
             .filter(
-                item =>
-                    item &&
-                    item.url
+                size =>
+                    size &&
+                    size.url
             )
             .sort(
                 (a, b) =>
@@ -971,27 +1172,16 @@ function getBestPhotoUrl(photo) {
                     )
             );
 
-
-    if (!sizes.length) {
-
-        return "";
-
-    }
-
-
-    return sizes[0].url;
+    return sizes.length
+        ? sizes[0].url
+        : "";
 }
 
-
-/* ==========================================
-   ОТРИСОВКА ФОТО
-   ========================================== */
 
 function renderPhotos() {
 
     photosElement.innerHTML =
         "";
-
 
     if (!photos.length) {
 
@@ -1013,41 +1203,35 @@ function renderPhotos() {
                     "div"
                 );
 
-
             card.className =
                 "photo-card";
 
 
-            const imageUrl =
+            const url =
                 getBestPhotoUrl(
                     photo
                 );
 
 
-            if (imageUrl) {
+            if (url) {
 
-                const img =
+                const image =
                     document.createElement(
                         "img"
                     );
 
+                image.src =
+                    url;
 
-                img.src =
-                    imageUrl;
-
-
-                img.alt =
+                image.alt =
                     photo.text || "";
 
-
-                img.loading =
+                image.loading =
                     "lazy";
 
-
                 card.appendChild(
-                    img
+                    image
                 );
-
             }
 
 
@@ -1074,7 +1258,472 @@ function renderPhotos() {
 
 
 /* ==========================================
-   ОБНОВЛЕНИЕ
+   COMMENTS
+   ========================================== */
+
+commentsMenuButton.addEventListener(
+    "click",
+    async () => {
+
+        closeMenu();
+
+        showCommentsScreen();
+
+        await loadAllComments();
+
+    }
+);
+
+
+refreshCommentsButton.addEventListener(
+    "click",
+    loadAllComments
+);
+
+
+async function loadAllComments() {
+
+    commentsElement.innerHTML = `
+        <div class="status-message">
+            Загружаем комментарии...
+        </div>
+    `;
+
+
+    refreshCommentsButton.disabled =
+        true;
+
+
+    try {
+
+        /*
+         * Комментарии принадлежат фотографиям,
+         * поэтому проходим по альбомам,
+         * получаем фотографии и затем
+         * комментарии.
+         *
+         * Начинаем с ограниченного количества,
+         * чтобы не отправлять огромное число
+         * запросов одновременно.
+         */
+
+        const allComments =
+            [];
+
+
+        for (const album of albums) {
+
+            let albumPhotos;
+
+            try {
+
+                const result =
+                    await vkApi(
+                        "photos.get",
+                        {
+                            owner_id:
+                                currentUser.id,
+
+                            album_id:
+                                album.id,
+
+                            photo_sizes:
+                                1,
+
+                            count:
+                                100
+                        }
+                    );
+
+                albumPhotos =
+                    result.items || [];
+
+            } catch (error) {
+
+                console.warn(
+                    "Не удалось получить фото альбома:",
+                    album.title,
+                    error
+                );
+
+                continue;
+            }
+
+
+            for (
+                const photo of albumPhotos
+            ) {
+
+                try {
+
+                    const result =
+                        await vkApi(
+                            "photos.getComments",
+                            {
+                                owner_id:
+                                    currentUser.id,
+
+                                photo_id:
+                                    photo.id,
+
+                                extended:
+                                    1,
+
+                                count:
+                                    100,
+
+                                sort:
+                                    "desc"
+                            }
+                        );
+
+
+                    const items =
+                        result.items || [];
+
+
+                    for (
+                        const comment of items
+                    ) {
+
+                        allComments.push({
+                            comment,
+                            photo,
+                            album,
+                            profiles:
+                                result.profiles || [],
+                            groups:
+                                result.groups || []
+                        });
+
+                    }
+
+                } catch (error) {
+
+                    console.warn(
+                        "Не удалось получить комментарии фото:",
+                        photo.id,
+                        error
+                    );
+
+                }
+
+            }
+
+        }
+
+
+        /*
+         * Новые комментарии выше.
+         */
+
+        allComments.sort(
+            (a, b) =>
+                (
+                    b.comment.date || 0
+                ) -
+                (
+                    a.comment.date || 0
+                )
+        );
+
+
+        renderComments(
+            allComments
+        );
+
+
+    } catch (error) {
+
+        commentsElement.innerHTML = `
+            <div class="error">
+
+                Не удалось загрузить комментарии.
+
+                <br><br>
+
+                ${escapeHtml(
+                    getErrorMessage(error)
+                )}
+
+            </div>
+        `;
+
+    } finally {
+
+        refreshCommentsButton.disabled =
+            false;
+
+    }
+}
+
+
+/* ==========================================
+   COMMENT AUTHOR
+   ========================================== */
+
+function getCommentAuthor(data) {
+
+    const fromId =
+        data.comment.from_id;
+
+
+    if (fromId > 0) {
+
+        const profile =
+            data.profiles.find(
+                item =>
+                    item.id === fromId
+            );
+
+
+        if (profile) {
+
+            return (
+                `${profile.first_name || ""} ${profile.last_name || ""}`
+                    .trim()
+            );
+
+        }
+
+    }
+
+
+    if (fromId < 0) {
+
+        const groupId =
+            Math.abs(fromId);
+
+
+        const group =
+            data.groups.find(
+                item =>
+                    item.id === groupId
+            );
+
+
+        if (group) {
+
+            return (
+                group.name ||
+                "Сообщество"
+            );
+
+        }
+
+    }
+
+
+    return "Пользователь";
+}
+
+
+/* ==========================================
+   RENDER COMMENTS
+   ========================================== */
+
+function renderComments(items) {
+
+    commentsElement.innerHTML =
+        "";
+
+
+    if (!items.length) {
+
+        commentsElement.innerHTML = `
+            <div class="status-message">
+                Комментариев нет
+            </div>
+        `;
+
+        return;
+    }
+
+
+    items.forEach(
+        data => {
+
+            const card =
+                document.createElement(
+                    "div"
+                );
+
+            card.className =
+                "comment-card";
+
+
+            /*
+             * Фото.
+             */
+
+            const photoUrl =
+                getBestPhotoUrl(
+                    data.photo
+                );
+
+
+            if (photoUrl) {
+
+                const image =
+                    document.createElement(
+                        "img"
+                    );
+
+                image.className =
+                    "comment-photo";
+
+                image.src =
+                    photoUrl;
+
+                image.alt =
+                    "";
+
+                image.loading =
+                    "lazy";
+
+                card.appendChild(
+                    image
+                );
+
+            }
+
+
+            /*
+             * Текстовая часть.
+             */
+
+            const body =
+                document.createElement(
+                    "div"
+                );
+
+            body.className =
+                "comment-body";
+
+
+            const album =
+                document.createElement(
+                    "div"
+                );
+
+            album.className =
+                "comment-album";
+
+            album.textContent =
+                data.album.title ||
+                "Альбом";
+
+
+            const author =
+                document.createElement(
+                    "div"
+                );
+
+            author.className =
+                "comment-author";
+
+            author.textContent =
+                getCommentAuthor(
+                    data
+                );
+
+
+            const text =
+                document.createElement(
+                    "div"
+                );
+
+            text.className =
+                "comment-text";
+
+            text.textContent =
+                data.comment.text ||
+                "(без текста)";
+
+
+            const date =
+                document.createElement(
+                    "div"
+                );
+
+            date.className =
+                "comment-date";
+
+
+            if (data.comment.date) {
+
+                date.textContent =
+                    new Date(
+                        data.comment.date *
+                        1000
+                    )
+                        .toLocaleString(
+                            "ru-RU"
+                        );
+
+            }
+
+
+            body.append(
+                album,
+                author,
+                text,
+                date
+            );
+
+
+            card.appendChild(
+                body
+            );
+
+
+            commentsElement.appendChild(
+                card
+            );
+
+        }
+    );
+}
+
+
+/* ==========================================
+   BACK
+   ========================================== */
+
+backButton.addEventListener(
+    "click",
+    () => {
+
+        if (
+            currentScreen ===
+            "photos"
+        ) {
+
+            showAlbumsScreen();
+            return;
+
+        }
+
+
+        if (
+            currentScreen ===
+            "comments"
+        ) {
+
+            showAlbumsScreen();
+            return;
+
+        }
+
+
+        showAlbumsScreen();
+
+    }
+);
+
+
+/* ==========================================
+   REFRESH ALBUMS
    ========================================== */
 
 refreshAlbumsButton.addEventListener(
@@ -1108,7 +1757,58 @@ refreshAlbumsButton.addEventListener(
 
 
 /* ==========================================
-   ЗАПУСК
+   ESC
+   ========================================== */
+
+document.addEventListener(
+    "keydown",
+    event => {
+
+        if (
+            event.key !== "Escape"
+        ) {
+            return;
+        }
+
+
+        if (
+            !createAlbumModal
+                .classList
+                .contains("hidden")
+        ) {
+
+            closeCreateAlbumModal();
+            return;
+
+        }
+
+
+        if (
+            !mainMenu
+                .classList
+                .contains("hidden")
+        ) {
+
+            closeMenu();
+            return;
+
+        }
+
+
+        if (
+            currentScreen !== "albums"
+        ) {
+
+            showAlbumsScreen();
+
+        }
+
+    }
+);
+
+
+/* ==========================================
+   START
    ========================================== */
 
 async function startApp() {
@@ -1120,37 +1820,21 @@ async function startApp() {
 
     try {
 
-        /*
-         * 1. VK Bridge
-         */
-
         await vkInit();
-
-
-        /*
-         * 2. Пользователь
-         */
 
         await loadUser();
 
-
-        /*
-         * 3. Токен photos
-         */
-
         await getAccessToken();
 
-
-        /*
-         * 4. Альбомы
-         */
-
         await loadAlbums();
+
+        showAlbumsScreen();
 
 
         console.log(
             "VK Photo Manager started."
         );
+
 
     } catch (error) {
 
