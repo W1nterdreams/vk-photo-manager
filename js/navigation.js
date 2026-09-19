@@ -1,5 +1,5 @@
-import { state } from "./state.js?v=20260919-nav02";
-import { dom } from "./dom.js?v=20260919-nav02";
+import { state } from "./state.js?v=20260919-nav03";
+import { dom } from "./dom.js?v=20260919-nav03";
 
 let openAlbumFromHistory = null;
 let navigationInitialized = false;
