@@ -10,7 +10,7 @@ import { initAlbumDelete } from "./album-delete.js?v=20260919-ui02";
 import { initAlbumReorder } from "./album-reorder.js?v=20260919-ui02";
 import { initComments } from "./comments.js?v=20260919-ui02";
 import { initAlbumComments } from "./album-comments.js?v=20260919-ui02";
-import { initPhotoViewer, openPhotoViewer } from "./photo-viewer.js?v=20260919-ui02";
+import { initPhotoViewer, openPhotoViewer } from "./photo-viewer.js?v=20260920-commentdesc01";
 import { initNavigation, showAlbumsScreen } from "./navigation.js?v=20260919-ui02";
 import { escapeHtml, getErrorMessage, logError } from "./helpers.js?v=20260919-ui02";
 

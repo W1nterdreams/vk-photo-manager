@@ -63,7 +63,7 @@ function flattenComments(items) {
         }
     }
 
-    return [...map.values()].sort((a, b) => Number(a.date || 0) - Number(b.date || 0));
+    return [...map.values()].sort((a, b) => Number(b.date || 0) - Number(a.date || 0));
 }
 
 function addAuthors(profiles = [], groups = []) {
@@ -144,7 +144,7 @@ async function fetchAllComments(photo) {
             need_likes: 1,
             offset,
             count: COMMENT_PAGE_SIZE,
-            sort: "asc",
+            sort: "desc",
             extended: 1,
             ...(photo.access_key ? { access_key: String(photo.access_key) } : {})
         });
