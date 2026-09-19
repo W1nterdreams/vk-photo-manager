@@ -1,5 +1,5 @@
-import { state } from "./state.js?v=20260919-nav01";
-import { dom } from "./dom.js?v=20260919-nav01";
+import { state } from "./state.js?v=20260919-nav02";
+import { dom } from "./dom.js?v=20260919-nav02";
 
 let openAlbumFromHistory = null;
 let navigationInitialized = false;
@@ -29,6 +29,7 @@ export function showAlbumsScreen({ restoreScroll = 0 } = {}) {
     dom.backButton.classList.add("hidden");
     dom.refreshAlbums.classList.remove("hidden");
 
+    setVkSwipeHistory(false);
     setScrollLater(restoreScroll);
 }
 
@@ -41,6 +42,7 @@ export function showPhotosScreen({ restoreScroll = 0 } = {}) {
     dom.backButton.classList.remove("hidden");
     dom.refreshAlbums.classList.add("hidden");
 
+    setVkSwipeHistory(true);
     setScrollLater(restoreScroll);
 }
 
@@ -54,6 +56,7 @@ export function showCommentsScreen({ restoreScroll = 0 } = {}) {
     dom.backButton.classList.remove("hidden");
     dom.refreshAlbums.classList.add("hidden");
 
+    setVkSwipeHistory(true);
     setScrollLater(restoreScroll);
 }
 
@@ -159,16 +162,20 @@ export function initNavigation({ onOpenAlbumFromHistory } = {}) {
     });
 }
 
-export async function enableVkHistorySwipe() {
+function setVkSwipeHistory(enabled) {
     try {
         if (!window.vkBridge?.send) return;
 
-        await window.vkBridge.send("VKWebAppSetSwipeSettings", {
-            history: true
+        // Не ждём ответ Bridge: на некоторых мобильных клиентах
+        // неподдерживаемый/зависший вызов не должен блокировать запуск приложения.
+        Promise.resolve(
+            window.vkBridge.send("VKWebAppSetSwipeSettings", {
+                history: Boolean(enabled)
+            })
+        ).catch(error => {
+            console.debug("VK swipe settings are unavailable:", error);
         });
     } catch (error) {
-        // В обычном браузере или на клиентах без поддержки метода
-        // History API продолжит работать сам по себе.
-        console.debug("VK swipe history is unavailable:", error);
+        console.debug("VK swipe settings are unavailable:", error);
     }
 }
