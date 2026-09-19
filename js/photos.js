@@ -1,12 +1,12 @@
-import { state } from "./state.js?v=20260919-native01";
-import { dom } from "./dom.js?v=20260919-native01";
-import { vkApi } from "./vk-api.js?v=20260919-native01";
-import { getPhotoPreviewUrl, escapeHtml, getErrorMessage } from "./helpers.js?v=20260919-native01";
-import { showPhotosScreen, pushAlbumHistory } from "./navigation.js?v=20260919-native01";
-import { CACHE_TTL } from "./config.js?v=20260919-native01";
-import { cacheGet, cacheGetStale, cacheSet, albumPhotosKey } from "./cache.js?v=20260919-native01";
-import { getOwnerId } from "./group-context.js?v=20260919-native01";
-import { openPhotoViewer } from "./photo-viewer.js?v=20260919-native01";
+import { state } from "./state.js?v=20260919-ui02";
+import { dom } from "./dom.js?v=20260919-ui02";
+import { vkApi } from "./vk-api.js?v=20260919-ui02";
+import { getPhotoPreviewUrl, escapeHtml, getErrorMessage } from "./helpers.js?v=20260919-ui02";
+import { showPhotosScreen, pushAlbumHistory } from "./navigation.js?v=20260919-ui02";
+import { CACHE_TTL } from "./config.js?v=20260919-ui02";
+import { cacheGet, cacheGetStale, cacheSet, albumPhotosKey } from "./cache.js?v=20260919-ui02";
+import { getOwnerId } from "./group-context.js?v=20260919-ui02";
+import { openPhotoViewer } from "./photo-viewer.js?v=20260919-ui02";
 
 const PAGE_SIZE = 20;
 let photoScrollTicking = false;
@@ -215,6 +215,20 @@ export function renderPhotos() {
             image.loading = "lazy";
             card.appendChild(image);
         }
+
+        const stats = document.createElement("div");
+        stats.className = "photo-card-stats";
+
+        const likes = document.createElement("span");
+        likes.className = "photo-card-stat";
+        likes.textContent = `♥ ${Number(photo?.likes?.count || 0)}`;
+
+        const comments = document.createElement("span");
+        comments.className = "photo-card-stat";
+        comments.textContent = `💬 ${Number(photo?.comments?.count || 0)}`;
+
+        stats.append(likes, comments);
+        card.appendChild(stats);
 
         card.addEventListener("click", () => {
             void openPhotoViewer(photo, state.currentAlbum);

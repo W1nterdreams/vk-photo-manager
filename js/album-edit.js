@@ -1,10 +1,10 @@
-import { state } from "./state.js?v=20260919-native01";
-import { dom } from "./dom.js?v=20260919-albumedit01";
-import { vkApi } from "./vk-api.js?v=20260919-native01";
-import { getErrorMessage } from "./helpers.js?v=20260919-native01";
-import { getOwnerId } from "./group-context.js?v=20260919-native01";
-import { cacheSet, albumsKey, albumIndexKey } from "./cache.js?v=20260919-native01";
-import { renderAlbums } from "./albums.js?v=20260919-native01";
+import { state } from "./state.js?v=20260919-ui02";
+import { dom } from "./dom.js?v=20260919-ui02";
+import { vkApi } from "./vk-api.js?v=20260919-ui02";
+import { getErrorMessage } from "./helpers.js?v=20260919-ui02";
+import { getOwnerId } from "./group-context.js?v=20260919-ui02";
+import { cacheSet, albumsKey, albumIndexKey } from "./cache.js?v=20260919-ui02";
+import { renderAlbums } from "./albums.js?v=20260919-ui02";
 
 let activeAlbum = null;
 let opening = false;

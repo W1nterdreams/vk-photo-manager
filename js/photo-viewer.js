@@ -1,14 +1,14 @@
-import { state } from "./state.js?v=20260919-native01";
-import { dom } from "./dom.js?v=20260919-native01";
-import { vkApi } from "./vk-api.js?v=20260919-native01";
-import { getBestPhotoUrl, escapeHtml } from "./helpers.js?v=20260919-native01";
-import { getOwnerId } from "./group-context.js?v=20260919-native01";
+import { state } from "./state.js?v=20260919-ui02";
+import { dom } from "./dom.js?v=20260919-ui02";
+import { vkApi } from "./vk-api.js?v=20260919-ui02";
+import { getBestPhotoUrl, escapeHtml } from "./helpers.js?v=20260919-ui02";
+import { getOwnerId } from "./group-context.js?v=20260919-ui02";
 import {
     showPhotoViewerScreen,
     pushPhotoHistory
-} from "./navigation.js?v=20260919-native01";
-import { photoCommentOwnerId } from "./photo-comment-api.js?v=20260919-native01";
-import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260919-native01";
+} from "./navigation.js?v=20260919-ui02";
+import { photoCommentOwnerId } from "./photo-comment-api.js?v=20260919-ui02";
+import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260919-ui02";
 
 const COMMENT_PAGE_SIZE = 100;
 const LONG_PRESS_MS = 460;
@@ -321,7 +321,23 @@ function renderPhotoComments() {
     dom.photoViewerComments.innerHTML = "";
 
     if (!comments.length) {
-        dom.photoViewerComments.innerHTML = '<div class="status-message">Комментариев пока нет</div>';
+        const empty = document.createElement("div");
+        empty.className = "photo-viewer-empty-comments";
+
+        const message = document.createElement("div");
+        message.className = "status-message";
+        message.textContent = "Комментариев пока нет";
+
+        const openVk = document.createElement("button");
+        openVk.type = "button";
+        openVk.className = "secondary-button photo-viewer-open-vk-comment";
+        openVk.textContent = "Написать первый комментарий в VK";
+        openVk.addEventListener("click", () => {
+            openVkPhoto(activePhoto, photoCommentOwnerId(activePhoto));
+        });
+
+        empty.append(message, openVk);
+        dom.photoViewerComments.appendChild(empty);
         return;
     }
 

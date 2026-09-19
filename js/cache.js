@@ -99,7 +99,7 @@ export function clearAppCache() {
 }
 
 export function albumPhotosKey(ownerId, albumId) {
-    return `photos:${ownerId}:${albumId}`;
+    return `photos-v2:${ownerId}:${albumId}`;
 }
 
 export function photoCommentsKey(ownerId, photoId) {

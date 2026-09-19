@@ -1,18 +1,18 @@
-import { dom } from "./dom.js?v=20260919-native01";
-import { vkInit, loadUser, getAccessToken } from "./vk-api.js?v=20260919-native01";
-import { initGroupContext } from "./group-context.js?v=20260919-native01";
-import { initAlbums, loadAlbums } from "./albums.js?v=20260919-native01";
-import { openAlbum } from "./photos.js?v=20260919-native01";
-import { initMainMenu } from "./main-menu.js?v=20260919-native01";
-import { initAlbumCreate } from "./album-create.js?v=20260919-native01";
-import { initAlbumEdit } from "./album-edit.js?v=20260919-delete01";
-import { initAlbumDelete } from "./album-delete.js?v=20260919-delete-native01";
-import { initAlbumReorder } from "./album-reorder.js?v=20260919-reorder01";
-import { initComments } from "./comments.js?v=20260919-native01";
-import { initAlbumComments } from "./album-comments.js?v=20260919-native01";
-import { initPhotoViewer, openPhotoViewer } from "./photo-viewer.js?v=20260919-native02";
-import { initNavigation, showAlbumsScreen } from "./navigation.js?v=20260919-native01";
-import { escapeHtml, getErrorMessage, logError } from "./helpers.js?v=20260919-native01";
+import { dom } from "./dom.js?v=20260919-ui02";
+import { vkInit, loadUser, getAccessToken } from "./vk-api.js?v=20260919-ui02";
+import { initGroupContext } from "./group-context.js?v=20260919-ui02";
+import { initAlbums, loadAlbums } from "./albums.js?v=20260919-ui02";
+import { openAlbum } from "./photos.js?v=20260919-ui02";
+import { initMainMenu } from "./main-menu.js?v=20260919-ui02";
+import { initAlbumCreate } from "./album-create.js?v=20260919-ui02";
+import { initAlbumEdit } from "./album-edit.js?v=20260919-ui02";
+import { initAlbumDelete } from "./album-delete.js?v=20260919-ui02";
+import { initAlbumReorder } from "./album-reorder.js?v=20260919-ui02";
+import { initComments } from "./comments.js?v=20260919-ui02";
+import { initAlbumComments } from "./album-comments.js?v=20260919-ui02";
+import { initPhotoViewer, openPhotoViewer } from "./photo-viewer.js?v=20260919-ui02";
+import { initNavigation, showAlbumsScreen } from "./navigation.js?v=20260919-ui02";
+import { escapeHtml, getErrorMessage, logError } from "./helpers.js?v=20260919-ui02";
 
 async function startApp() {
     console.log("Starting VK Photo Manager in GROUP ADMIN mode...");
