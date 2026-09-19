@@ -1,4 +1,117 @@
-import {state} from "./state.js";import {dom} from "./dom.js";import {vkApi} from "./vk-api.js";import {getBestPhotoUrl,escapeHtml,getErrorMessage} from "./helpers.js";import {showPhotosScreen} from "./navigation.js";
-export async function openAlbum(a){state.currentAlbum=a;showPhotosScreen();dom.pageTitle.textContent=a.title||"Альбом";dom.albumTitle.textContent=a.title||"Альбом";dom.albumDescription.textContent=a.description||"";dom.photoCount.textContent=`${a.size||0} фото`;dom.photos.innerHTML='<div class="status-message">Загружаем фотографии...</div>';try{await loadPhotos(a);}catch(e){dom.photos.innerHTML=`<div class="error">Не удалось загрузить фотографии.<br><br>${escapeHtml(getErrorMessage(e))}</div>`;}}
-export async function loadPhotos(a){const r=await vkApi("photos.get",{owner_id:state.currentUser.id,album_id:a.id,extended:1,photo_sizes:1,count:100});state.photos=r.items||[];renderPhotos();dom.photoCount.textContent=`${state.photos.length} фото`;}
-export function renderPhotos(){dom.photos.innerHTML="";if(!state.photos.length){dom.photos.innerHTML='<div class="status-message">В этом альбоме нет фотографий</div>';return;}for(const p of state.photos){const c=document.createElement("div");c.className="photo-card";const u=getBestPhotoUrl(p);if(u){const i=document.createElement("img");i.src=u;i.alt=p.text||"";i.loading="lazy";c.appendChild(i);}c.addEventListener("click",()=>console.log("Selected photo:",p));dom.photos.appendChild(c);}}
+import { state } from "./state.js";
+import { dom } from "./dom.js";
+import { vkApi } from "./vk-api.js";
+import { getBestPhotoUrl, escapeHtml, getErrorMessage } from "./helpers.js";
+import { showPhotosScreen } from "./navigation.js";
+import { CACHE_TTL } from "./config.js";
+import {
+    cacheGet,
+    cacheGetStale,
+    cacheSet,
+    albumPhotosKey
+} from "./cache.js";
+
+async function fetchPhotosFromVK(album) {
+    const result = await vkApi("photos.get", {
+        owner_id: state.currentUser.id,
+        album_id: album.id,
+        extended: 1,
+        photo_sizes: 1,
+        count: 100
+    });
+
+    state.photos = result.items || [];
+
+    cacheSet(
+        albumPhotosKey(state.currentUser.id, album.id),
+        state.photos
+    );
+
+    renderPhotos();
+    dom.photoCount.textContent = `${state.photos.length} фото`;
+}
+
+export async function openAlbum(album) {
+    state.currentAlbum = album;
+    showPhotosScreen();
+
+    dom.pageTitle.textContent = album.title || "Альбом";
+    dom.albumTitle.textContent = album.title || "Альбом";
+    dom.albumDescription.textContent = album.description || "";
+    dom.photoCount.textContent = `${album.size || 0} фото`;
+
+    try {
+        await loadPhotos(album);
+    } catch (error) {
+        dom.photos.innerHTML =
+            `<div class="error">Не удалось загрузить фотографии.<br><br>${
+                escapeHtml(getErrorMessage(error))
+            }</div>`;
+    }
+}
+
+export async function loadPhotos(album, { force = false } = {}) {
+    const key = albumPhotosKey(state.currentUser.id, album.id);
+
+    if (!force) {
+        const cached = cacheGet(key, CACHE_TTL.photos);
+
+        if (cached) {
+            state.photos = cached;
+            renderPhotos();
+            dom.photoCount.textContent = `${state.photos.length} фото`;
+            return;
+        }
+
+        const stale = cacheGetStale(key);
+
+        if (stale) {
+            state.photos = stale;
+            renderPhotos();
+            dom.photoCount.textContent = `${state.photos.length} фото`;
+
+            try {
+                await fetchPhotosFromVK(album);
+            } catch (error) {
+                console.warn("Фоновое обновление фотографий не удалось:", error);
+            }
+            return;
+        }
+    }
+
+    dom.photos.innerHTML =
+        '<div class="status-message">Загружаем фотографии...</div>';
+
+    await fetchPhotosFromVK(album);
+}
+
+export function renderPhotos() {
+    dom.photos.innerHTML = "";
+
+    if (!state.photos.length) {
+        dom.photos.innerHTML =
+            '<div class="status-message">В этом альбоме нет фотографий</div>';
+        return;
+    }
+
+    state.photos.forEach(photo => {
+        const card = document.createElement("div");
+        card.className = "photo-card";
+
+        const url = getBestPhotoUrl(photo);
+
+        if (url) {
+            const image = document.createElement("img");
+            image.src = url;
+            image.alt = photo.text || "";
+            image.loading = "lazy";
+            card.appendChild(image);
+        }
+
+        card.addEventListener("click", () =>
+            console.log("Selected photo:", photo)
+        );
+
+        dom.photos.appendChild(card);
+    });
+}
