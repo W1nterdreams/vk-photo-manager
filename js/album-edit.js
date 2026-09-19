@@ -35,33 +35,24 @@ async function fetchFreshAlbum(album) {
     try {
         const result = await vkApi("photos.getAlbums", {
             owner_id: ownerId,
-            album_ids: targetId,
+            album_ids: [Number(album.id)],
             need_system: 1,
             need_covers: 1,
             photo_sizes: 1
         });
 
+        // VK может вернуть не только один элемент, поэтому выбираем
+        // именно тот альбом, по которому открыли меню.
         const items = Array.isArray(result?.items) ? result.items : [];
-
-        // Ищем именно тот альбом, по которому было долгое нажатие.
-        const fresh = items.find(item =>
-            String(item.id) === targetId
-        );
-
-        if (!fresh) {
-            return album;
-        }
+        const fresh = items.find(item => String(item.id) === targetId);
+        if (!fresh) return album;
 
         return {
             ...album,
             ...fresh
         };
     } catch (error) {
-        console.warn(
-            "Не удалось обновить данные альбома перед редактированием:",
-            error
-        );
-
+        console.warn("Не удалось обновить данные альбома перед редактированием:", error);
         return album;
     }
 }
