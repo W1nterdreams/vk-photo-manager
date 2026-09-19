@@ -22,7 +22,7 @@ const READ_TIMEOUT_MS = 7000;
 const PHOTO_LIST_TIMEOUT_MS = 10000;
 const MUTATION_TIMEOUT_MS = 15000;
 const DEEP_SCAN_CONCURRENCY = 6;
-const CACHE_SCHEMA = 4;
+const CACHE_SCHEMA = 5;
 
 let activeAlbum = null;
 let replyEditor = null;
@@ -941,91 +941,83 @@ export async function loadAlbumComments(album, { force = false } = {}) {
     const seq = ++loadSequence;
     const key = cacheKey(album);
 
-    let baseData = {
-        comments: [],
-        photos: new Map(),
-        authors: new Map(),
-        complete: false
-    };
-
     if (!force) {
         const cached = cacheGet(key, CACHE_TTL.comments);
         if (cached) {
-            baseData = restoreFromCache(cached);
-            renderComments(album, baseData);
-
-            if (baseData.complete) return;
+            const restored = restoreFromCache(cached);
+            renderComments(album, restored);
+            if (restored.complete) return;
         }
     }
 
-    // Кнопку обновления намеренно НЕ блокируем. Повторное нажатие
-    // создаёт новый seq, а результаты старой загрузки просто игнорируются.
-    if (!baseData.comments.length) {
-        dom.comments.innerHTML = `
-            <div class="status-message">
-                Загружаем последние ${MAX_COMMENTS} комментариев за ${ALBUM_COMMENTS_DAYS} дня...
-            </div>
-        `;
-    }
+    // ВАЖНО: комментарии конкретного альбома получаем ОДНИМ методом
+    // photos.getAllComments. VK сам возвращает их от новых к старым.
+    // Мы НЕ перебираем фотографии альбома и НЕ вызываем getComments для каждой.
+    dom.comments.innerHTML = `
+        <div class="status-message">
+            Загружаем последние ${MAX_COMMENTS} комментариев за ${ALBUM_COMMENTS_DAYS} дня...
+        </div>
+    `;
 
     try {
-        const fastComments = await loadRecentRawCommentsFast(album);
+        const comments = await loadRecentRawCommentsFast(album);
         if (!currentRequestIsValid(seq, album)) return;
 
-        baseData = {
-            comments: mergeRecentComments(baseData.comments, fastComments),
-            photos: baseData.photos,
-            authors: baseData.authors,
+        if (!comments.length) {
+            const emptyData = {
+                comments: [],
+                photos: new Map(),
+                authors: new Map(),
+                complete: true
+            };
+            cacheSet(key, serializeForCache(emptyData));
+            renderComments(album, emptyData);
+            return;
+        }
+
+        // Сами комментарии уже есть — показываем их сразу.
+        // Фото и ФИО догружаются отдельными компактными запросами.
+        let data = {
+            comments,
+            photos: photosFromCurrentState(comments),
+            authors: new Map(),
             complete: false
         };
 
-        if (baseData.comments.length) {
-            renderComments(album, baseData);
-            void enrichFastAuthors(album, baseData, seq, key);
-        } else {
-            dom.comments.innerHTML = `
-                <div class="status-message">
-                    Проверяем фотографии альбома...
-                </div>
-            `;
-        }
-    } catch (error) {
-        console.warn("Быстрая загрузка комментариев не удалась, запускаем полную проверку:", error);
+        renderComments(album, data);
 
-        if (currentRequestIsValid(seq, album) && !baseData.comments.length) {
-            dom.comments.innerHTML = `
-                <div class="status-message">
-                    Проверяем фотографии альбома...
-                </div>
-            `;
-        }
-    }
+        const [photos, authors] = await Promise.all([
+            loadPhotosForComments(comments, data.photos),
+            loadAuthors(comments)
+        ]);
 
-    // Полная проверка ВСЕГДА идёт фоном и дополняет результат getAllComments.
-    // Поэтому частичный ответ VK больше не приводит к пропавшим комментариям.
-    void deepScanAlbumComments(album, baseData, seq, key).then(result => {
         if (!currentRequestIsValid(seq, album)) return;
 
-        if (!result?.comments?.length) {
-            dom.comments.innerHTML = `
-                <div class="status-message">
-                    Комментариев за последние ${ALBUM_COMMENTS_DAYS} дня нет
-                </div>
-            `;
-        }
-    }).catch(error => {
-        console.warn("Полная проверка комментариев альбома завершилась ошибкой:", error);
+        data = {
+            comments,
+            photos,
+            authors,
+            complete: true
+        };
 
-        if (currentRequestIsValid(seq, album) && !baseData.comments.length) {
-            dom.comments.innerHTML = `
-                <div class="error">
-                    Не удалось полностью проверить комментарии.<br><br>
-                    ${escapeHtml(describeError(error))}
-                    <br><br>Нажмите «Обновить», чтобы повторить.
-                </div>
-            `;
+        cacheSet(key, serializeForCache(data));
+
+        if (!replyEditor && !commentMenuOverlay) {
+            renderComments(album, data);
         }
-    });
+    } catch (error) {
+        console.error("Не удалось загрузить комментарии альбома:", error);
+
+        if (!currentRequestIsValid(seq, album)) return;
+
+        dom.comments.innerHTML = `
+            <div class="error">
+                Не удалось загрузить комментарии альбома.<br><br>
+                ${escapeHtml(describeError(error))}
+                <br><br>Нажмите «Обновить», чтобы повторить.
+            </div>
+        `;
+    }
 }
 
 async function openAlbumComments(album) {

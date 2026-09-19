@@ -6,7 +6,7 @@ import { openAlbum } from "./photos.js?v=20260919-nav03";
 import { initMainMenu } from "./main-menu.js?v=20260919-nav03";
 import { initAlbumCreate } from "./album-create.js?v=20260919-nav03";
 import { initComments } from "./comments.js?v=20260919-nav03";
-import { initAlbumComments } from "./album-comments.js?v=20260919-commentfix04";
+import { initAlbumComments } from "./album-comments.js?v=20260919-commentfix05";
 import { initNavigation, showAlbumsScreen } from "./navigation.js?v=20260919-nav03";
 import { escapeHtml, getErrorMessage, logError } from "./helpers.js?v=20260919-nav03";
 
