@@ -1,19 +1,42 @@
 "use strict";
 
-
 /*
- * ============================
+ * ==========================================
  * VK PHOTO MANAGER
- * Первый рабочий вариант
- * ============================
+ * ==========================================
+ *
+ * VK Mini App
+ * App ID: 54771516
+ *
+ * Основные функции:
+ * - получение текущего пользователя
+ * - получение access token
+ * - загрузка альбомов
+ * - открытие альбома
+ * - загрузка фотографий
+ * - отображение фотографий
+ *
+ * ==========================================
  */
 
 
-/* ============================
-   Глобальное состояние
-   ============================ */
+/* ==========================================
+   НАСТРОЙКИ
+   ========================================== */
+
+const VK_APP_ID = 54771516;
+const VK_API_VERSION = "5.199";
+
+
+/* ==========================================
+   ГЛОБАЛЬНОЕ СОСТОЯНИЕ
+   ========================================== */
 
 let currentUser = null;
+
+let accessToken = null;
+
+let accessScope = [];
 
 let albums = [];
 
@@ -22,9 +45,9 @@ let currentAlbum = null;
 let photos = [];
 
 
-/* ============================
+/* ==========================================
    DOM
-   ============================ */
+   ========================================== */
 
 const userElement =
     document.getElementById("user");
@@ -51,95 +74,363 @@ const refreshAlbumsButton =
     document.getElementById("refreshAlbums");
 
 
-/* ============================
-   VK Bridge
-   ============================ */
+/* ==========================================
+   ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+   ========================================== */
+
+
+/*
+ * Преобразование любой ошибки VK
+ * в нормальный текст.
+ */
+function getErrorMessage(error) {
+
+    if (!error) {
+        return "Неизвестная ошибка";
+    }
+
+
+    if (typeof error === "string") {
+        return error;
+    }
+
+
+    if (error.message) {
+        return error.message;
+    }
+
+
+    if (error.error_msg) {
+        return error.error_msg;
+    }
+
+
+    if (error.error && error.error.error_msg) {
+        return error.error.error_msg;
+    }
+
+
+    if (error.params && error.params.error_msg) {
+        return error.params.error_msg;
+    }
+
+
+    try {
+
+        return JSON.stringify(
+            error,
+            null,
+            2
+        );
+
+    } catch (e) {
+
+        return String(error);
+
+    }
+}
+
+
+/*
+ * Красивый вывод ошибки в консоль.
+ */
+function logError(title, error) {
+
+    console.error(
+        title,
+        error
+    );
+
+    try {
+
+        console.error(
+            `${title} JSON:`,
+            JSON.stringify(
+                error,
+                null,
+                2
+            )
+        );
+
+    } catch (e) {
+
+        console.error(
+            `${title} JSON:`,
+            "Ошибка сериализации"
+        );
+
+    }
+}
+
+
+/*
+ * Безопасное экранирование HTML.
+ */
+function escapeHtml(value) {
+
+    return String(value ?? "")
+        .replaceAll(
+            "&",
+            "&amp;"
+        )
+        .replaceAll(
+            "<",
+            "&lt;"
+        )
+        .replaceAll(
+            ">",
+            "&gt;"
+        )
+        .replaceAll(
+            '"',
+            "&quot;"
+        )
+        .replaceAll(
+            "'",
+            "&#039;"
+        );
+}
+
+
+/*
+ * Показ ошибки в интерфейсе.
+ */
+function showError(message) {
+
+    const html = `
+        <div class="error">
+            ${escapeHtml(message)}
+        </div>
+    `;
+
+
+    if (photosElement) {
+        photosElement.innerHTML = html;
+    }
+
+}
+
+
+/* ==========================================
+   VK BRIDGE
+   ========================================== */
 
 async function vkInit() {
 
     try {
 
-        await vkBridge.send("VKWebAppInit");
-
-        console.log("VK Bridge initialized");
-
-    } catch (error) {
-
-        console.error(
-            "VK Bridge initialization error:",
-            error
+        console.log(
+            "Инициализация VK Bridge..."
         );
 
-        showError(
-            "Не удалось инициализировать VK Bridge"
+
+        await vkBridge.send(
+            "VKWebAppInit"
         );
-    }
-}
 
-
-/* ============================
-   Получение пользователя
-   ============================ */
-
-async function loadUser() {
-
-    try {
-
-        const result =
-            await vkBridge.send(
-                "VKWebAppGetUserInfo"
-            );
 
         console.log(
-            "VKWebAppGetUserInfo result:",
-            result
+            "VK Bridge initialized"
         );
 
-        if (!result || !result.id) {
-
-            throw new Error(
-                "VK не вернул данные пользователя"
-            );
-        }
-
-        currentUser = result;
-
-        const firstName =
-            result.first_name || "";
-
-        const lastName =
-            result.last_name || "";
-
-        userElement.textContent =
-            `${firstName} ${lastName}`.trim();
-
-        console.log(
-            "Current user:",
-            currentUser
-        );
 
         return true;
 
     } catch (error) {
 
-        console.error(
-            "User loading error:",
+        logError(
+            "VK Bridge initialization error:",
             error
         );
 
-        currentUser = null;
 
-        userElement.textContent =
-            "Не удалось определить пользователя";
+        showError(
+            "Не удалось инициализировать VK Bridge."
+        );
+
 
         return false;
     }
 }
 
 
-/* ============================
+/* ==========================================
+   ПОЛУЧЕНИЕ ПОЛЬЗОВАТЕЛЯ
+   ========================================== */
+
+async function loadUser() {
+
+    try {
+
+        console.log(
+            "Получаем данные пользователя..."
+        );
+
+
+        const result =
+            await vkBridge.send(
+                "VKWebAppGetUserInfo"
+            );
+
+
+        currentUser = result;
+
+
+        const firstName =
+            result.first_name || "";
+
+
+        const lastName =
+            result.last_name || "";
+
+
+        const fullName =
+            `${firstName} ${lastName}`.trim();
+
+
+        if (userElement) {
+
+            userElement.textContent =
+                fullName || "Пользователь";
+
+        }
+
+
+        console.log(
+            "Current user:",
+            result
+        );
+
+
+        return result;
+
+    } catch (error) {
+
+        logError(
+            "User loading error:",
+            error
+        );
+
+
+        if (userElement) {
+
+            userElement.textContent =
+                "Пользователь";
+
+        }
+
+
+        throw error;
+    }
+}
+
+
+/* ==========================================
+   ПОЛУЧЕНИЕ ACCESS TOKEN
+   ========================================== */
+
+/*
+ * Для вызова VK API от имени пользователя
+ * получаем пользовательский access token.
+ *
+ * Нам нужен доступ к фотографиям.
+ */
+
+async function getAccessToken() {
+
+    try {
+
+        console.log(
+            "Запрашиваем access token..."
+        );
+
+
+        const result =
+            await vkBridge.send(
+                "VKWebAppGetAuthToken",
+                {
+                    app_id: VK_APP_ID,
+                    scope: "photos"
+                }
+            );
+
+
+        accessToken =
+            result.access_token || null;
+
+
+        /*
+         * VK может вернуть scope строкой:
+         *
+         * "photos"
+         *
+         * или:
+         *
+         * "photos,friends"
+         */
+
+        if (typeof result.scope === "string") {
+
+            accessScope =
+                result.scope
+                    .split(",")
+                    .map(
+                        value =>
+                            value.trim()
+                    )
+                    .filter(Boolean);
+
+        } else {
+
+            accessScope = [];
+
+        }
+
+
+        console.log(
+            "Access token получен."
+        );
+
+
+        console.log(
+            "Granted scopes:",
+            accessScope
+        );
+
+
+        /*
+         * Сам токен специально не выводим
+         * в консоль.
+         */
+
+
+        if (!accessToken) {
+
+            throw new Error(
+                "VK не вернул access token."
+            );
+
+        }
+
+
+        return accessToken;
+
+    } catch (error) {
+
+        logError(
+            "Access token error:",
+            error
+        );
+
+
+        throw error;
+    }
+}
+
+
+/* ==========================================
    VK API
-   ============================ */
+   ========================================== */
 
 async function vkApi(
     method,
@@ -148,68 +439,174 @@ async function vkApi(
 
     try {
 
+        /*
+         * Без токена API вызывать не пытаемся.
+         */
+
+        if (!accessToken) {
+
+            throw new Error(
+                "Нет access token. Сначала необходимо получить разрешение VK."
+            );
+
+        }
+
+
+        const requestParams = {
+
+            ...params,
+
+            access_token:
+                accessToken,
+
+            v:
+                VK_API_VERSION
+        };
+
+
+        console.log(
+            `VK API request: ${method}`,
+            {
+                ...requestParams,
+                access_token: "***"
+            }
+        );
+
+
         const response =
             await vkBridge.send(
                 "VKWebAppCallAPIMethod",
                 {
                     method: method,
 
-                    params: {
-                        ...params,
-
-                        v: "5.199"
-                    }
+                    params:
+                        requestParams
                 }
             );
 
-        if (response.error) {
+
+        console.log(
+            `VK API response: ${method}`,
+            response
+        );
+
+
+        /*
+         * Вариант 1:
+         *
+         * {
+         *   response: {...}
+         * }
+         *
+         * Вариант 2:
+         *
+         * {
+         *   error: {...}
+         * }
+         */
+
+
+        if (response && response.error) {
+
+            const message =
+                response.error.error_msg ||
+                response.error.error_code ||
+                "VK API error";
+
+
+            const error =
+                new Error(
+                    String(message)
+                );
+
+
+            error.vkError =
+                response.error;
+
+
+            throw error;
+        }
+
+
+        if (
+            !response ||
+            typeof response.response === "undefined"
+        ) {
 
             throw new Error(
-                response.error.error_msg ||
-                "VK API error"
+                "VK API не вернул response."
             );
+
         }
+
 
         return response.response;
 
     } catch (error) {
 
-        console.error(
+        logError(
             `VK API ${method} error:`,
             error
         );
+
 
         throw error;
     }
 }
 
 
-/* ============================
-   Загрузка альбомов
-   ============================ */
+/* ==========================================
+   ЗАГРУЗКА АЛЬБОМОВ
+   ========================================== */
 
 async function loadAlbums() {
 
-    albumsElement.innerHTML =
-        `<div class="loading">
-            Загружаем альбомы...
-        </div>`;
+    if (!currentUser) {
+
+        throw new Error(
+            "Пользователь VK ещё не получен."
+        );
+
+    }
+
+
+    if (albumsElement) {
+
+        albumsElement.innerHTML = `
+            <div class="loading">
+                Загружаем альбомы...
+            </div>
+        `;
+
+    }
+
 
     try {
+
+        console.log(
+            "Загружаем альбомы пользователя:",
+            currentUser.id
+        );
+
 
         const result =
             await vkApi(
                 "photos.getAlbums",
                 {
-                    owner_id: currentUser.id,
+                    owner_id:
+                        currentUser.id,
 
-                    need_system: 1,
+                    need_system:
+                        1,
 
-                    need_covers: 1,
+                    need_covers:
+                        1,
 
-                    photo_sizes: 1,
+                    photo_sizes:
+                        1,
 
-                    count: 100
+                    count:
+                        100
                 }
             );
 
@@ -218,178 +615,350 @@ async function loadAlbums() {
             result.items || [];
 
 
-        renderAlbums();
-
-
         console.log(
             "Albums:",
             albums
         );
 
+
+        renderAlbums();
+
+
+        /*
+         * Если текущий альбом больше
+         * не существует — сбрасываем его.
+         */
+
+        if (
+            currentAlbum &&
+            !albums.some(
+                album =>
+                    album.id ===
+                    currentAlbum.id
+            )
+        ) {
+
+            currentAlbum = null;
+
+            photos = [];
+
+
+            if (albumHeaderElement) {
+
+                albumHeaderElement
+                    .classList
+                    .add("hidden");
+
+            }
+
+
+            if (photosElement) {
+
+                photosElement.innerHTML = `
+                    <div class="empty">
+
+                        <div class="empty-icon">
+                            🖼️
+                        </div>
+
+                        Выберите альбом
+
+                    </div>
+                `;
+
+            }
+
+        }
+
     } catch (error) {
 
-        console.error(
+        logError(
             "Albums loading error:",
             error
         );
 
-        albumsElement.innerHTML =
-            `<div class="error">
-                Не удалось загрузить альбомы.<br>
-                ${escapeHtml(error.message)}
-            </div>`;
+
+        const message =
+            getErrorMessage(error);
+
+
+        if (albumsElement) {
+
+            albumsElement.innerHTML = `
+                <div class="error">
+
+                    <b>Не удалось загрузить альбомы.</b>
+
+                    <br><br>
+
+                    ${escapeHtml(message)}
+
+                </div>
+            `;
+
+        }
+
+
+        throw error;
     }
 }
 
 
-/* ============================
-   Отрисовка альбомов
-   ============================ */
+/* ==========================================
+   ОТРИСОВКА АЛЬБОМОВ
+   ========================================== */
 
 function renderAlbums() {
+
+    if (!albumsElement) {
+        return;
+    }
+
 
     albumsElement.innerHTML = "";
 
 
     if (!albums.length) {
 
-        albumsElement.innerHTML =
-            `<div class="loading">
+        albumsElement.innerHTML = `
+            <div class="loading">
                 Альбомов нет
-            </div>`;
+            </div>
+        `;
 
         return;
     }
 
 
-    albums.forEach(album => {
+    albums.forEach(
+        album => {
 
-        const element =
-            document.createElement("div");
+            const element =
+                document.createElement(
+                    "div"
+                );
 
 
-        element.className =
-            "album" +
-            (
-                currentAlbum &&
-                currentAlbum.id === album.id
-                    ? " active"
-                    : ""
+            element.className =
+                "album" +
+                (
+                    currentAlbum &&
+                    currentAlbum.id === album.id
+                        ? " active"
+                        : ""
+                );
+
+
+            element.dataset.id =
+                String(album.id);
+
+
+            element.innerHTML = `
+
+                <div class="album-title">
+
+                    ${escapeHtml(
+                        album.title ||
+                        "Без названия"
+                    )}
+
+                </div>
+
+                <div class="album-size">
+
+                    ${Number(album.size) || 0}
+                    фото
+
+                </div>
+
+            `;
+
+
+            element.addEventListener(
+                "click",
+                () => {
+
+                    openAlbum(album);
+
+                }
             );
 
 
-        element.dataset.id =
-            album.id;
+            albumsElement.appendChild(
+                element
+            );
 
-
-        element.innerHTML = `
-
-            <div class="album-title">
-                ${escapeHtml(album.title)}
-            </div>
-
-            <div class="album-size">
-                ${album.size || 0} фото
-            </div>
-
-        `;
-
-
-        element.addEventListener(
-            "click",
-            () => {
-
-                openAlbum(album);
-
-            }
-        );
-
-
-        albumsElement.appendChild(
-            element
-        );
-
-    });
+        }
+    );
 }
 
 
-/* ============================
-   Открытие альбома
-   ============================ */
+/* ==========================================
+   ОТКРЫТИЕ АЛЬБОМА
+   ========================================== */
 
 async function openAlbum(album) {
 
-    currentAlbum = album;
+    if (!album) {
+        return;
+    }
+
+
+    currentAlbum =
+        album;
 
 
     renderAlbums();
 
 
-    albumHeaderElement
-        .classList
-        .remove("hidden");
+    if (albumHeaderElement) {
+
+        albumHeaderElement
+            .classList
+            .remove("hidden");
+
+    }
 
 
-    albumTitleElement.textContent =
-        album.title || "Альбом";
+    if (albumTitleElement) {
+
+        albumTitleElement.textContent =
+            album.title ||
+            "Альбом";
+
+    }
 
 
-    albumDescriptionElement.textContent =
-        album.description || "";
+    if (albumDescriptionElement) {
+
+        albumDescriptionElement.textContent =
+            album.description ||
+            "";
+
+    }
 
 
-    photoCountElement.textContent =
-        `${album.size || 0} фото`;
+    if (photoCountElement) {
+
+        photoCountElement.textContent =
+            `${album.size || 0} фото`;
+
+    }
 
 
-    photosElement.innerHTML =
-        `<div class="empty">
-            <div class="empty-icon">
-                ⏳
+    if (photosElement) {
+
+        photosElement.innerHTML = `
+
+            <div class="empty">
+
+                <div class="empty-icon">
+                    ⏳
+                </div>
+
+                Загружаем фотографии...
+
             </div>
-            Загружаем фотографии...
-        </div>`;
+
+        `;
+
+    }
 
 
     try {
 
-        await loadPhotos(album);
+        await loadPhotos(
+            album
+        );
 
     } catch (error) {
 
-        console.error(
+        logError(
             "Photos loading error:",
             error
         );
 
-        photosElement.innerHTML =
-            `<div class="error">
-                Не удалось загрузить фотографии.<br>
-                ${escapeHtml(error.message)}
-            </div>`;
+
+        if (photosElement) {
+
+            photosElement.innerHTML = `
+
+                <div class="error">
+
+                    <b>
+                        Не удалось загрузить фотографии.
+                    </b>
+
+                    <br><br>
+
+                    ${escapeHtml(
+                        getErrorMessage(error)
+                    )}
+
+                </div>
+
+            `;
+
+        }
+
     }
 }
 
 
-/* ============================
-   Загрузка фотографий
-   ============================ */
+/* ==========================================
+   ЗАГРУЗКА ФОТОГРАФИЙ
+   ========================================== */
 
 async function loadPhotos(album) {
+
+    if (!album) {
+
+        throw new Error(
+            "Альбом не указан."
+        );
+
+    }
+
+
+    if (!currentUser) {
+
+        throw new Error(
+            "Пользователь не получен."
+        );
+
+    }
+
+
+    console.log(
+        "Загружаем фотографии:",
+        {
+            owner_id:
+                currentUser.id,
+
+            album_id:
+                album.id
+        }
+    );
+
 
     const result =
         await vkApi(
             "photos.get",
             {
-                owner_id: currentUser.id,
+                owner_id:
+                    currentUser.id,
 
-                album_id: album.id,
+                album_id:
+                    album.id,
 
-                extended: 1,
+                extended:
+                    1,
 
-                photo_sizes: 1,
+                photo_sizes:
+                    1,
 
-                count: 100
+                count:
+                    100
             }
         );
 
@@ -398,33 +967,43 @@ async function loadPhotos(album) {
         result.items || [];
 
 
-    renderPhotos();
-
-
-    photoCountElement.textContent =
-        `${photos.length} фото`;
-
-
     console.log(
         "Photos:",
         photos
     );
+
+
+    renderPhotos();
+
+
+    if (photoCountElement) {
+
+        photoCountElement.textContent =
+            `${photos.length} фото`;
+
+    }
 }
 
 
-/* ============================
-   Отрисовка фотографий
-   ============================ */
+/* ==========================================
+   ОТРИСОВКА ФОТОГРАФИЙ
+   ========================================== */
 
 function renderPhotos() {
+
+    if (!photosElement) {
+        return;
+    }
+
 
     photosElement.innerHTML = "";
 
 
     if (!photos.length) {
 
-        photosElement.innerHTML =
-            `<div class="empty">
+        photosElement.innerHTML = `
+
+            <div class="empty">
 
                 <div class="empty-icon">
                     🖼️
@@ -432,91 +1011,123 @@ function renderPhotos() {
 
                 В этом альбоме нет фотографий
 
-            </div>`;
+            </div>
+
+        `;
 
         return;
     }
 
 
-    photos.forEach(photo => {
+    photos.forEach(
+        photo => {
 
-        const element =
-            document.createElement("div");
-
-
-        element.className =
-            "photo";
-
-
-        const imageUrl =
-            getBestPhotoUrl(photo);
+            const element =
+                document.createElement(
+                    "div"
+                );
 
 
-        element.innerHTML = `
-
-            <img
-                src="${imageUrl}"
-                alt=""
-                loading="lazy"
-            >
-
-            <div class="photo-info">
-
-                ID: ${photo.id}
-
-            </div>
-
-        `;
+            element.className =
+                "photo";
 
 
-        element.addEventListener(
-            "click",
-            () => {
-
-                openPhoto(photo);
-
-            }
-        );
+            const imageUrl =
+                getBestPhotoUrl(
+                    photo
+                );
 
 
-        photosElement.appendChild(
-            element
-        );
+            element.innerHTML = `
 
-    });
+                <img
+                    src="${escapeHtml(imageUrl)}"
+                    alt=""
+                    loading="lazy"
+                >
+
+                <div class="photo-info">
+
+                    ID: ${escapeHtml(
+                        photo.id
+                    )}
+
+                </div>
+
+            `;
+
+
+            element.addEventListener(
+                "click",
+                () => {
+
+                    openPhoto(
+                        photo
+                    );
+
+                }
+            );
+
+
+            photosElement.appendChild(
+                element
+            );
+
+        }
+    );
 }
 
 
-/* ============================
-   Получение лучшего размера
-   ============================ */
+/* ==========================================
+   ПОЛУЧЕНИЕ ЛУЧШЕГО РАЗМЕРА ФОТО
+   ========================================== */
 
 function getBestPhotoUrl(photo) {
 
     if (
-        photo.sizes &&
+        photo &&
+        Array.isArray(photo.sizes) &&
         photo.sizes.length
     ) {
 
         const sorted =
-            [...photo.sizes].sort(
-                (a, b) =>
-                    (b.width * b.height) -
-                    (a.width * a.height)
-            );
+            [...photo.sizes]
+                .filter(
+                    size =>
+                        size &&
+                        size.url
+                )
+                .sort(
+                    (a, b) =>
+                        (
+                            (b.width || 0) *
+                            (b.height || 0)
+                        ) -
+                        (
+                            (a.width || 0) *
+                            (a.height || 0)
+                        )
+                );
 
 
-        return sorted[0].url;
+        if (sorted.length) {
+
+            return sorted[0].url;
+
+        }
+
     }
 
 
-    return photo.url || "";
+    return photo && photo.url
+        ? photo.url
+        : "";
 }
 
 
-/* ============================
-   Открытие фотографии
-   ============================ */
+/* ==========================================
+   ОТКРЫТИЕ ФОТОГРАФИИ
+   ========================================== */
 
 function openPhoto(photo) {
 
@@ -527,11 +1138,11 @@ function openPhoto(photo) {
 
 
     /*
-     * Пока просто показываем
-     * информацию в консоли.
+     * Пока выводим информацию
+     * в консоль.
      *
-     * Здесь позже появится
-     * полноценное окно фотографии:
+     * Позже здесь будет полноценное
+     * окно редактирования фотографии:
      *
      * - название
      * - описание
@@ -540,83 +1151,193 @@ function openPhoto(photo) {
      * - копировать
      * - переместить
      */
+
 }
 
 
-/* ============================
-   Обновление альбомов
-   ============================ */
+/* ==========================================
+   ОБНОВЛЕНИЕ АЛЬБОМОВ
+   ========================================== */
 
-refreshAlbumsButton
-    .addEventListener(
-        "click",
-        async () => {
+if (refreshAlbumsButton) {
 
-            await loadAlbums();
+    refreshAlbumsButton
+        .addEventListener(
+            "click",
+            async () => {
 
-        }
-    );
+                try {
 
+                    await loadAlbums();
 
-/* ============================
-   Экранирование HTML
-   ============================ */
+                } catch (error) {
 
-function escapeHtml(value) {
+                    /*
+                     * Ошибка уже показана
+                     * внутри loadAlbums().
+                     */
 
-    return String(value ?? "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
+                    console.error(
+                        "Refresh albums error:",
+                        error
+                    );
+
+                }
+
+            }
+        );
+
 }
 
 
-/* ============================
-   Ошибка
-   ============================ */
-
-function showError(message) {
-
-    photosElement.innerHTML =
-        `<div class="error">
-            ${escapeHtml(message)}
-        </div>`;
-}
-
-
-/* ============================
-   Запуск приложения
-   ============================ */
+/* ==========================================
+   ЗАПУСК ПРИЛОЖЕНИЯ
+   ========================================== */
 
 async function startApp() {
+
+    console.log(
+        "================================="
+    );
 
     console.log(
         "Starting VK Photo Manager..."
     );
 
-    await vkInit();
+    console.log(
+        "VK App ID:",
+        VK_APP_ID
+    );
 
-    const userLoaded =
-        await loadUser();
+    console.log(
+        "VK API version:",
+        VK_API_VERSION
+    );
 
-    if (!userLoaded) {
+    console.log(
+        "================================="
+    );
 
-        albumsElement.innerHTML =
-            `<div class="error">
-                Не удалось определить пользователя VK.
-            </div>`;
+
+    /*
+     * 1. Инициализация Bridge
+     */
+
+    const bridgeReady =
+        await vkInit();
+
+
+    if (!bridgeReady) {
 
         return;
+
     }
 
-    await loadAlbums();
+
+    /*
+     * 2. Получаем пользователя
+     */
+
+    try {
+
+        await loadUser();
+
+    } catch (error) {
+
+        showError(
+            "Не удалось получить данные пользователя VK."
+        );
+
+        return;
+
+    }
+
+
+    if (!currentUser) {
+
+        showError(
+            "VK не вернул данные пользователя."
+        );
+
+        return;
+
+    }
+
+
+    /*
+     * 3. Получаем access token.
+     *
+     * Именно этот этап отсутствовал
+     * в старой версии.
+     */
+
+    try {
+
+        await getAccessToken();
+
+    } catch (error) {
+
+        const message =
+            getErrorMessage(error);
+
+
+        if (photosElement) {
+
+            photosElement.innerHTML = `
+
+                <div class="error">
+
+                    <b>
+                        Не удалось получить разрешение VK
+                    </b>
+
+                    <br><br>
+
+                    ${escapeHtml(message)}
+
+                    <br><br>
+
+                    Приложению нужен доступ
+                    к фотографиям пользователя.
+
+                </div>
+
+            `;
+
+        }
+
+
+        return;
+
+    }
+
+
+    /*
+     * 4. Загружаем альбомы.
+     */
+
+    try {
+
+        await loadAlbums();
+
+    } catch (error) {
+
+        console.error(
+            "Initial albums loading failed:",
+            error
+        );
+
+    }
+
+
+    console.log(
+        "VK Photo Manager started."
+    );
 }
 
 
-/* ============================
+/* ==========================================
    START
-   ============================ */
+   ========================================== */
 
 startApp();
