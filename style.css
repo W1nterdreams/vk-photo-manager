@@ -238,60 +238,40 @@ img {
    ========================================================= */
 
 .main-menu {
-    position: absolute;
-
     /*
-     * Сразу под кнопкой.
+     * FIXED намеренно: меню не зависит от sticky-шапки,
+     * overflow родительских элементов и stacking context WebView VK.
      */
-    top: calc(100% + 6px);
-    left: 2px;
+    position: fixed !important;
 
-    z-index: 99999;
+    top: 62px !important;
+    left: 8px !important;
+
+    z-index: 2147483647 !important;
+
+    display: block;
 
     width: 240px;
 
     padding: 6px;
 
-    border:
-        1px solid
-        rgba(255, 255, 255, 0.12);
-
+    border: 1px solid rgba(255, 255, 255, 0.14);
     border-radius: 12px;
 
-    background: #24272a;
+    background: #24272a !important;
+    color: #ffffff;
 
     box-shadow:
-        0 10px 35px
-        rgba(0, 0, 0, 0.65);
+        0 10px 40px
+        rgba(0, 0, 0, 0.75);
 
-    overflow: hidden;
-}
+    overflow: visible;
 
+    visibility: visible;
+    opacity: 1;
 
-/* маленький треугольник */
-
-.main-menu::before {
-    content: "";
-
-    position: absolute;
-
-    top: -6px;
-    left: 17px;
-
-    width: 12px;
-    height: 12px;
-
-    background: #24272a;
-
-    transform: rotate(45deg);
-
-    border-left:
-        1px solid
-        rgba(255, 255, 255, 0.12);
-
-    border-top:
-        1px solid
-        rgba(255, 255, 255, 0.12);
+    transform: none;
+    isolation: isolate;
 }
 
 
@@ -1331,8 +1311,7 @@ img {
     }
 
     .main-menu {
-        left: 1px;
-
+        left: 8px !important;
         width: 225px;
     }
 
