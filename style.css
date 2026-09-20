@@ -1,3 +1,13 @@
+
+.menu-item-danger {
+    color: #ff7b7b;
+}
+
+.menu-item-danger:hover,
+.menu-item-danger:active {
+    color: #ff9b9b;
+}
+
 /* =========================================================
    VK PHOTO MANAGER
    style.css
@@ -2264,4 +2274,14 @@ img {
         padding: 5px 7px;
         font-size: 12px;
     }
+}
+
+/* Dangerous action in the three-dots photo menu. */
+.menu-item.menu-item-danger {
+    color: #ff7b7b;
+}
+
+.menu-item.menu-item-danger:hover,
+.menu-item.menu-item-danger:active {
+    color: #ff9b9b;
 }
