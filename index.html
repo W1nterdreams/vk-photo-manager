@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <!-- CACHE_VERSION: 20260920-uploadsafe01 -->
+    <!-- CACHE_VERSION: 20260920-photomenu01 -->
     <meta charset="UTF-8">
 
     <meta
@@ -11,7 +11,7 @@
 
     <title>Фотоальбомы VK</title>
 
-    <link rel="stylesheet" href="./style.css?v=20260920-uploadsafe01">
+    <link rel="stylesheet" href="./style.css?v=20260920-photomenu01">
 
     <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
 </head>
@@ -88,6 +88,42 @@
                     <span>
                         Загрузить фото
                     </span>
+                </button>
+
+                <button
+                    id="downloadPhotoMenuButton"
+                    class="menu-item hidden"
+                    type="button"
+                >
+                    <span class="menu-item-icon">↓</span>
+                    <span>Скачать фото</span>
+                </button>
+
+                <button
+                    id="editPhotoDescriptionMenuButton"
+                    class="menu-item hidden"
+                    type="button"
+                >
+                    <span class="menu-item-icon">✎</span>
+                    <span>Изменить описание</span>
+                </button>
+
+                <button
+                    id="copyPhotoMenuButton"
+                    class="menu-item hidden"
+                    type="button"
+                >
+                    <span class="menu-item-icon">⧉</span>
+                    <span>Копировать в альбом</span>
+                </button>
+
+                <button
+                    id="movePhotoMenuButton"
+                    class="menu-item hidden"
+                    type="button"
+                >
+                    <span class="menu-item-icon">↪</span>
+                    <span>Переместить в альбом</span>
                 </button>
 
             </div>
@@ -612,7 +648,7 @@
 </div>
 
 
-<script type="module" src="./js/app.js?v=20260920-nativeupload01"></script>
+<script type="module" src="./js/app.js?v=20260920-photomenu01"></script>
     
 </body>
 </html>
