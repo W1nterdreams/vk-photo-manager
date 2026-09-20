@@ -1,24 +1,30 @@
-import { state } from "./state.js?v=20260920-albumtools04";
-import { dom } from "./dom.js?v=20260920-albumtools04";
-import { vkApi } from "./vk-api.js?v=20260920-albumtools04";
-import { getErrorMessage } from "./helpers.js?v=20260920-albumtools04";
-import { loadAlbums } from "./albums.js?v=20260920-albumtools04";
-import { closeMenu } from "./main-menu.js?v=20260920-albumtools04";
-import { getGroupId, getOwnerId } from "./group-context.js?v=20260920-albumtools04";
-import { invalidateAlbumCaches } from "./cache.js?v=20260920-albumtools04";
+import { state } from "./state.js?v=20260920-albumtools05";
+import { dom } from "./dom.js?v=20260920-albumtools05";
+import { vkApi } from "./vk-api.js?v=20260920-albumtools05";
+import { getErrorMessage } from "./helpers.js?v=20260920-albumtools05";
+import { loadAlbums } from "./albums.js?v=20260920-albumtools05";
+import { closeMenu } from "./main-menu.js?v=20260920-albumtools05";
+import { getGroupId, getOwnerId } from "./group-context.js?v=20260920-albumtools05";
+import { invalidateAlbumCaches } from "./cache.js?v=20260920-albumtools05";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools05";
 
-function openModal() {
-    closeMenu();
+async function openModal() {
+    await closeMenu();
     dom.newAlbumTitle.value = "";
     dom.newAlbumDescription.value = "";
     dom.createAlbumError.textContent = "";
     dom.createAlbumModal.classList.remove("hidden");
+    openSwipeOverlay("create-album", hideModalDirect);
     dom.newAlbumTitle.focus();
 }
 
-function closeModal() {
+function hideModalDirect() {
     dom.createAlbumModal.classList.add("hidden");
     dom.createAlbumError.textContent = "";
+}
+
+function closeModal() {
+    return closeSwipeOverlay("create-album");
 }
 
 async function createAlbum() {
@@ -44,7 +50,7 @@ async function createAlbum() {
         invalidateAlbumCaches(getOwnerId());
         state.albumIndex = [];
         state.albumIndexReady = false;
-        closeModal();
+        await closeModal();
         await loadAlbums({ force: true });
     } catch (error) {
         dom.createAlbumError.textContent = getErrorMessage(error);
@@ -54,9 +60,9 @@ async function createAlbum() {
 }
 
 export function initAlbumCreate() {
-    dom.createAlbumMenuButton.addEventListener("click", openModal);
-    dom.closeCreateAlbum.addEventListener("click", closeModal);
-    dom.cancelCreateAlbum.addEventListener("click", closeModal);
+    dom.createAlbumMenuButton.addEventListener("click", () => void openModal());
+    dom.closeCreateAlbum.addEventListener("click", () => void closeModal());
+    dom.cancelCreateAlbum.addEventListener("click", () => void closeModal());
     dom.submitCreateAlbum.addEventListener("click", createAlbum);
 
     dom.newAlbumTitle.addEventListener("keydown", event => {

@@ -1,12 +1,13 @@
-import { state } from "./state.js?v=20260920-albumtools04";
-import { dom } from "./dom.js?v=20260920-albumtools04";
-import { vkApi } from "./vk-api.js?v=20260920-albumtools04";
-import { getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260920-albumtools04";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools04";
-import { invalidateAlbumPhotosCache } from "./cache.js?v=20260920-albumtools04";
-import { closeMenu } from "./main-menu.js?v=20260920-albumtools04";
-import { openPhotoTransfer } from "./photo-transfer.js?v=20260920-albumtools04";
-import { openVkPhoto } from "./vk-links.js?v=20260920-albumtools04";
+import { state } from "./state.js?v=20260920-albumtools05";
+import { dom } from "./dom.js?v=20260920-albumtools05";
+import { vkApi } from "./vk-api.js?v=20260920-albumtools05";
+import { getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260920-albumtools05";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools05";
+import { invalidateAlbumPhotosCache } from "./cache.js?v=20260920-albumtools05";
+import { closeMenu } from "./main-menu.js?v=20260920-albumtools05";
+import { openPhotoTransfer } from "./photo-transfer.js?v=20260920-albumtools05";
+import { openVkPhoto } from "./vk-links.js?v=20260920-albumtools05";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools05";
 
 let editOverlay = null;
 let editInput = null;
@@ -75,7 +76,7 @@ function ensureEditModal() {
     close.type = "button";
     close.className = "modal-close";
     close.textContent = "×";
-    close.addEventListener("click", closeEditModal);
+    close.addEventListener("click", () => void closeEditModal());
     header.append(title, close);
 
     const label = document.createElement("label");
@@ -97,7 +98,7 @@ function ensureEditModal() {
     cancel.type = "button";
     cancel.className = "secondary-button";
     cancel.textContent = "Отмена";
-    cancel.addEventListener("click", closeEditModal);
+    cancel.addEventListener("click", () => void closeEditModal());
 
     editSave = document.createElement("button");
     editSave.type = "button";
@@ -111,7 +112,7 @@ function ensureEditModal() {
     document.body.appendChild(editOverlay);
 
     editOverlay.addEventListener("click", event => {
-        if (event.target === editOverlay) closeEditModal();
+        if (event.target === editOverlay) void closeEditModal();
     });
 }
 
@@ -129,13 +130,19 @@ function openEditModal() {
     showEditError("");
     editInput.value = String(photo.text || "");
     editOverlay.classList.remove("hidden");
+    openSwipeOverlay("edit-photo-description", hideEditModalDirect);
     requestAnimationFrame(() => editInput.focus());
 }
 
-function closeEditModal() {
-    if (!editOverlay || editing) return;
+function hideEditModalDirect() {
+    if (!editOverlay) return;
     editOverlay.classList.add("hidden");
     showEditError("");
+}
+
+function closeEditModal() {
+    if (!editOverlay || editing) return Promise.resolve(false);
+    return closeSwipeOverlay("edit-photo-description");
 }
 
 function updatePhotoEverywhere(updated) {
@@ -180,7 +187,7 @@ async function saveDescription() {
         const updated = { ...photo, text: caption };
         updatePhotoEverywhere(updated);
         invalidateAlbumPhotosCache(ownerId, albumId);
-        editOverlay.classList.add("hidden");
+        await closeSwipeOverlay("edit-photo-description");
     } catch (error) {
         showEditError(getErrorMessage(error));
     } finally {
@@ -193,7 +200,7 @@ async function saveDescription() {
 async function onDownload() {
     const photo = currentPhoto();
     if (!photo) return;
-    closeMenu();
+    await closeMenu();
 
     try {
         await downloadPhotoFile(photo);
@@ -202,22 +209,22 @@ async function onDownload() {
     }
 }
 
-function onEdit() {
-    closeMenu();
+async function onEdit() {
+    await closeMenu();
     openEditModal();
 }
 
-function onCopy() {
+async function onCopy() {
     const photo = currentPhoto();
     if (!photo) return;
-    closeMenu();
+    await closeMenu();
     void openPhotoTransfer(photo, "copy");
 }
 
-function onMove() {
+async function onMove() {
     const photo = currentPhoto();
     if (!photo) return;
-    closeMenu();
+    await closeMenu();
     void openPhotoTransfer(photo, "move");
 }
 
@@ -225,13 +232,13 @@ export function initPhotoMenu() {
     ensureEditModal();
 
     dom.downloadPhotoMenuButton?.addEventListener("click", () => void onDownload());
-    dom.editPhotoDescriptionMenuButton?.addEventListener("click", onEdit);
-    dom.copyPhotoMenuButton?.addEventListener("click", onCopy);
-    dom.movePhotoMenuButton?.addEventListener("click", onMove);
+    dom.editPhotoDescriptionMenuButton?.addEventListener("click", () => void onEdit());
+    dom.copyPhotoMenuButton?.addEventListener("click", () => void onCopy());
+    dom.movePhotoMenuButton?.addEventListener("click", () => void onMove());
 
     document.addEventListener("keydown", event => {
         if (event.key === "Escape" && editOverlay && !editOverlay.classList.contains("hidden")) {
-            closeEditModal();
+            void closeEditModal();
         }
     });
 }

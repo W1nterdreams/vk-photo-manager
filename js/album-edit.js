@@ -1,10 +1,11 @@
-import { state } from "./state.js?v=20260920-albumtools04";
-import { dom } from "./dom.js?v=20260920-albumtools04";
-import { vkApi } from "./vk-api.js?v=20260920-albumtools04";
-import { getErrorMessage } from "./helpers.js?v=20260920-albumtools04";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools04";
-import { cacheSet, cacheRemove, albumsKey, albumIndexKey } from "./cache.js?v=20260920-albumtools04";
-import { renderAlbums, ensureAlbumIndex } from "./albums.js?v=20260920-albumtools04";
+import { state } from "./state.js?v=20260920-albumtools05";
+import { dom } from "./dom.js?v=20260920-albumtools05";
+import { vkApi } from "./vk-api.js?v=20260920-albumtools05";
+import { getErrorMessage } from "./helpers.js?v=20260920-albumtools05";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools05";
+import { cacheSet, cacheRemove, albumsKey, albumIndexKey } from "./cache.js?v=20260920-albumtools05";
+import { renderAlbums, ensureAlbumIndex } from "./albums.js?v=20260920-albumtools05";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools05";
 
 let activeAlbum = null;
 let opening = false;
@@ -65,6 +66,7 @@ async function openModal(album) {
     showError("");
     dom.saveEditAlbum.disabled = true;
     dom.editAlbumModal.classList.remove("hidden");
+    openSwipeOverlay("edit-album", hideModalDirect);
     fillForm(album);
 
     try {
@@ -78,11 +80,15 @@ async function openModal(album) {
     }
 }
 
-function closeModal() {
-    if (saving) return;
+function hideModalDirect() {
     dom.editAlbumModal.classList.add("hidden");
     activeAlbum = null;
     showError("");
+}
+
+function closeModal() {
+    if (saving) return Promise.resolve(false);
+    return closeSwipeOverlay("edit-album");
 }
 
 function replaceAlbumInState(updated) {
@@ -171,8 +177,7 @@ async function saveAlbum(event) {
         // защищает от гонки с фоновой индексацией, начатой до редактирования.
         void ensureAlbumIndex({ force: true });
 
-        dom.editAlbumModal.classList.add("hidden");
-        activeAlbum = null;
+        await closeSwipeOverlay("edit-album");
     } catch (error) {
         showError(getErrorMessage(error));
     } finally {
@@ -190,16 +195,16 @@ export function initAlbumEdit() {
     });
 
     dom.editAlbumForm.addEventListener("submit", saveAlbum);
-    dom.closeEditAlbum.addEventListener("click", closeModal);
-    dom.cancelEditAlbum.addEventListener("click", closeModal);
+    dom.closeEditAlbum.addEventListener("click", () => void closeModal());
+    dom.cancelEditAlbum.addEventListener("click", () => void closeModal());
 
     dom.editAlbumModal.addEventListener("click", event => {
-        if (event.target === dom.editAlbumModal) closeModal();
+        if (event.target === dom.editAlbumModal) void closeModal();
     });
 
     document.addEventListener("keydown", event => {
         if (event.key === "Escape" && !dom.editAlbumModal.classList.contains("hidden")) {
-            closeModal();
+            void closeModal();
         }
     });
 }

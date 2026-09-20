@@ -1,13 +1,14 @@
-import { state } from "./state.js?v=20260920-albumtools04";
-import { vkApi } from "./vk-api.js?v=20260920-albumtools04";
-import { ensureAlbumIndex } from "./albums.js?v=20260920-albumtools04";
-import { getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260920-albumtools04";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools04";
+import { state } from "./state.js?v=20260920-albumtools05";
+import { vkApi } from "./vk-api.js?v=20260920-albumtools05";
+import { ensureAlbumIndex } from "./albums.js?v=20260920-albumtools05";
+import { getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260920-albumtools05";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools05";
 import {
     invalidateAlbumCaches,
     invalidateAlbumPhotosCache
-} from "./cache.js?v=20260920-albumtools04";
-import { openVkTarget, openVkPhoto } from "./vk-links.js?v=20260920-albumtools04";
+} from "./cache.js?v=20260920-albumtools05";
+import { openVkTarget, openVkPhoto } from "./vk-links.js?v=20260920-albumtools05";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools05";
 
 let overlay = null;
 let list = null;
@@ -58,7 +59,7 @@ function ensureModal() {
     title = create("div", "modal-title", "Переместить в альбом");
     const close = create("button", "modal-close", "×");
     close.type = "button";
-    close.addEventListener("click", closeModal);
+    close.addEventListener("click", () => void closeModal());
     header.append(title, close);
 
     hint = create("div", "photo-transfer-hint");
@@ -75,7 +76,7 @@ function ensureModal() {
     const actions = create("div", "modal-actions");
     const cancel = create("button", "secondary-button", "Отмена");
     cancel.type = "button";
-    cancel.addEventListener("click", closeModal);
+    cancel.addEventListener("click", () => void closeModal());
     actions.appendChild(cancel);
 
     modal.append(header, hint, search, list, errorBox, actions);
@@ -83,7 +84,7 @@ function ensureModal() {
     document.body.appendChild(overlay);
 
     overlay.addEventListener("click", event => {
-        if (event.target === overlay) closeModal();
+        if (event.target === overlay) void closeModal();
     });
 }
 
@@ -129,13 +130,18 @@ function renderAlbums() {
     }
 }
 
-function closeModal() {
-    if (!overlay || busy) return;
+function hideModalDirect() {
+    if (!overlay) return;
     overlay.classList.add("hidden");
     activePhoto = null;
     allAlbums = [];
-    search.value = "";
+    if (search) search.value = "";
     showError("");
+}
+
+function closeModal() {
+    if (!overlay || busy) return Promise.resolve(false);
+    return closeSwipeOverlay("photo-transfer");
 }
 
 function updateAlbumSizes(sourceAlbumId, targetAlbumId) {
@@ -182,8 +188,8 @@ async function movePhoto(album) {
     state.photos = state.photos.filter(item => Number(item.id) !== Number(photo.id));
     state.photosTotal = Math.max(0, Number(state.photosTotal || 0) - 1);
 
-    overlay.classList.add("hidden");
     busy = false;
+    await closeSwipeOverlay("photo-transfer");
 
     // Возвращаемся туда, откуда была открыта фотография.
     history.back();
@@ -216,8 +222,8 @@ async function copyPhotoNative(album) {
     invalidateAlbumPhotosCache(ownerId, Number(album.id));
     invalidateAlbumCaches(ownerId);
 
-    overlay.classList.add("hidden");
     busy = false;
+    await closeSwipeOverlay("photo-transfer");
 
     const url = `https://vk.com/album${ownerId}_${Number(album.id)}?act=add`;
     openVkTarget(url, {
@@ -276,6 +282,7 @@ export async function openPhotoTransfer(photo, requestedMode = "move") {
 
     list.innerHTML = '<div class="photo-transfer-loading">Загружаем список альбомов...</div>';
     overlay.classList.remove("hidden");
+    openSwipeOverlay("photo-transfer", hideModalDirect);
 
     try {
         const indexed = await ensureAlbumIndex();
@@ -293,7 +300,7 @@ export function initPhotoTransfer() {
 
     document.addEventListener("keydown", event => {
         if (event.key === "Escape" && overlay && !overlay.classList.contains("hidden")) {
-            closeModal();
+            void closeModal();
         }
     });
 

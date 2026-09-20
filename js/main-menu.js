@@ -1,6 +1,7 @@
-import { dom } from "./dom.js?v=20260920-albumtools04";
-import { state } from "./state.js?v=20260920-albumtools04";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools04";
+import { dom } from "./dom.js?v=20260920-albumtools05";
+import { state } from "./state.js?v=20260920-albumtools05";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools05";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools05";
 
 function visible(element) {
     return Boolean(element && !element.classList.contains("hidden"));
@@ -82,6 +83,13 @@ export function syncMainMenu() {
     setMenuItemVisible(dom.movePhotoMenuButton, onPhoto);
 }
 
+function hideMenuDirect() {
+    if (!dom.mainMenu) return;
+    dom.mainMenu.classList.add("hidden");
+    dom.mainMenu.hidden = true;
+    dom.mainMenu.style.removeProperty("display");
+}
+
 export function openMenu() {
     if (!dom.mainMenu) return;
 
@@ -104,13 +112,15 @@ export function openMenu() {
         background: "#24272a",
         color: "#fff"
     });
+
+    openSwipeOverlay("main-menu", hideMenuDirect);
 }
 
 export function closeMenu() {
-    if (!dom.mainMenu) return;
-    dom.mainMenu.classList.add("hidden");
-    dom.mainMenu.hidden = true;
-    dom.mainMenu.style.removeProperty("display");
+    if (!dom.mainMenu || dom.mainMenu.classList.contains("hidden")) {
+        return Promise.resolve(false);
+    }
+    return closeSwipeOverlay("main-menu");
 }
 
 export function initMainMenu() {
@@ -128,12 +138,12 @@ export function initMainMenu() {
             getComputedStyle(dom.mainMenu).display === "none";
 
         if (closed) openMenu();
-        else closeMenu();
+        else void closeMenu();
     });
 
     dom.copyAlbumLinkMenuButton?.addEventListener("click", async () => {
         const album = state.currentAlbum;
-        closeMenu();
+        await closeMenu();
         if (!album) return;
 
         try {
@@ -143,8 +153,8 @@ export function initMainMenu() {
         }
     });
 
-    dom.editAlbumMenuButton?.addEventListener("click", () => {
-        closeMenu();
+    dom.editAlbumMenuButton?.addEventListener("click", async () => {
+        await closeMenu();
         emitAlbumAction("edit");
     });
 
@@ -152,7 +162,7 @@ export function initMainMenu() {
 
     document.addEventListener("click", event => {
         if (dom.menuButton?.contains(event.target) || dom.mainMenu?.contains(event.target)) return;
-        closeMenu();
+        void closeMenu();
     });
 
 }

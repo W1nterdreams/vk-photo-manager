@@ -1,12 +1,12 @@
-import { state } from "./state.js?v=20260920-albumtools04";
-import { dom } from "./dom.js?v=20260920-albumtools04";
-import { vkApi } from "./vk-api.js?v=20260920-albumtools04";
-import { getPhotoPreviewUrl, escapeHtml, getErrorMessage } from "./helpers.js?v=20260920-albumtools04";
-import { showPhotosScreen, pushAlbumHistory } from "./navigation.js?v=20260920-albumtools04";
-import { CACHE_TTL } from "./config.js?v=20260920-albumtools04";
-import { cacheGet, cacheGetStale, cacheSet, albumPhotosKey } from "./cache.js?v=20260920-albumtools04";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools04";
-import { openPhotoViewer } from "./photo-viewer.js?v=20260920-albumtools04";
+import { state } from "./state.js?v=20260920-albumtools05";
+import { dom } from "./dom.js?v=20260920-albumtools05";
+import { vkApi } from "./vk-api.js?v=20260920-albumtools05";
+import { getPhotoPreviewUrl, escapeHtml, getErrorMessage } from "./helpers.js?v=20260920-albumtools05";
+import { showPhotosScreen, pushAlbumHistory } from "./navigation.js?v=20260920-albumtools05";
+import { CACHE_TTL } from "./config.js?v=20260920-albumtools05";
+import { cacheGet, cacheGetStale, cacheSet, albumPhotosKey } from "./cache.js?v=20260920-albumtools05";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools05";
+import { openPhotoViewer } from "./photo-viewer.js?v=20260920-albumtools05";
 
 const PAGE_SIZE = 20;
 const SORT_FETCH_SIZE = 100;
@@ -118,6 +118,19 @@ function initPhotoSortControls() {
     dom.sortOldestButton?.addEventListener("click", () => {
         void setPhotoDateSort("oldest");
     });
+}
+
+function formatPhotoDate(timestamp) {
+    const seconds = Number(timestamp || 0);
+    if (!Number.isFinite(seconds) || seconds <= 0) return "";
+
+    const date = new Date(seconds * 1000);
+    if (Number.isNaN(date.getTime())) return "";
+
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}.${month}.${year}`;
 }
 
 function photosForRender() {
@@ -411,6 +424,14 @@ export function renderPhotos() {
             image.alt = photo.text || "";
             image.loading = "lazy";
             card.appendChild(image);
+        }
+
+        const uploadedDate = formatPhotoDate(photo?.date);
+        if (uploadedDate) {
+            const dateBadge = document.createElement("span");
+            dateBadge.className = "photo-card-date";
+            dateBadge.textContent = uploadedDate;
+            card.appendChild(dateBadge);
         }
 
         const stats = document.createElement("div");

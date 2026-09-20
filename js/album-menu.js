@@ -1,4 +1,5 @@
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools04";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools05";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools05";
 
 const LONG_PRESS_MS = 520;
 const MOVE_CANCEL_PX = 12;
@@ -29,13 +30,13 @@ async function copyText(text) {
     textarea.remove();
 }
 
-function emitAction(action) {
-    if (!currentAlbum) return;
+function emitAction(action, album) {
+    if (!album) return;
 
     window.dispatchEvent(new CustomEvent("album-menu-action", {
         detail: {
             action,
-            album: currentAlbum
+            album
         }
     }));
 }
@@ -48,7 +49,7 @@ function createItem(label, action, extraClass = "") {
 
     button.addEventListener("click", async () => {
         const album = currentAlbum;
-        closeAlbumMenu();
+        await closeAlbumMenu();
         if (!album) return;
 
         if (action === "copy-link") {
@@ -60,9 +61,7 @@ function createItem(label, action, extraClass = "") {
             return;
         }
 
-        currentAlbum = album;
-        emitAction(action);
-        currentAlbum = null;
+        emitAction(action, album);
     });
 
     return button;
@@ -91,16 +90,23 @@ function ensureMenu() {
     document.body.appendChild(overlay);
 
     overlay.addEventListener("click", event => {
-        if (event.target === overlay) closeAlbumMenu();
+        if (event.target === overlay) void closeAlbumMenu();
     });
 
     menu.addEventListener("click", event => event.stopPropagation());
 
     document.addEventListener("keydown", event => {
         if (event.key === "Escape" && !overlay.classList.contains("hidden")) {
-            closeAlbumMenu();
+            void closeAlbumMenu();
         }
     });
+}
+
+function hideAlbumMenuDirect() {
+    if (!overlay) return;
+    overlay.classList.add("hidden");
+    document.body.classList.remove("album-menu-open");
+    currentAlbum = null;
 }
 
 export function openAlbumMenu(album) {
@@ -108,13 +114,14 @@ export function openAlbumMenu(album) {
     currentAlbum = album;
     overlay.classList.remove("hidden");
     document.body.classList.add("album-menu-open");
+    openSwipeOverlay("album-context-menu", hideAlbumMenuDirect);
 }
 
 export function closeAlbumMenu() {
-    if (!overlay) return;
-    overlay.classList.add("hidden");
-    document.body.classList.remove("album-menu-open");
-    currentAlbum = null;
+    if (!overlay || overlay.classList.contains("hidden")) {
+        return Promise.resolve(false);
+    }
+    return closeSwipeOverlay("album-context-menu");
 }
 
 export function bindAlbumLongPress(element, album) {

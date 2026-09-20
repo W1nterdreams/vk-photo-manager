@@ -1,5 +1,6 @@
-import { state } from "./state.js?v=20260920-albumtools04";
-import { dom } from "./dom.js?v=20260920-albumtools04";
+import { state } from "./state.js?v=20260920-albumtools05";
+import { dom } from "./dom.js?v=20260920-albumtools05";
+import { handleOverlayPopState } from "./overlay-history.js?v=20260920-albumtools05";
 
 let openAlbumFromHistory = null;
 let openPhotoFromHistory = null;
@@ -185,6 +186,10 @@ function findAlbum(albumId) {
 }
 
 async function handlePopState(event) {
+    // Если поверх экрана открыто наше меню/модальное окно, системный
+    // свайп «Назад» сначала закрывает его и не меняет экран Mini App.
+    if (handleOverlayPopState()) return;
+
     const navState = event.state;
 
     if (!navState || navState.screen === "albums") {

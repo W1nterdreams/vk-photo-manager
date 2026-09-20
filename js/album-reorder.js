@@ -1,9 +1,10 @@
-import { state } from "./state.js?v=20260920-albumtools04";
-import { vkApi } from "./vk-api.js?v=20260920-albumtools04";
-import { getErrorMessage } from "./helpers.js?v=20260920-albumtools04";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools04";
-import { cacheRemove, albumsKey, albumIndexKey } from "./cache.js?v=20260920-albumtools04";
-import { loadAlbums } from "./albums.js?v=20260920-albumtools04";
+import { state } from "./state.js?v=20260920-albumtools05";
+import { vkApi } from "./vk-api.js?v=20260920-albumtools05";
+import { getErrorMessage } from "./helpers.js?v=20260920-albumtools05";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools05";
+import { cacheRemove, albumsKey, albumIndexKey } from "./cache.js?v=20260920-albumtools05";
+import { loadAlbums } from "./albums.js?v=20260920-albumtools05";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools05";
 
 let overlay = null;
 let activeAlbum = null;
@@ -34,7 +35,7 @@ function ensureModal() {
     const close = createElement("button", "modal-close", "×");
     close.type = "button";
     close.setAttribute("aria-label", "Закрыть");
-    close.addEventListener("click", closeModal);
+    close.addEventListener("click", () => void closeModal());
 
     header.append(title, close);
 
@@ -57,7 +58,7 @@ function ensureModal() {
 
     const cancel = createElement("button", "secondary-button", "Отмена");
     cancel.type = "button";
-    cancel.addEventListener("click", closeModal);
+    cancel.addEventListener("click", () => void closeModal());
 
     const save = createElement("button", "primary-button", "Переместить");
     save.type = "button";
@@ -71,12 +72,12 @@ function ensureModal() {
     document.body.appendChild(overlay);
 
     overlay.addEventListener("click", event => {
-        if (event.target === overlay) closeModal();
+        if (event.target === overlay) void closeModal();
     });
 
     document.addEventListener("keydown", event => {
         if (event.key === "Escape" && !overlay.classList.contains("hidden")) {
-            closeModal();
+            void closeModal();
         }
     });
 
@@ -314,6 +315,7 @@ async function openModal(album) {
 
     overlay.classList.remove("hidden");
     document.body.classList.add("album-menu-open");
+    openSwipeOverlay("album-reorder", hideModalDirect);
     setSaveEnabled();
 
     try {
@@ -334,8 +336,8 @@ async function openModal(album) {
     }
 }
 
-function closeModal() {
-    if (!overlay || saving) return;
+function hideModalDirect() {
+    if (!overlay) return;
     overlay.classList.add("hidden");
     document.body.classList.remove("album-menu-open");
     activeAlbum = null;
@@ -343,6 +345,11 @@ function closeModal() {
     selectedSlot = null;
     loading = false;
     showError("");
+}
+
+function closeModal() {
+    if (!overlay || saving) return Promise.resolve(false);
+    return closeSwipeOverlay("album-reorder");
 }
 
 function buildMoveParams() {
@@ -392,7 +399,7 @@ async function saveMove() {
 
     const desiredOrder = orderAfterMove();
     if (sameOrder(albums, desiredOrder)) {
-        closeModal();
+        await closeModal();
         return;
     }
 
@@ -408,12 +415,8 @@ async function saveMove() {
             throw new Error("VK не подтвердил изменение порядка альбомов.");
         }
 
-        overlay.classList.add("hidden");
-        document.body.classList.remove("album-menu-open");
-        activeAlbum = null;
-        albums = [];
-        selectedSlot = null;
-
+        saving = false;
+        await closeSwipeOverlay("album-reorder");
         await refreshAlbumsFromVk();
     } catch (error) {
         showError(getErrorMessage(error));

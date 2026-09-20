@@ -1,14 +1,14 @@
-import { state } from "./state.js?v=20260920-albumtools04";
-import { dom } from "./dom.js?v=20260920-albumtools04";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools04";
-import { closeMenu } from "./main-menu.js?v=20260920-albumtools04";
-import { openVkTarget } from "./vk-links.js?v=20260920-albumtools04";
-import { loadPhotos } from "./photos.js?v=20260920-albumtools04";
-import { renderAlbums } from "./albums.js?v=20260920-albumtools04";
+import { state } from "./state.js?v=20260920-albumtools05";
+import { dom } from "./dom.js?v=20260920-albumtools05";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools05";
+import { closeMenu } from "./main-menu.js?v=20260920-albumtools05";
+import { openVkTarget } from "./vk-links.js?v=20260920-albumtools05";
+import { loadPhotos } from "./photos.js?v=20260920-albumtools05";
+import { renderAlbums } from "./albums.js?v=20260920-albumtools05";
 import {
     invalidateAlbumCaches,
     invalidateAlbumPhotosCache
-} from "./cache.js?v=20260920-albumtools04";
+} from "./cache.js?v=20260920-albumtools05";
 
 function findAlbum(albumId) {
     const id = String(albumId || "");
@@ -37,8 +37,8 @@ function buildNativeUploadTarget(album) {
     return `https://vk.com/album${ownerId}_${albumId}?act=add`;
 }
 
-function openNativeUpload() {
-    closeMenu();
+async function openNativeUpload() {
+    await closeMenu();
 
     const album = state.currentAlbum;
     if (!album || state.currentScreen !== "photos") return;
@@ -89,7 +89,7 @@ async function refreshAfterNativeUpload(detail) {
 }
 
 export function initPhotoUpload() {
-    dom.uploadPhotoMenuButton?.addEventListener("click", openNativeUpload);
+    dom.uploadPhotoMenuButton?.addEventListener("click", () => void openNativeUpload());
 
     window.addEventListener("vk-native-return", event => {
         void refreshAfterNativeUpload(event.detail);
