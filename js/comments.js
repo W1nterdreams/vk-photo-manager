@@ -1,14 +1,14 @@
-import { state } from "./state.js?v=20260920-albumtools12";
-import { dom } from "./dom.js?v=20260920-albumtools12";
-import { vkApi } from "./vk-api.js?v=20260920-albumtools12";
-import { escapeHtml, getErrorMessage, getPhotoPreviewUrl } from "./helpers.js?v=20260920-albumtools12";
-import { showCommentsScreen, pushCommentsHistory } from "./navigation.js?v=20260920-albumtools12";
-import { closeMenu } from "./main-menu.js?v=20260920-albumtools12";
-import { CACHE_TTL } from "./config.js?v=20260920-albumtools12";
-import { cacheGet, cacheSet, invalidateCommentCaches } from "./cache.js?v=20260920-albumtools12";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools12";
-import { openVkProfile, openVkPhoto, openVkTarget } from "./vk-links.js?v=20260920-albumtools12";
-import { openPhotoViewer } from "./photo-viewer.js?v=20260920-albumtools12";
+import { state } from "./state.js?v=20260920-albumtools13";
+import { dom } from "./dom.js?v=20260920-albumtools13";
+import { vkApi } from "./vk-api.js?v=20260920-albumtools13";
+import { escapeHtml, getErrorMessage, getPhotoPreviewUrl } from "./helpers.js?v=20260920-albumtools13";
+import { showCommentsScreen, pushCommentsHistory } from "./navigation.js?v=20260920-albumtools13";
+import { closeMenu } from "./main-menu.js?v=20260920-albumtools13";
+import { CACHE_TTL } from "./config.js?v=20260920-albumtools13";
+import { cacheGet, cacheSet, invalidateCommentCaches } from "./cache.js?v=20260920-albumtools13";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools13";
+import { openVkProfile, openVkPhoto, openVkTarget } from "./vk-links.js?v=20260920-albumtools13";
+import { openPhotoViewer } from "./photo-viewer.js?v=20260920-albumtools13";
 
 const GLOBAL_COMMENTS_DAYS = 5;
 const PAGE_SIZE = 100;
@@ -373,7 +373,7 @@ function renderComments(data) {
         thumb.type = "button";
         thumb.className = "comment-thumb-button";
 
-        const photoUrl = getPhotoPreviewUrl(photo, 220);
+        const photoUrl = getPhotoPreviewUrl(photo, 200);
         if (photoUrl) {
             const image = document.createElement("img");
             image.className = "comment-photo";

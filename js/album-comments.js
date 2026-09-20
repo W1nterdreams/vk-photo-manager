@@ -1,20 +1,20 @@
-import { dom } from "./dom.js?v=20260920-albumtools12";
-import { state } from "./state.js?v=20260920-albumtools12";
-import { vkApi } from "./vk-api.js?v=20260920-albumtools12";
+import { dom } from "./dom.js?v=20260920-albumtools13";
+import { state } from "./state.js?v=20260920-albumtools13";
+import { vkApi } from "./vk-api.js?v=20260920-albumtools13";
 import {
     escapeHtml,
     getPhotoPreviewUrl
-} from "./helpers.js?v=20260920-albumtools12";
+} from "./helpers.js?v=20260920-albumtools13";
 import {
     showCommentsScreen,
     pushCommentsHistory
-} from "./navigation.js?v=20260920-albumtools12";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools12";
-import { cacheGet, cacheSet, invalidateCommentCaches } from "./cache.js?v=20260920-albumtools12";
-import { CACHE_TTL } from "./config.js?v=20260920-albumtools12";
-import { createPhotoComment, getPhotoCommentErrorText } from "./photo-comment-api.js?v=20260920-albumtools12";
-import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260920-albumtools12";
-import { openPhotoViewer } from "./photo-viewer.js?v=20260920-albumtools12";
+} from "./navigation.js?v=20260920-albumtools13";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools13";
+import { cacheGet, cacheSet, invalidateCommentCaches } from "./cache.js?v=20260920-albumtools13";
+import { CACHE_TTL } from "./config.js?v=20260920-albumtools13";
+import { createPhotoComment, getPhotoCommentErrorText } from "./photo-comment-api.js?v=20260920-albumtools13";
+import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260920-albumtools13";
+import { openPhotoViewer } from "./photo-viewer.js?v=20260920-albumtools13";
 
 const ALBUM_COMMENTS_DAYS = 3;
 const PAGE_SIZE = 100;
@@ -947,7 +947,7 @@ function createCommentCard(comment, data) {
 
     const photoId = commentPhotoId(comment);
     const photo = photoId ? data.photos.get(String(photoId)) : null;
-    const photoUrl = getPhotoPreviewUrl(photo, 220);
+    const photoUrl = getPhotoPreviewUrl(photo, 200);
     const author = authorInfo(comment, data.authors);
 
     const thumbWrap = document.createElement("button");

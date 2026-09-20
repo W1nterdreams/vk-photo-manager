@@ -1,19 +1,19 @@
-import { state } from "./state.js?v=20260920-albumtools12";
-import { dom } from "./dom.js?v=20260920-albumtools12";
-import { vkApi } from "./vk-api.js?v=20260920-albumtools12";
-import { getPhotoPreviewUrl, escapeHtml, getErrorMessage } from "./helpers.js?v=20260920-albumtools12";
-import { showPhotosScreen, pushAlbumHistory } from "./navigation.js?v=20260920-albumtools12";
-import { CACHE_TTL } from "./config.js?v=20260920-albumtools12";
-import { cacheGet, cacheGetStale, cacheSet, albumPhotosKey } from "./cache.js?v=20260920-albumtools12";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools12";
-import { openPhotoViewer } from "./photo-viewer.js?v=20260920-albumtools12";
-import { bindPhotoContextLongPress } from "./photo-context-menu.js?v=20260920-albumtools12";
+import { state } from "./state.js?v=20260920-albumtools13";
+import { dom } from "./dom.js?v=20260920-albumtools13";
+import { vkApi } from "./vk-api.js?v=20260920-albumtools13";
+import { getPhotoPreviewUrl, escapeHtml, getErrorMessage } from "./helpers.js?v=20260920-albumtools13";
+import { showPhotosScreen, pushAlbumHistory } from "./navigation.js?v=20260920-albumtools13";
+import { CACHE_TTL } from "./config.js?v=20260920-albumtools13";
+import { cacheGet, cacheGetStale, cacheSet, albumPhotosKey } from "./cache.js?v=20260920-albumtools13";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools13";
+import { openPhotoViewer } from "./photo-viewer.js?v=20260920-albumtools13";
+import { bindPhotoContextLongPress } from "./photo-context-menu.js?v=20260920-albumtools13";
 import {
     isPhotoMultiSelectActive,
     isPhotoSelected,
     togglePhotoSelection,
     cancelPhotoMultiSelect
-} from "./photo-multiselect.js?v=20260920-albumtools12";
+} from "./photo-multiselect.js?v=20260920-albumtools13";
 
 const PAGE_SIZE = 20;
 const SORT_FETCH_SIZE = 100;
@@ -448,7 +448,7 @@ export function renderPhotos() {
         const card = document.createElement("div");
         card.className = "photo-card";
         card.dataset.photoId = String(photo.id);
-        const url = getPhotoPreviewUrl(photo, 220);
+        const url = getPhotoPreviewUrl(photo, 200);
 
         if (url) {
             const image = document.createElement("img");

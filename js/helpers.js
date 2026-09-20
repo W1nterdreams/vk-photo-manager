@@ -51,7 +51,7 @@ export function getBestPhotoUrl(p) {
     return a[0]?.url || "";
 }
 
-export function getPhotoPreviewUrl(p, targetSize = 640) {
+export function getPhotoPreviewUrl(p, targetSize = 200) {
     if (!Array.isArray(p?.sizes)) return "";
 
     const sizes = [...p.sizes]
@@ -78,7 +78,7 @@ export function getAlbumCover(a) {
 
     if (!sizes.length) return "";
 
-    const TARGET = 220;
+    const TARGET = 200;
 
     const suitable = sizes
         .filter(x => Math.max(x.width || 0, x.height || 0) >= TARGET)

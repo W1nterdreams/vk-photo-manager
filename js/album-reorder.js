@@ -1,10 +1,10 @@
-import { state } from "./state.js?v=20260920-albumtools12";
-import { vkApi } from "./vk-api.js?v=20260920-albumtools12";
-import { getErrorMessage } from "./helpers.js?v=20260920-albumtools12";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools12";
-import { cacheRemove, albumsKey, albumIndexKey } from "./cache.js?v=20260920-albumtools12";
-import { loadAlbums } from "./albums.js?v=20260920-albumtools12";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools12";
+import { state } from "./state.js?v=20260920-albumtools13";
+import { vkApi } from "./vk-api.js?v=20260920-albumtools13";
+import { getErrorMessage } from "./helpers.js?v=20260920-albumtools13";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools13";
+import { cacheRemove, albumsKey, albumIndexKey } from "./cache.js?v=20260920-albumtools13";
+import { loadAlbums } from "./albums.js?v=20260920-albumtools13";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools13";
 
 let overlay = null;
 let activeAlbum = null;

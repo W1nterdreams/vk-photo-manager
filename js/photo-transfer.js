@@ -1,15 +1,16 @@
-import { state } from "./state.js?v=20260920-albumtools12";
-import { vkApi } from "./vk-api.js?v=20260920-albumtools12";
-import { getAlbumCover, getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260920-albumtools12";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools12";
+import { state } from "./state.js?v=20260920-albumtools13";
+import { vkApi } from "./vk-api.js?v=20260920-albumtools13";
+import { getAlbumCover, getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260920-albumtools13";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools13";
 import {
     invalidateAlbumCaches,
     invalidateAlbumPhotosCache
-} from "./cache.js?v=20260920-albumtools12";
-import { openVkTarget, openVkPhoto } from "./vk-links.js?v=20260920-albumtools12";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools12";
+} from "./cache.js?v=20260920-albumtools13";
+import { openVkTarget, openVkPhoto } from "./vk-links.js?v=20260920-albumtools13";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools13";
 
 const ALBUM_PAGE_SIZE = 100;
+const MAX_ALBUM_PAGES = 200;
 
 let overlay = null;
 let grid = null;
@@ -26,6 +27,7 @@ let originScreen = "albums";
 let busy = false;
 let allAlbums = [];
 let loadGeneration = 0;
+let transferAlbumsLoading = false;
 
 function create(tag, className = "", text = "") {
     const element = document.createElement(tag);
@@ -424,11 +426,23 @@ function renderAlbums() {
 
     const albums = candidateAlbums();
     if (!albums.length) {
-        grid.appendChild(create("div", "photo-transfer-status", search?.value ? "Альбомы не найдены" : "Нет доступных альбомов"));
+        const message = transferAlbumsLoading
+            ? (search?.value ? "Ищем среди всех альбомов..." : "Загружаем альбомы...")
+            : (search?.value ? "Альбомы не найдены" : "Нет доступных альбомов");
+        grid.appendChild(create("div", "photo-transfer-status", message));
         return;
     }
 
     albums.forEach(album => grid.appendChild(renderAlbumCard(album)));
+
+    if (transferAlbumsLoading) {
+        const status = create(
+            "div",
+            "photo-transfer-status",
+            `Загружаем остальные альбомы… Уже доступно: ${allAlbums.length}`
+        );
+        grid.appendChild(status);
+    }
 }
 
 function hideModalDirect() {
@@ -439,6 +453,7 @@ function hideModalDirect() {
     activePhotos = [];
     onTransferComplete = null;
     allAlbums = [];
+    transferAlbumsLoading = false;
     busy = false;
     if (search) search.value = "";
     if (clearSearch) clearSearch.classList.add("hidden");
@@ -458,11 +473,22 @@ function mergeAlbums(current, incoming) {
 
 async function fetchTransferAlbums(generation) {
     const ownerId = getOwnerId();
-    let offset = 0;
-    let total = Infinity;
-    let resultAlbums = [];
 
-    while (offset < total) {
+    // Сразу показываем всё, что уже известно приложению. Полный поисковый
+    // индекс может содержать альбомы, которые ещё не попадали в ленивую ленту.
+    // Карточки из state.albums при этом дополняют индекс обложками.
+    allAlbums = mergeAlbums(
+        Array.isArray(state.albumIndex) ? state.albumIndex : [],
+        Array.isArray(state.albums) ? state.albums : []
+    );
+    transferAlbumsLoading = true;
+    renderAlbums();
+
+    let offset = 0;
+    let pages = 0;
+    const fetchedIds = new Set();
+
+    while (pages < MAX_ALBUM_PAGES) {
         const result = await vkApi("photos.getAlbums", {
             owner_id: ownerId,
             need_system: 1,
@@ -475,18 +501,51 @@ async function fetchTransferAlbums(generation) {
         if (generation !== loadGeneration || !transferPhotos().length) return [];
 
         const items = Array.isArray(result?.items) ? result.items : [];
-        resultAlbums = mergeAlbums(resultAlbums, items);
 
-        const apiTotal = Number(result?.count);
-        total = Number.isFinite(apiTotal) && apiTotal >= 0
-            ? apiTotal
-            : offset + items.length;
+        // Здесь намеренно НЕ используем result.count как условие завершения.
+        // На больших списках он может не отражать пригодное для пагинации
+        // общее количество. Надёжный конец — пустая страница или отсутствие
+        // новых album_id.
+        if (!items.length) break;
+
+        let fetchedNew = 0;
+        for (const album of items) {
+            const id = String(album?.id ?? "");
+            if (!id || fetchedIds.has(id)) continue;
+            fetchedIds.add(id);
+            fetchedNew += 1;
+        }
+
+        allAlbums = mergeAlbums(allAlbums, items);
+        renderAlbums();
 
         offset += items.length;
-        if (!items.length || items.length < ALBUM_PAGE_SIZE) break;
+        pages += 1;
+
+        // Сравниваем только со страницами, полученными в ЭТОМ запросе.
+        // Альбом мог уже находиться в state.albumIndex, и это не должно
+        // ошибочно останавливать серверную пагинацию на первой странице.
+        if (fetchedNew === 0) {
+            console.warn("Загрузка списка альбомов остановлена: VK повторил уже полученную страницу", {
+                offset,
+                pageItems: items.length,
+                albums: allAlbums.length
+            });
+            break;
+        }
     }
 
-    return resultAlbums;
+    if (pages >= MAX_ALBUM_PAGES) {
+        console.warn("Загрузка списка альбомов достигла защитного лимита страниц", {
+            pages,
+            offset,
+            albums: allAlbums.length
+        });
+    }
+
+    transferAlbumsLoading = false;
+    renderAlbums();
+    return allAlbums;
 }
 
 function updateAlbumSizes(sourceAlbumId, targetAlbumId, count = 1) {
@@ -547,7 +606,7 @@ async function movePhoto(album) {
     // устаревшую карточку и сразу синхронизирует счётчик фотографий.
     if (sourceAlbum) {
         try {
-            const { loadPhotos } = await import("./photos.js?v=20260920-albumtools12");
+            const { loadPhotos } = await import("./photos.js?v=20260920-albumtools13");
             await loadPhotos(sourceAlbum, { force: true });
         } catch (error) {
             console.warn("Не удалось обновить альбом после перемещения фотографии:", error);
@@ -567,7 +626,7 @@ async function refreshSourceAlbumAfterMove(sourceAlbum) {
     if (!sourceAlbum) return;
 
     try {
-        const { loadPhotos } = await import("./photos.js?v=20260920-albumtools12");
+        const { loadPhotos } = await import("./photos.js?v=20260920-albumtools13");
         const freshSource = (
             state.currentAlbum && String(state.currentAlbum.id) === String(sourceAlbum.id)
                 ? state.currentAlbum
@@ -770,6 +829,7 @@ export async function openPhotoTransfer(photo, requestedMode = "move") {
         renderAlbums();
     } catch (error) {
         if (generation !== loadGeneration) return;
+        transferAlbumsLoading = false;
         showError(getErrorMessage(error));
         grid.innerHTML = "";
         grid.appendChild(create("div", "photo-transfer-status", "Не удалось загрузить альбомы."));
@@ -826,6 +886,7 @@ export async function openPhotoTransferMany(photos, { onComplete = null } = {}) 
         renderAlbums();
     } catch (error) {
         if (generation !== loadGeneration) return;
+        transferAlbumsLoading = false;
         showError(getErrorMessage(error));
         grid.innerHTML = "";
         grid.appendChild(create("div", "photo-transfer-status", "Не удалось загрузить альбомы."));
