@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <!-- CACHE_VERSION: 20260920-photomenu01 -->
+    <!-- CACHE_VERSION: 20260920-albumtools02 -->
     <meta charset="UTF-8">
 
     <meta
@@ -11,7 +11,7 @@
 
     <title>Фотоальбомы VK</title>
 
-    <link rel="stylesheet" href="./style.css?v=20260920-photomenu01">
+    <link rel="stylesheet" href="./style.css?v=20260920-albumtools02">
 
     <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
 </head>
@@ -88,6 +88,33 @@
                     <span>
                         Загрузить фото
                     </span>
+                </button>
+
+                <button
+                    id="sortAlbumByDateMenuButton"
+                    class="menu-item hidden"
+                    type="button"
+                >
+                    <span class="menu-item-icon">⇅</span>
+                    <span>Сортировать по дате</span>
+                </button>
+
+                <button
+                    id="copyAlbumLinkMenuButton"
+                    class="menu-item hidden"
+                    type="button"
+                >
+                    <span class="menu-item-icon">🔗</span>
+                    <span>Скопировать ссылку</span>
+                </button>
+
+                <button
+                    id="editAlbumMenuButton"
+                    class="menu-item hidden"
+                    type="button"
+                >
+                    <span class="menu-item-icon">✎</span>
+                    <span>Редактировать альбом</span>
                 </button>
 
                 <button
@@ -648,7 +675,7 @@
 </div>
 
 
-<script type="module" src="./js/app.js?v=20260920-photomenu01"></script>
+<script type="module" src="./js/app.js?v=20260920-albumtools02"></script>
     
 </body>
 </html>

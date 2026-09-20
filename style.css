@@ -2078,3 +2078,11 @@ img {
     background: #181b1e;
     color: #c9d7e3;
 }
+
+/* =========================================================
+   PHOTO DATE SORT MENU
+   ========================================================= */
+.album-context-item.selected {
+    font-weight: 600;
+    background: #eef5fb;
+}
