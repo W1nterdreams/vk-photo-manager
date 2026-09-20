@@ -1755,6 +1755,10 @@ img {
     background: #0a0b0c;
 }
 
+.photo-viewer-image.is-loading {
+    visibility: hidden;
+}
+
 .photo-viewer-description {
     padding: 12px 14px;
     border-bottom: 1px solid #34383b;
