@@ -1,12 +1,12 @@
-import { state } from "./state.js?v=20260920-albumtools05";
-import { dom } from "./dom.js?v=20260920-albumtools05";
-import { vkApi } from "./vk-api.js?v=20260920-albumtools05";
-import { getPhotoPreviewUrl, escapeHtml, getErrorMessage } from "./helpers.js?v=20260920-albumtools05";
-import { showPhotosScreen, pushAlbumHistory } from "./navigation.js?v=20260920-albumtools05";
-import { CACHE_TTL } from "./config.js?v=20260920-albumtools05";
-import { cacheGet, cacheGetStale, cacheSet, albumPhotosKey } from "./cache.js?v=20260920-albumtools05";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools05";
-import { openPhotoViewer } from "./photo-viewer.js?v=20260920-albumtools05";
+import { state } from "./state.js?v=20260920-albumtools06";
+import { dom } from "./dom.js?v=20260920-albumtools06";
+import { vkApi } from "./vk-api.js?v=20260920-albumtools06";
+import { getPhotoPreviewUrl, escapeHtml, getErrorMessage } from "./helpers.js?v=20260920-albumtools06";
+import { showPhotosScreen, pushAlbumHistory } from "./navigation.js?v=20260920-albumtools06";
+import { CACHE_TTL } from "./config.js?v=20260920-albumtools06";
+import { cacheGet, cacheGetStale, cacheSet, albumPhotosKey } from "./cache.js?v=20260920-albumtools06";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools06";
+import { openPhotoViewer } from "./photo-viewer.js?v=20260920-albumtools06";
 
 const PAGE_SIZE = 20;
 const SORT_FETCH_SIZE = 100;
@@ -22,6 +22,7 @@ function updatePhotoSortButtons() {
     const current = getPhotoDateSort();
     const newestActive = current === "newest";
     const oldestActive = current === "oldest";
+    const currentActive = current === "vk";
 
     dom.sortNewestButton?.classList.toggle("active", newestActive);
     dom.sortNewestButton?.setAttribute("aria-pressed", newestActive ? "true" : "false");
@@ -32,6 +33,11 @@ function updatePhotoSortButtons() {
     dom.sortOldestButton?.setAttribute("aria-pressed", oldestActive ? "true" : "false");
     dom.sortOldestButton?.classList.toggle("loading", sortingAllPhotos);
     if (dom.sortOldestButton) dom.sortOldestButton.disabled = sortingAllPhotos;
+
+    dom.sortCurrentButton?.classList.toggle("active", currentActive);
+    dom.sortCurrentButton?.setAttribute("aria-pressed", currentActive ? "true" : "false");
+    dom.sortCurrentButton?.classList.toggle("loading", sortingAllPhotos);
+    if (dom.sortCurrentButton) dom.sortCurrentButton.disabled = sortingAllPhotos;
 }
 
 async function ensureAllPhotosLoadedForSort() {
@@ -117,6 +123,10 @@ function initPhotoSortControls() {
 
     dom.sortOldestButton?.addEventListener("click", () => {
         void setPhotoDateSort("oldest");
+    });
+
+    dom.sortCurrentButton?.addEventListener("click", () => {
+        void setPhotoDateSort("vk");
     });
 }
 
