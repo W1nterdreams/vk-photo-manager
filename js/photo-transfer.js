@@ -1,13 +1,13 @@
-import { state } from "./state.js?v=20260920-albumtools07";
-import { vkApi } from "./vk-api.js?v=20260920-albumtools07";
-import { getAlbumCover, getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260920-albumtools07";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools07";
+import { state } from "./state.js?v=20260920-albumtools08";
+import { vkApi } from "./vk-api.js?v=20260920-albumtools08";
+import { getAlbumCover, getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260920-albumtools08";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools08";
 import {
     invalidateAlbumCaches,
     invalidateAlbumPhotosCache
-} from "./cache.js?v=20260920-albumtools07";
-import { openVkTarget, openVkPhoto } from "./vk-links.js?v=20260920-albumtools07";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools07";
+} from "./cache.js?v=20260920-albumtools08";
+import { openVkTarget, openVkPhoto } from "./vk-links.js?v=20260920-albumtools08";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools08";
 
 const ALBUM_PAGE_SIZE = 100;
 

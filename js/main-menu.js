@@ -1,7 +1,7 @@
-import { dom } from "./dom.js?v=20260920-albumtools07";
-import { state } from "./state.js?v=20260920-albumtools07";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools07";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools07";
+import { dom } from "./dom.js?v=20260920-albumtools08";
+import { state } from "./state.js?v=20260920-albumtools08";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools08";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools08";
 
 function visible(element) {
     return Boolean(element && !element.classList.contains("hidden"));
@@ -82,6 +82,7 @@ export function syncMainMenu() {
     setMenuItemVisible(dom.copyPhotoMenuButton, onPhoto);
     setMenuItemVisible(dom.movePhotoMenuButton, onPhoto);
     setMenuItemVisible(dom.reorderPhotoMenuButton, onPhoto);
+    setMenuItemVisible(dom.deletePhotoMenuButton, onPhoto);
 }
 
 function hideMenuDirect() {

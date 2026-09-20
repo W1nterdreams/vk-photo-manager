@@ -1,13 +1,13 @@
-import { state } from "./state.js?v=20260920-albumtools07";
-import { vkApi } from "./vk-api.js?v=20260920-albumtools07";
-import { getPhotoPreviewUrl, getErrorMessage } from "./helpers.js?v=20260920-albumtools07";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools07";
+import { state } from "./state.js?v=20260920-albumtools08";
+import { vkApi } from "./vk-api.js?v=20260920-albumtools08";
+import { getPhotoPreviewUrl, getErrorMessage } from "./helpers.js?v=20260920-albumtools08";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools08";
 import {
     cacheSet,
     albumPhotosKey,
     invalidateAlbumPhotosCache
-} from "./cache.js?v=20260920-albumtools07";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools07";
+} from "./cache.js?v=20260920-albumtools08";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools08";
 
 const PAGE_SIZE = 100;
 
@@ -414,7 +414,19 @@ function renderPhotoCard(photo) {
     if (selected) {
         button.disabled = true;
     } else {
-        button.addEventListener("click", () => void chooseTarget(photo));
+        button.addEventListener("pointerdown", event => {
+            event.stopPropagation();
+        });
+        button.addEventListener("pointerup", event => {
+            event.stopPropagation();
+        });
+        button.addEventListener("click", event => {
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+            state.suppressPhotoOpenUntil = Date.now() + 900;
+            void chooseTarget(photo);
+        });
     }
 
     return button;
@@ -509,6 +521,7 @@ async function chooseTarget(targetPhoto) {
 
         const reordered = localReorder(albumPhotos, sourceIndex, targetIndex);
         saveReorderedState(reordered);
+        state.suppressPhotoOpenUntil = Date.now() + 900;
 
         busy = false;
         busyLayer.remove();

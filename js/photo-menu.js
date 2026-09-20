@@ -1,20 +1,25 @@
-import { state } from "./state.js?v=20260920-albumtools07";
-import { dom } from "./dom.js?v=20260920-albumtools07";
-import { vkApi } from "./vk-api.js?v=20260920-albumtools07";
-import { getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260920-albumtools07";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools07";
-import { invalidateAlbumPhotosCache } from "./cache.js?v=20260920-albumtools07";
-import { closeMenu } from "./main-menu.js?v=20260920-albumtools07";
-import { openPhotoTransfer } from "./photo-transfer.js?v=20260920-albumtools07";
-import { openPhotoReorder } from "./photo-reorder.js?v=20260920-albumtools07";
-import { openVkPhoto } from "./vk-links.js?v=20260920-albumtools07";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools07";
+import { state } from "./state.js?v=20260920-albumtools08";
+import { dom } from "./dom.js?v=20260920-albumtools08";
+import { vkApi } from "./vk-api.js?v=20260920-albumtools08";
+import { getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260920-albumtools08";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools08";
+import {
+    invalidateAlbumPhotosCache,
+    invalidateAlbumCaches
+} from "./cache.js?v=20260920-albumtools08";
+import { closeMenu } from "./main-menu.js?v=20260920-albumtools08";
+import { openPhotoTransfer } from "./photo-transfer.js?v=20260920-albumtools08";
+import { openPhotoReorder } from "./photo-reorder.js?v=20260920-albumtools08";
+import { openVkPhoto } from "./vk-links.js?v=20260920-albumtools08";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools08";
 
 let editOverlay = null;
 let editInput = null;
 let editError = null;
 let editSave = null;
 let editing = false;
+let editTargetPhoto = null;
+let deleting = false;
 
 function currentPhoto() {
     return state.currentScreen === "photo" ? state.currentPhoto : null;
@@ -123,10 +128,10 @@ function showEditError(message = "") {
     editError.classList.toggle("hidden", !message);
 }
 
-function openEditModal() {
-    const photo = currentPhoto();
-    if (!photo) return;
+export function openPhotoDescriptionEditor(photo) {
+    if (!photo?.id) return;
 
+    editTargetPhoto = photo;
     ensureEditModal();
     showEditError("");
     editInput.value = String(photo.text || "");
@@ -139,6 +144,7 @@ function hideEditModalDirect() {
     if (!editOverlay) return;
     editOverlay.classList.add("hidden");
     showEditError("");
+    editTargetPhoto = null;
 }
 
 function closeEditModal() {
@@ -147,14 +153,17 @@ function closeEditModal() {
 }
 
 function updatePhotoEverywhere(updated) {
-    state.currentPhoto = updated;
     state.photos = state.photos.map(photo =>
         Number(photo.id) === Number(updated.id) ? { ...photo, ...updated } : photo
     );
 
-    const text = String(updated.text || "");
-    dom.photoViewerDescription.textContent = text;
-    dom.photoViewerDescription.classList.toggle("hidden", !text.trim());
+    if (state.currentPhoto && Number(state.currentPhoto.id) === Number(updated.id)) {
+        state.currentPhoto = { ...state.currentPhoto, ...updated };
+
+        const text = String(updated.text || "");
+        dom.photoViewerDescription.textContent = text;
+        dom.photoViewerDescription.classList.toggle("hidden", !text.trim());
+    }
 
     window.dispatchEvent(new CustomEvent("photo-data-updated", {
         detail: { photo: updated }
@@ -162,7 +171,7 @@ function updatePhotoEverywhere(updated) {
 }
 
 async function saveDescription() {
-    const photo = currentPhoto();
+    const photo = editTargetPhoto || currentPhoto();
     if (!photo || editing) return;
 
     editing = true;
@@ -211,8 +220,10 @@ async function onDownload() {
 }
 
 async function onEdit() {
+    const photo = currentPhoto();
+    if (!photo) return;
     await closeMenu();
-    openEditModal();
+    openPhotoDescriptionEditor(photo);
 }
 
 async function onCopy() {
@@ -236,6 +247,88 @@ async function onReorder() {
     void openPhotoReorder(photo);
 }
 
+
+function removePhotoFromLocalState(photo) {
+    const photoId = Number(photo?.id || 0);
+    const albumId = Number(photo?.album_id || state.currentAlbum?.id || 0);
+    const ownerId = Number(photo?.owner_id || state.currentAlbum?.owner_id || getOwnerId());
+    if (!photoId) return;
+
+    const beforeLength = state.photos.length;
+    state.photos = state.photos.filter(item => Number(item.id) !== photoId);
+    const removedFromLoaded = state.photos.length < beforeLength;
+
+    if (removedFromLoaded || Number(state.photosTotal || 0) > 0) {
+        state.photosTotal = Math.max(0, Number(state.photosTotal || state.currentAlbum?.size || 1) - 1);
+    }
+    state.photosOffset = Math.min(Number(state.photosOffset || 0), state.photos.length);
+
+    const updateAlbum = album => {
+        if (Number(album?.id || 0) !== albumId) return album;
+        return { ...album, size: Math.max(0, Number(album.size || 1) - 1) };
+    };
+
+    state.albums = state.albums.map(updateAlbum);
+    state.albumIndex = state.albumIndex.map(updateAlbum);
+
+    if (state.currentAlbum && Number(state.currentAlbum.id) === albumId) {
+        state.currentAlbum = updateAlbum(state.currentAlbum);
+        dom.photoCount.textContent = `${Math.max(0, Number(state.photosTotal || state.currentAlbum.size || 0))} фото`;
+    }
+
+    if (state.currentPhoto && Number(state.currentPhoto.id) === photoId) {
+        state.currentPhoto = null;
+    }
+
+    document.querySelector(`.photo-card[data-photo-id="${photoId}"]`)?.remove();
+
+    invalidateAlbumPhotosCache(ownerId, albumId);
+    invalidateAlbumCaches(ownerId);
+
+    window.dispatchEvent(new CustomEvent("photo-deleted", {
+        detail: { photoId, albumId, ownerId }
+    }));
+}
+
+export async function deletePhoto(photo, { returnFromViewer = false } = {}) {
+    if (!photo?.id || deleting) return false;
+    if (!confirm("Удалить фотографию? Это действие нельзя отменить.")) return false;
+
+    deleting = true;
+    const ownerId = Number(photo.owner_id || getOwnerId());
+
+    try {
+        const response = await vkApi("photos.delete", {
+            owner_id: ownerId,
+            photo_id: Number(photo.id)
+        });
+
+        if (response !== 1 && response !== true) {
+            throw new Error("VK не подтвердил удаление фотографии.");
+        }
+
+        removePhotoFromLocalState(photo);
+
+        if (returnFromViewer) {
+            state.suppressPhotoOpenUntil = Date.now() + 700;
+            history.back();
+        }
+        return true;
+    } catch (error) {
+        alert(`Не удалось удалить фотографию.\n\n${getErrorMessage(error)}`);
+        return false;
+    } finally {
+        deleting = false;
+    }
+}
+
+async function onDelete() {
+    const photo = currentPhoto();
+    if (!photo) return;
+    await closeMenu();
+    await deletePhoto(photo, { returnFromViewer: true });
+}
+
 export function initPhotoMenu() {
     ensureEditModal();
 
@@ -244,6 +337,7 @@ export function initPhotoMenu() {
     dom.copyPhotoMenuButton?.addEventListener("click", () => void onCopy());
     dom.movePhotoMenuButton?.addEventListener("click", () => void onMove());
     dom.reorderPhotoMenuButton?.addEventListener("click", () => void onReorder());
+    dom.deletePhotoMenuButton?.addEventListener("click", () => void onDelete());
 
     document.addEventListener("keydown", event => {
         if (event.key === "Escape" && editOverlay && !editOverlay.classList.contains("hidden")) {
