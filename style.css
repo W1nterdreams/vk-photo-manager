@@ -2285,3 +2285,117 @@ img {
 .menu-item.menu-item-danger:active {
     color: #ff9b9b;
 }
+
+
+/* =========================================================
+   NATIVE-LIKE PHOTO DELETE CONFIRMATION
+   ========================================================= */
+
+.photo-delete-overlay {
+    position: fixed;
+    z-index: 2147483647;
+    inset: 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 12px 10px calc(12px + env(safe-area-inset-bottom, 0px));
+    background: rgba(0, 0, 0, 0.58);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+}
+
+.photo-delete-sheet {
+    width: min(430px, 100%);
+    padding: 8px 12px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 18px;
+    background: #24272a;
+    color: #ffffff;
+    box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.42);
+}
+
+.photo-delete-handle {
+    width: 38px;
+    height: 4px;
+    margin: 1px auto 13px;
+    border-radius: 999px;
+    background: #686d72;
+}
+
+.photo-delete-title {
+    padding: 0 8px;
+    font-size: 19px;
+    font-weight: 650;
+    line-height: 1.25;
+    text-align: center;
+}
+
+.photo-delete-text {
+    max-width: 360px;
+    margin: 7px auto 15px;
+    padding: 0 8px;
+    color: #aeb3b7;
+    font-size: 14px;
+    line-height: 1.4;
+    text-align: center;
+}
+
+.photo-delete-error {
+    margin: 0 4px 10px;
+    padding: 9px 10px;
+    border-radius: 9px;
+    background: rgba(230, 70, 70, 0.14);
+    color: #ff9b9b;
+    font-size: 13px;
+    line-height: 1.35;
+    text-align: center;
+}
+
+.photo-delete-actions {
+    display: grid;
+    gap: 8px;
+}
+
+.photo-delete-confirm,
+.photo-delete-cancel {
+    width: 100%;
+    min-height: 46px;
+    padding: 10px 16px;
+    border: 0;
+    border-radius: 11px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.photo-delete-confirm {
+    background: #e64646;
+    color: #ffffff;
+}
+
+.photo-delete-confirm:active:not(:disabled) {
+    background: #cf3f3f;
+}
+
+.photo-delete-cancel {
+    background: #34383c;
+    color: #ffffff;
+}
+
+.photo-delete-cancel:active:not(:disabled) {
+    background: #3f4449;
+}
+
+.photo-delete-confirm:disabled,
+.photo-delete-cancel:disabled {
+    opacity: 0.62;
+    cursor: default;
+}
+
+@media (min-width: 700px) {
+    .photo-delete-overlay {
+        align-items: center;
+        padding: 20px;
+    }
+}
