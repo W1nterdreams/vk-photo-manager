@@ -1,17 +1,17 @@
-import { state } from "./state.js?v=20260920-albumtools08";
-import { dom } from "./dom.js?v=20260920-albumtools08";
-import { vkApi } from "./vk-api.js?v=20260920-albumtools08";
-import { getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260920-albumtools08";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools08";
+import { state } from "./state.js?v=20260920-albumtools09";
+import { dom } from "./dom.js?v=20260920-albumtools09";
+import { vkApi } from "./vk-api.js?v=20260920-albumtools09";
+import { getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260920-albumtools09";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools09";
 import {
     invalidateAlbumPhotosCache,
     invalidateAlbumCaches
-} from "./cache.js?v=20260920-albumtools08";
-import { closeMenu } from "./main-menu.js?v=20260920-albumtools08";
-import { openPhotoTransfer } from "./photo-transfer.js?v=20260920-albumtools08";
-import { openPhotoReorder } from "./photo-reorder.js?v=20260920-albumtools08";
-import { openVkPhoto } from "./vk-links.js?v=20260920-albumtools08";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools08";
+} from "./cache.js?v=20260920-albumtools09";
+import { closeMenu } from "./main-menu.js?v=20260920-albumtools09";
+import { openPhotoTransfer } from "./photo-transfer.js?v=20260920-albumtools09";
+import { openPhotoReorder } from "./photo-reorder.js?v=20260920-albumtools09";
+import { openVkPhoto } from "./vk-links.js?v=20260920-albumtools09";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools09";
 
 let editOverlay = null;
 let editInput = null;
@@ -20,6 +20,15 @@ let editSave = null;
 let editing = false;
 let editTargetPhoto = null;
 let deleting = false;
+
+let deleteOverlay = null;
+let deleteConfirmButton = null;
+let deleteCancelButton = null;
+let deleteError = null;
+let deleteTargetPhoto = null;
+let deleteReturnFromViewer = false;
+let deleteResolve = null;
+let deleteResult = false;
 
 function currentPhoto() {
     return state.currentScreen === "photo" ? state.currentPhoto : null;
@@ -248,6 +257,179 @@ async function onReorder() {
 }
 
 
+
+function ensureDeleteDialog() {
+    if (deleteOverlay) return;
+
+    deleteOverlay = document.createElement("div");
+    deleteOverlay.id = "deletePhotoConfirmOverlay";
+    deleteOverlay.className = "photo-delete-overlay hidden";
+
+    const sheet = document.createElement("div");
+    sheet.className = "photo-delete-sheet";
+    sheet.setAttribute("role", "dialog");
+    sheet.setAttribute("aria-modal", "true");
+    sheet.setAttribute("aria-labelledby", "deletePhotoConfirmTitle");
+
+    const handle = document.createElement("div");
+    handle.className = "photo-delete-handle";
+    handle.setAttribute("aria-hidden", "true");
+
+    const title = document.createElement("div");
+    title.id = "deletePhotoConfirmTitle";
+    title.className = "photo-delete-title";
+    title.textContent = "Удалить фотографию?";
+
+    const text = document.createElement("div");
+    text.className = "photo-delete-text";
+    text.textContent = "Фотография будет удалена из VK. Отменить это действие нельзя.";
+
+    deleteError = document.createElement("div");
+    deleteError.className = "photo-delete-error hidden";
+
+    const actions = document.createElement("div");
+    actions.className = "photo-delete-actions";
+
+    deleteConfirmButton = document.createElement("button");
+    deleteConfirmButton.type = "button";
+    deleteConfirmButton.className = "photo-delete-confirm";
+    deleteConfirmButton.textContent = "Удалить";
+    deleteConfirmButton.addEventListener("click", () => void performConfirmedDelete());
+
+    deleteCancelButton = document.createElement("button");
+    deleteCancelButton.type = "button";
+    deleteCancelButton.className = "photo-delete-cancel";
+    deleteCancelButton.textContent = "Отмена";
+    deleteCancelButton.addEventListener("click", () => void closeDeleteDialog(false));
+
+    actions.append(deleteConfirmButton, deleteCancelButton);
+    sheet.append(handle, title, text, deleteError, actions);
+    deleteOverlay.appendChild(sheet);
+    document.body.appendChild(deleteOverlay);
+
+    deleteOverlay.addEventListener("click", event => {
+        if (event.target === deleteOverlay && !deleting) {
+            void closeDeleteDialog(false);
+        }
+    });
+
+    sheet.addEventListener("click", event => event.stopPropagation());
+}
+
+function setDeleteError(message = "") {
+    if (!deleteError) return;
+    deleteError.textContent = message;
+    deleteError.classList.toggle("hidden", !message);
+}
+
+function resolveDeleteDialog(result) {
+    const resolve = deleteResolve;
+    deleteResolve = null;
+    resolve?.(Boolean(result));
+}
+
+function hideDeleteDialogDirect() {
+    if (!deleteOverlay) return;
+
+    deleteOverlay.classList.add("hidden");
+    document.body.classList.remove("album-menu-open");
+    setDeleteError("");
+
+    if (deleteConfirmButton) {
+        deleteConfirmButton.disabled = false;
+        deleteConfirmButton.textContent = "Удалить";
+    }
+    if (deleteCancelButton) deleteCancelButton.disabled = false;
+
+    deleteTargetPhoto = null;
+    deleteReturnFromViewer = false;
+    deleting = false;
+
+    const result = deleteResult;
+    deleteResult = false;
+    resolveDeleteDialog(result);
+}
+
+function openDeleteDialog(photo, { returnFromViewer = false } = {}) {
+    if (!photo?.id) return Promise.resolve(false);
+
+    ensureDeleteDialog();
+
+    if (deleteResolve) {
+        resolveDeleteDialog(false);
+    }
+
+    deleteTargetPhoto = photo;
+    deleteReturnFromViewer = Boolean(returnFromViewer);
+    deleteResult = false;
+    deleting = false;
+    setDeleteError("");
+
+    deleteConfirmButton.disabled = false;
+    deleteConfirmButton.textContent = "Удалить";
+    deleteCancelButton.disabled = false;
+
+    deleteOverlay.classList.remove("hidden");
+    document.body.classList.add("album-menu-open");
+
+    const resultPromise = new Promise(resolve => {
+        deleteResolve = resolve;
+    });
+
+    openSwipeOverlay("delete-photo-confirm", hideDeleteDialogDirect);
+    return resultPromise;
+}
+
+async function closeDeleteDialog(result = false) {
+    if (!deleteOverlay || deleteOverlay.classList.contains("hidden")) {
+        resolveDeleteDialog(result);
+        return false;
+    }
+
+    deleteResult = Boolean(result);
+    return closeSwipeOverlay("delete-photo-confirm");
+}
+
+async function performConfirmedDelete() {
+    const photo = deleteTargetPhoto;
+    if (!photo?.id || deleting) return;
+
+    deleting = true;
+    deleteConfirmButton.disabled = true;
+    deleteCancelButton.disabled = true;
+    deleteConfirmButton.textContent = "Удаляем…";
+    setDeleteError("");
+
+    const ownerId = Number(photo.owner_id || getOwnerId());
+    const returnFromViewer = deleteReturnFromViewer;
+
+    try {
+        const response = await vkApi("photos.delete", {
+            owner_id: ownerId,
+            photo_id: Number(photo.id)
+        });
+
+        if (response !== 1 && response !== true) {
+            throw new Error("VK не подтвердил удаление фотографии.");
+        }
+
+        removePhotoFromLocalState(photo);
+        state.suppressPhotoOpenUntil = Date.now() + 900;
+
+        await closeDeleteDialog(true);
+
+        if (returnFromViewer) {
+            history.back();
+        }
+    } catch (error) {
+        deleting = false;
+        deleteConfirmButton.disabled = false;
+        deleteCancelButton.disabled = false;
+        deleteConfirmButton.textContent = "Удалить";
+        setDeleteError(`Не удалось удалить фотографию. ${getErrorMessage(error)}`);
+    }
+}
+
 function removePhotoFromLocalState(photo) {
     const photoId = Number(photo?.id || 0);
     const albumId = Number(photo?.album_id || state.currentAlbum?.id || 0);
@@ -291,35 +473,8 @@ function removePhotoFromLocalState(photo) {
 }
 
 export async function deletePhoto(photo, { returnFromViewer = false } = {}) {
-    if (!photo?.id || deleting) return false;
-    if (!confirm("Удалить фотографию? Это действие нельзя отменить.")) return false;
-
-    deleting = true;
-    const ownerId = Number(photo.owner_id || getOwnerId());
-
-    try {
-        const response = await vkApi("photos.delete", {
-            owner_id: ownerId,
-            photo_id: Number(photo.id)
-        });
-
-        if (response !== 1 && response !== true) {
-            throw new Error("VK не подтвердил удаление фотографии.");
-        }
-
-        removePhotoFromLocalState(photo);
-
-        if (returnFromViewer) {
-            state.suppressPhotoOpenUntil = Date.now() + 700;
-            history.back();
-        }
-        return true;
-    } catch (error) {
-        alert(`Не удалось удалить фотографию.\n\n${getErrorMessage(error)}`);
-        return false;
-    } finally {
-        deleting = false;
-    }
+    if (!photo?.id) return false;
+    return openDeleteDialog(photo, { returnFromViewer });
 }
 
 async function onDelete() {
@@ -331,6 +486,7 @@ async function onDelete() {
 
 export function initPhotoMenu() {
     ensureEditModal();
+    ensureDeleteDialog();
 
     dom.downloadPhotoMenuButton?.addEventListener("click", () => void onDownload());
     dom.editPhotoDescriptionMenuButton?.addEventListener("click", () => void onEdit());
@@ -340,7 +496,14 @@ export function initPhotoMenu() {
     dom.deletePhotoMenuButton?.addEventListener("click", () => void onDelete());
 
     document.addEventListener("keydown", event => {
-        if (event.key === "Escape" && editOverlay && !editOverlay.classList.contains("hidden")) {
+        if (event.key !== "Escape") return;
+
+        if (deleteOverlay && !deleteOverlay.classList.contains("hidden") && !deleting) {
+            void closeDeleteDialog(false);
+            return;
+        }
+
+        if (editOverlay && !editOverlay.classList.contains("hidden")) {
             void closeEditModal();
         }
     });
