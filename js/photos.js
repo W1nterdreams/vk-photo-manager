@@ -448,7 +448,7 @@ export function renderPhotos() {
         const card = document.createElement("div");
         card.className = "photo-card";
         card.dataset.photoId = String(photo.id);
-        const url = getPhotoPreviewUrl(photo, 320);
+        const url = getPhotoPreviewUrl(photo, 220);
 
         if (url) {
             const image = document.createElement("img");
