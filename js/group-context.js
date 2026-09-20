@@ -1,5 +1,5 @@
-import { state } from "./state.js?v=20260920-albumtools13";
-import { vkApi } from "./vk-api.js?v=20260920-albumtools13";
+import { state } from "./state.js?v=20260920-albumtools14";
+import { vkApi } from "./vk-api.js?v=20260920-albumtools14";
 
 /**
  * Получает ID сообщества из параметров запуска VK Mini Apps.

@@ -1,15 +1,15 @@
-import { state } from "./state.js?v=20260920-albumtools13";
-import { dom } from "./dom.js?v=20260920-albumtools13";
-import { vkApi } from "./vk-api.js?v=20260920-albumtools13";
-import { getBestPhotoUrl, escapeHtml } from "./helpers.js?v=20260920-albumtools13";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools13";
+import { state } from "./state.js?v=20260920-albumtools14";
+import { dom } from "./dom.js?v=20260920-albumtools14";
+import { vkApi } from "./vk-api.js?v=20260920-albumtools14";
+import { getBestPhotoUrl, escapeHtml } from "./helpers.js?v=20260920-albumtools14";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools14";
 import {
     showPhotoViewerScreen,
     pushPhotoHistory
-} from "./navigation.js?v=20260920-albumtools13";
-import { photoCommentOwnerId } from "./photo-comment-api.js?v=20260920-albumtools13";
-import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260920-albumtools13";
-import { invalidatePhotoActivityCaches } from "./cache.js?v=20260920-albumtools13";
+} from "./navigation.js?v=20260920-albumtools14";
+import { photoCommentOwnerId } from "./photo-comment-api.js?v=20260920-albumtools14";
+import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260920-albumtools14";
+import { invalidatePhotoActivityCaches } from "./cache.js?v=20260920-albumtools14";
 
 const COMMENT_PAGE_SIZE = 100;
 const LONG_PRESS_MS = 460;
@@ -21,6 +21,8 @@ let activeAlbum = null;
 let authors = new Map();
 let comments = [];
 let contextOverlay = null;
+let viewerSequence = 0;
+let imageLoadSequence = 0;
 
 function normalizeGroupsResponse(response) {
     if (Array.isArray(response)) return response;
@@ -333,10 +335,68 @@ function installLongPress(element, handler) {
     });
 }
 
-function renderPhotoHeader(photo) {
+function clearPhotoViewerImage() {
+    imageLoadSequence += 1;
+    dom.photoViewerImage.classList.add("is-loading");
+    dom.photoViewerImage.removeAttribute("src");
+    dom.photoViewerImage.removeAttribute("data-photo-id");
+    dom.photoViewerImage.removeAttribute("data-photo-url");
+    dom.photoViewerImage.alt = "Фотография";
+}
+
+function setPhotoViewerImage(photo) {
     const url = getBestPhotoUrl(photo);
-    dom.photoViewerImage.src = url;
-    dom.photoViewerImage.alt = photo.text || "Фотография";
+    const photoId = String(photo?.id || "");
+    const token = ++imageLoadSequence;
+    const samePhotoAlreadyVisible = Boolean(
+        photoId &&
+        dom.photoViewerImage.dataset.photoId === photoId &&
+        dom.photoViewerImage.getAttribute("src")
+    );
+
+    dom.photoViewerImage.alt = photo?.text || "Фотография";
+
+    // При открытии ДРУГОЙ фотографии старый bitmap уже очищен. Если же
+    // photos.getById вернул более качественный URL той же самой фотографии,
+    // оставляем текущее изображение видимым и незаметно подменяем его после
+    // загрузки — без второго мигания.
+    if (!samePhotoAlreadyVisible) {
+        dom.photoViewerImage.classList.add("is-loading");
+        dom.photoViewerImage.removeAttribute("src");
+    }
+
+    if (!url) return;
+
+    if (
+        samePhotoAlreadyVisible &&
+        dom.photoViewerImage.dataset.photoUrl === url
+    ) {
+        dom.photoViewerImage.classList.remove("is-loading");
+        return;
+    }
+
+    const loader = new Image();
+    loader.onload = () => {
+        if (token !== imageLoadSequence) return;
+        if (state.currentScreen !== "photo") return;
+        if (!activePhoto || Number(activePhoto.id) !== Number(photo?.id)) return;
+
+        dom.photoViewerImage.src = url;
+        dom.photoViewerImage.dataset.photoId = photoId;
+        dom.photoViewerImage.dataset.photoUrl = url;
+        dom.photoViewerImage.classList.remove("is-loading");
+    };
+    loader.onerror = () => {
+        if (token !== imageLoadSequence) return;
+        if (!samePhotoAlreadyVisible) {
+            dom.photoViewerImage.classList.add("is-loading");
+        }
+    };
+    loader.src = url;
+}
+
+function renderPhotoHeader(photo) {
+    setPhotoViewerImage(photo);
     dom.photoViewerDescription.textContent = photo.text || "";
     dom.photoViewerDescription.classList.toggle("hidden", !String(photo.text || "").trim());
 
@@ -501,6 +561,9 @@ export async function openPhotoViewer(photo, album, {
 } = {}) {
     if (!photo?.id) return;
 
+    const seq = ++viewerSequence;
+    const requestedPhotoId = Number(photo.id);
+
     activeAlbum = album || state.currentAlbum || state.albums.find(a => String(a.id) === String(photo.album_id));
     activePhoto = photo;
     state.currentAlbum = activeAlbum || state.currentAlbum;
@@ -510,17 +573,31 @@ export async function openPhotoViewer(photo, album, {
         pushPhotoHistory(photo, activeAlbum, { fromComments });
     }
 
+    // Очищаем изображение ДО показа экрана. Поэтому bitmap предыдущей
+    // фотографии физически не может мелькнуть при открытии следующей.
+    clearPhotoViewerImage();
+    comments = [];
+    authors = new Map();
+
     showPhotoViewerScreen();
     dom.pageTitle.textContent = "Фотография";
     dom.photoViewerComments.innerHTML = '<div class="status-message">Загружаем комментарии...</div>';
 
+    // Показываем уже имеющуюся версию новой фотографии сразу, не ожидая
+    // photos.getById. Она всё равно относится к правильному photo_id.
+    renderPhotoHeader(photo);
+
     try {
         const fullPhoto = await fetchPhoto(photo);
+        if (seq !== viewerSequence || state.currentScreen !== "photo" || Number(activePhoto?.id) !== requestedPhotoId) return;
+
         activePhoto = fullPhoto;
         state.currentPhoto = fullPhoto;
         renderPhotoHeader(fullPhoto);
         await refreshPhotoComments();
     } catch (error) {
+        if (seq !== viewerSequence || state.currentScreen !== "photo" || Number(activePhoto?.id) !== requestedPhotoId) return;
+
         console.error("Не удалось открыть фотографию:", error);
         renderPhotoHeader(photo);
         dom.photoViewerComments.innerHTML = `

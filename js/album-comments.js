@@ -1,20 +1,20 @@
-import { dom } from "./dom.js?v=20260920-albumtools13";
-import { state } from "./state.js?v=20260920-albumtools13";
-import { vkApi } from "./vk-api.js?v=20260920-albumtools13";
+import { dom } from "./dom.js?v=20260920-albumtools14";
+import { state } from "./state.js?v=20260920-albumtools14";
+import { vkApi } from "./vk-api.js?v=20260920-albumtools14";
 import {
     escapeHtml,
     getPhotoPreviewUrl
-} from "./helpers.js?v=20260920-albumtools13";
+} from "./helpers.js?v=20260920-albumtools14";
 import {
     showCommentsScreen,
     pushCommentsHistory
-} from "./navigation.js?v=20260920-albumtools13";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools13";
-import { cacheGet, cacheSet, invalidateCommentCaches } from "./cache.js?v=20260920-albumtools13";
-import { CACHE_TTL } from "./config.js?v=20260920-albumtools13";
-import { createPhotoComment, getPhotoCommentErrorText } from "./photo-comment-api.js?v=20260920-albumtools13";
-import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260920-albumtools13";
-import { openPhotoViewer } from "./photo-viewer.js?v=20260920-albumtools13";
+} from "./navigation.js?v=20260920-albumtools14";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools14";
+import { cacheGet, cacheSet, invalidateCommentCaches } from "./cache.js?v=20260920-albumtools14";
+import { CACHE_TTL } from "./config.js?v=20260920-albumtools14";
+import { createPhotoComment, getPhotoCommentErrorText } from "./photo-comment-api.js?v=20260920-albumtools14";
+import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260920-albumtools14";
+import { openPhotoViewer } from "./photo-viewer.js?v=20260920-albumtools14";
 
 const ALBUM_COMMENTS_DAYS = 3;
 const PAGE_SIZE = 100;
@@ -25,12 +25,13 @@ const READ_TIMEOUT_MS = 7000;
 const PHOTO_LIST_TIMEOUT_MS = 10000;
 const MUTATION_TIMEOUT_MS = 15000;
 const DEEP_SCAN_CONCURRENCY = 6;
-const CACHE_SCHEMA = 6;
+const CACHE_SCHEMA = 7;
 
 let activeAlbum = null;
 let replyEditor = null;
 let commentMenuOverlay = null;
 let loadSequence = 0;
+let albumCommentsSessionActive = false;
 
 function commentsTitleElement() {
     return document.querySelector(".comments-title");
@@ -1070,6 +1071,12 @@ function currentRequestIsValid(seq, album) {
     return seq === loadSequence && activeAlbum && String(activeAlbum.id) === String(album.id);
 }
 
+function nextPaint() {
+    return new Promise(resolve => {
+        requestAnimationFrame(() => requestAnimationFrame(resolve));
+    });
+}
+
 async function enrichFastAuthors(album, data, seq, key) {
     try {
         const authors = await loadAuthors(data.comments);
@@ -1099,9 +1106,15 @@ export async function loadAlbumComments(album, { force = false, silent = false }
     if (!force) {
         const cached = cacheGet(key, CACHE_TTL.comments);
         if (cached) {
-            const restored = restoreFromCache(cached);
-            renderComments(album, restored);
-            if (restored.complete) return;
+            try {
+                const restored = restoreFromCache(cached);
+                renderComments(album, restored);
+                if (restored.complete) return;
+            } catch (error) {
+                // Повреждённый/устаревший кэш не должен оставлять экран
+                // в состоянии «Загрузка…». Просто идём за свежими данными.
+                console.warn("Не удалось восстановить кэш комментариев альбома:", error);
+            }
         }
     }
 
@@ -1181,10 +1194,24 @@ export async function loadAlbumComments(album, { force = false, silent = false }
 
 async function openAlbumComments(album) {
     activeAlbum = album;
+    albumCommentsSessionActive = true;
     pushCommentsHistory();
     showCommentsScreen();
     updateCommentsTitle(album);
-    await loadAlbumComments(album);
+
+    // Даём WebView завершить закрытие контекстного меню и отрисовать экран
+    // комментариев. На некоторых Android WebView первый API-запрос, начатый
+    // в тот же тик, мог быть вытеснен переходом истории и экран оставался
+    // на «Загрузка…» до ручного обновления.
+    dom.comments.innerHTML = `
+        <div class="status-message">
+            Загружаем последние ${MAX_COMMENTS} комментариев за ${ALBUM_COMMENTS_DAYS} дня...
+        </div>
+    `;
+    await nextPaint();
+
+    if (!albumCommentsSessionActive || activeAlbum !== album || state.currentScreen !== "comments") return;
+    await loadAlbumComments(album, { force: true });
 }
 
 export function initAlbumComments() {
@@ -1203,6 +1230,7 @@ export function initAlbumComments() {
     }, true);
 
     dom.commentsMenuButton.addEventListener("click", () => {
+        albumCommentsSessionActive = false;
         activeAlbum = null;
         ++loadSequence;
         clearReplyEditor();
@@ -1229,13 +1257,23 @@ export function initAlbumComments() {
     });
 
     window.addEventListener("popstate", event => {
-        ++loadSequence;
+        // События popstate используются также нашими временными оверлеями.
+        // Не инвалидируем загрузку комментариев из-за закрытия постороннего
+        // меню: это и могло оставлять первоначальный экран на «Загрузка…».
+        if (!albumCommentsSessionActive) return;
+
         closeCommentMenu();
         clearReplyEditor();
 
-        if (!activeAlbum || event?.state?.screen !== "comments") return;
+        if (event?.state?.screen !== "comments") {
+            albumCommentsSessionActive = false;
+            ++loadSequence;
+            return;
+        }
+
+        if (!activeAlbum) return;
         setTimeout(() => {
-            if (activeAlbum && state.currentScreen === "comments") {
+            if (albumCommentsSessionActive && activeAlbum && state.currentScreen === "comments") {
                 void loadAlbumComments(activeAlbum, { force: true, silent: true });
             }
         }, 0);

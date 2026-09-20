@@ -1,13 +1,13 @@
-import { state } from "./state.js?v=20260920-albumtools13";
-import { vkApi } from "./vk-api.js?v=20260920-albumtools13";
-import { getAlbumCover, getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260920-albumtools13";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools13";
+import { state } from "./state.js?v=20260920-albumtools14";
+import { vkApi } from "./vk-api.js?v=20260920-albumtools14";
+import { getAlbumCover, getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260920-albumtools14";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools14";
 import {
     invalidateAlbumCaches,
     invalidateAlbumPhotosCache
-} from "./cache.js?v=20260920-albumtools13";
-import { openVkTarget, openVkPhoto } from "./vk-links.js?v=20260920-albumtools13";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools13";
+} from "./cache.js?v=20260920-albumtools14";
+import { openVkTarget, openVkPhoto } from "./vk-links.js?v=20260920-albumtools14";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools14";
 
 const ALBUM_PAGE_SIZE = 100;
 const MAX_ALBUM_PAGES = 200;
@@ -606,7 +606,7 @@ async function movePhoto(album) {
     // устаревшую карточку и сразу синхронизирует счётчик фотографий.
     if (sourceAlbum) {
         try {
-            const { loadPhotos } = await import("./photos.js?v=20260920-albumtools13");
+            const { loadPhotos } = await import("./photos.js?v=20260920-albumtools14");
             await loadPhotos(sourceAlbum, { force: true });
         } catch (error) {
             console.warn("Не удалось обновить альбом после перемещения фотографии:", error);
@@ -626,7 +626,7 @@ async function refreshSourceAlbumAfterMove(sourceAlbum) {
     if (!sourceAlbum) return;
 
     try {
-        const { loadPhotos } = await import("./photos.js?v=20260920-albumtools13");
+        const { loadPhotos } = await import("./photos.js?v=20260920-albumtools14");
         const freshSource = (
             state.currentAlbum && String(state.currentAlbum.id) === String(sourceAlbum.id)
                 ? state.currentAlbum
