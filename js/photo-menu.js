@@ -1,13 +1,14 @@
-import { state } from "./state.js?v=20260920-albumtools06";
-import { dom } from "./dom.js?v=20260920-albumtools06";
-import { vkApi } from "./vk-api.js?v=20260920-albumtools06";
-import { getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260920-albumtools06";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools06";
-import { invalidateAlbumPhotosCache } from "./cache.js?v=20260920-albumtools06";
-import { closeMenu } from "./main-menu.js?v=20260920-albumtools06";
-import { openPhotoTransfer } from "./photo-transfer.js?v=20260920-albumtools06";
-import { openVkPhoto } from "./vk-links.js?v=20260920-albumtools06";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools06";
+import { state } from "./state.js?v=20260920-albumtools07";
+import { dom } from "./dom.js?v=20260920-albumtools07";
+import { vkApi } from "./vk-api.js?v=20260920-albumtools07";
+import { getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260920-albumtools07";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools07";
+import { invalidateAlbumPhotosCache } from "./cache.js?v=20260920-albumtools07";
+import { closeMenu } from "./main-menu.js?v=20260920-albumtools07";
+import { openPhotoTransfer } from "./photo-transfer.js?v=20260920-albumtools07";
+import { openPhotoReorder } from "./photo-reorder.js?v=20260920-albumtools07";
+import { openVkPhoto } from "./vk-links.js?v=20260920-albumtools07";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools07";
 
 let editOverlay = null;
 let editInput = null;
@@ -228,6 +229,13 @@ async function onMove() {
     void openPhotoTransfer(photo, "move");
 }
 
+async function onReorder() {
+    const photo = currentPhoto();
+    if (!photo) return;
+    await closeMenu();
+    void openPhotoReorder(photo);
+}
+
 export function initPhotoMenu() {
     ensureEditModal();
 
@@ -235,6 +243,7 @@ export function initPhotoMenu() {
     dom.editPhotoDescriptionMenuButton?.addEventListener("click", () => void onEdit());
     dom.copyPhotoMenuButton?.addEventListener("click", () => void onCopy());
     dom.movePhotoMenuButton?.addEventListener("click", () => void onMove());
+    dom.reorderPhotoMenuButton?.addEventListener("click", () => void onReorder());
 
     document.addEventListener("keydown", event => {
         if (event.key === "Escape" && editOverlay && !editOverlay.classList.contains("hidden")) {

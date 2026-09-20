@@ -1,15 +1,18 @@
-import { state } from "./state.js?v=20260920-albumtools06";
-import { dom } from "./dom.js?v=20260920-albumtools06";
-import { vkApi } from "./vk-api.js?v=20260920-albumtools06";
-import { getPhotoPreviewUrl, escapeHtml, getErrorMessage } from "./helpers.js?v=20260920-albumtools06";
-import { showPhotosScreen, pushAlbumHistory } from "./navigation.js?v=20260920-albumtools06";
-import { CACHE_TTL } from "./config.js?v=20260920-albumtools06";
-import { cacheGet, cacheGetStale, cacheSet, albumPhotosKey } from "./cache.js?v=20260920-albumtools06";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools06";
-import { openPhotoViewer } from "./photo-viewer.js?v=20260920-albumtools06";
+import { state } from "./state.js?v=20260920-albumtools07";
+import { dom } from "./dom.js?v=20260920-albumtools07";
+import { vkApi } from "./vk-api.js?v=20260920-albumtools07";
+import { getPhotoPreviewUrl, escapeHtml, getErrorMessage } from "./helpers.js?v=20260920-albumtools07";
+import { showPhotosScreen, pushAlbumHistory } from "./navigation.js?v=20260920-albumtools07";
+import { CACHE_TTL } from "./config.js?v=20260920-albumtools07";
+import { cacheGet, cacheGetStale, cacheSet, albumPhotosKey } from "./cache.js?v=20260920-albumtools07";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools07";
+import { openPhotoViewer } from "./photo-viewer.js?v=20260920-albumtools07";
+import { openMenu } from "./main-menu.js?v=20260920-albumtools07";
 
 const PAGE_SIZE = 20;
 const SORT_FETCH_SIZE = 100;
+const PHOTO_LONG_PRESS_MS = 520;
+const PHOTO_LONG_PRESS_MOVE = 12;
 
 let sortingAllPhotos = false;
 let photoSortControlsInitialized = false;
@@ -414,6 +417,67 @@ function initPhotoPagination() {
     window.addEventListener("resize", handlePhotoScroll, { passive: true });
 }
 
+function bindPhotoLongPress(card, photo) {
+    let timer = null;
+    let startX = 0;
+    let startY = 0;
+    let longPressed = false;
+
+    const clearTimer = () => {
+        if (timer) clearTimeout(timer);
+        timer = null;
+    };
+
+    const openActions = () => {
+        if (longPressed) return;
+        longPressed = true;
+        clearTimer();
+
+        try {
+            navigator.vibrate?.(18);
+        } catch {}
+
+        // openPhotoViewer до первого await синхронно переводит приложение
+        // на экран фотографии и записывает state.currentPhoto. Поэтому меню
+        // можно открыть сразу, не ожидая загрузки комментариев.
+        void openPhotoViewer(photo, state.currentAlbum);
+        openMenu();
+    };
+
+    card.addEventListener("pointerdown", event => {
+        if (event.pointerType === "mouse" && event.button !== 0) return;
+        startX = event.clientX;
+        startY = event.clientY;
+        longPressed = false;
+        clearTimer();
+        timer = setTimeout(openActions, PHOTO_LONG_PRESS_MS);
+    }, { passive: true });
+
+    card.addEventListener("pointermove", event => {
+        if (!timer) return;
+        if (
+            Math.abs(event.clientX - startX) > PHOTO_LONG_PRESS_MOVE ||
+            Math.abs(event.clientY - startY) > PHOTO_LONG_PRESS_MOVE
+        ) {
+            clearTimer();
+        }
+    }, { passive: true });
+
+    card.addEventListener("pointerup", clearTimer, { passive: true });
+    card.addEventListener("pointercancel", clearTimer, { passive: true });
+
+    card.addEventListener("contextmenu", event => {
+        event.preventDefault();
+        openActions();
+    });
+
+    return () => {
+        if (!longPressed) return false;
+        longPressed = false;
+        return true;
+    };
+}
+
 export function renderPhotos() {
     updatePhotoSortButtons();
     dom.photos.innerHTML = "";
@@ -458,7 +522,14 @@ export function renderPhotos() {
         stats.append(likes, comments);
         card.appendChild(stats);
 
-        card.addEventListener("click", () => {
+        const consumeLongPress = bindPhotoLongPress(card, photo);
+
+        card.addEventListener("click", event => {
+            if (consumeLongPress()) {
+                event.preventDefault();
+                event.stopPropagation();
+                return;
+            }
             void openPhotoViewer(photo, state.currentAlbum);
         });
         dom.photos.appendChild(card);

@@ -1,22 +1,23 @@
-import { dom } from "./dom.js?v=20260920-albumtools06";
-import { vkInit, loadUser, getAccessToken } from "./vk-api.js?v=20260920-albumtools06";
-import { initGroupContext } from "./group-context.js?v=20260920-albumtools06";
-import { initAlbums, loadAlbums } from "./albums.js?v=20260920-albumtools06";
-import { openAlbum } from "./photos.js?v=20260920-albumtools06";
-import { initMainMenu } from "./main-menu.js?v=20260920-albumtools06";
-import { initAlbumCreate } from "./album-create.js?v=20260920-albumtools06";
-import { initAlbumEdit } from "./album-edit.js?v=20260920-albumtools06";
-import { initAlbumDelete } from "./album-delete.js?v=20260920-albumtools06";
-import { initAlbumReorder } from "./album-reorder.js?v=20260920-albumtools06";
-import { initComments } from "./comments.js?v=20260920-albumtools06";
-import { initAlbumComments } from "./album-comments.js?v=20260920-albumtools06";
-import { initPhotoViewer, openPhotoViewer } from "./photo-viewer.js?v=20260920-albumtools06";
-import { initPhotoUpload } from "./photo-upload.js?v=20260920-albumtools06";
-import { initPhotoMenu } from "./photo-menu.js?v=20260920-albumtools06";
-import { initPhotoTransfer } from "./photo-transfer.js?v=20260920-albumtools06";
-import { initNavigation, showAlbumsScreen } from "./navigation.js?v=20260920-albumtools06";
-import { escapeHtml, getErrorMessage, logError } from "./helpers.js?v=20260920-albumtools06";
-import { cleanupLegacyCache } from "./cache.js?v=20260920-albumtools06";
+import { dom } from "./dom.js?v=20260920-albumtools07";
+import { vkInit, loadUser, getAccessToken } from "./vk-api.js?v=20260920-albumtools07";
+import { initGroupContext } from "./group-context.js?v=20260920-albumtools07";
+import { initAlbums, loadAlbums } from "./albums.js?v=20260920-albumtools07";
+import { openAlbum } from "./photos.js?v=20260920-albumtools07";
+import { initMainMenu } from "./main-menu.js?v=20260920-albumtools07";
+import { initAlbumCreate } from "./album-create.js?v=20260920-albumtools07";
+import { initAlbumEdit } from "./album-edit.js?v=20260920-albumtools07";
+import { initAlbumDelete } from "./album-delete.js?v=20260920-albumtools07";
+import { initAlbumReorder } from "./album-reorder.js?v=20260920-albumtools07";
+import { initComments } from "./comments.js?v=20260920-albumtools07";
+import { initAlbumComments } from "./album-comments.js?v=20260920-albumtools07";
+import { initPhotoViewer, openPhotoViewer } from "./photo-viewer.js?v=20260920-albumtools07";
+import { initPhotoUpload } from "./photo-upload.js?v=20260920-albumtools07";
+import { initPhotoMenu } from "./photo-menu.js?v=20260920-albumtools07";
+import { initPhotoTransfer } from "./photo-transfer.js?v=20260920-albumtools07";
+import { initPhotoReorder } from "./photo-reorder.js?v=20260920-albumtools07";
+import { initNavigation, showAlbumsScreen } from "./navigation.js?v=20260920-albumtools07";
+import { escapeHtml, getErrorMessage, logError } from "./helpers.js?v=20260920-albumtools07";
+import { cleanupLegacyCache } from "./cache.js?v=20260920-albumtools07";
 
 async function startApp() {
     console.log("Starting VK Photo Manager in GROUP ADMIN mode...");
@@ -41,6 +42,7 @@ async function startApp() {
         initPhotoViewer();
         initPhotoUpload();
         initPhotoTransfer();
+        initPhotoReorder();
         initPhotoMenu();
 
         await vkInit();
