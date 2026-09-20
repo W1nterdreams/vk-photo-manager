@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <!-- CACHE_VERSION: 20260920-albumtools17 -->
+    <!-- CACHE_VERSION: 20260920-albumtools18 -->
     <meta charset="UTF-8">
 
     <meta
@@ -11,7 +11,7 @@
 
     <title>Фотоальбомы VK</title>
 
-    <link rel="stylesheet" href="./style.css?v=20260920-albumtools17">
+    <link rel="stylesheet" href="./style.css?v=20260920-albumtools18">
 
     <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
 </head>
@@ -79,6 +79,15 @@
                 </button>
 
                 <button
+                    id="globalPhotoSearchMenuButton"
+                    class="menu-item"
+                    type="button"
+                >
+                    <span class="menu-item-icon">🔎</span>
+                    <span>Поиск фотографий</span>
+                </button>
+
+                <button
                     id="uploadPhotoMenuButton"
                     class="menu-item hidden"
                     type="button"
@@ -88,6 +97,15 @@
                     <span>
                         Загрузить фото
                     </span>
+                </button>
+
+                <button
+                    id="reorderAlbumPhotosMenuButton"
+                    class="menu-item hidden"
+                    type="button"
+                >
+                    <span class="menu-item-icon">↕</span>
+                    <span>Изменить порядок</span>
                 </button>
 
                 <button
@@ -151,6 +169,15 @@
                 >
                     <span class="menu-item-icon">↕</span>
                     <span>Переместить внутри альбома</span>
+                </button>
+
+                <button
+                    id="makeCoverPhotoMenuButton"
+                    class="menu-item hidden"
+                    type="button"
+                >
+                    <span class="menu-item-icon">▣</span>
+                    <span>Сделать обложкой альбома</span>
                 </button>
 
                 <button
@@ -739,7 +766,7 @@
 </div>
 
 
-<script type="module" src="./js/app.js?v=20260920-albumtools17"></script>
+<script type="module" src="./js/app.js?v=20260920-albumtools18"></script>
     
 </body>
 </html>
