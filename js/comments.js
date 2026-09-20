@@ -1,14 +1,14 @@
-import { state } from "./state.js?v=20260920-albumtools10";
-import { dom } from "./dom.js?v=20260920-albumtools10";
-import { vkApi } from "./vk-api.js?v=20260920-albumtools10";
-import { escapeHtml, getErrorMessage, getPhotoPreviewUrl } from "./helpers.js?v=20260920-albumtools10";
-import { showCommentsScreen, pushCommentsHistory } from "./navigation.js?v=20260920-albumtools10";
-import { closeMenu } from "./main-menu.js?v=20260920-albumtools10";
-import { CACHE_TTL } from "./config.js?v=20260920-albumtools10";
-import { cacheGet, cacheSet, invalidateCommentCaches } from "./cache.js?v=20260920-albumtools10";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools10";
-import { openVkProfile, openVkPhoto, openVkTarget } from "./vk-links.js?v=20260920-albumtools10";
-import { openPhotoViewer } from "./photo-viewer.js?v=20260920-albumtools10";
+import { state } from "./state.js?v=20260920-albumtools11";
+import { dom } from "./dom.js?v=20260920-albumtools11";
+import { vkApi } from "./vk-api.js?v=20260920-albumtools11";
+import { escapeHtml, getErrorMessage, getPhotoPreviewUrl } from "./helpers.js?v=20260920-albumtools11";
+import { showCommentsScreen, pushCommentsHistory } from "./navigation.js?v=20260920-albumtools11";
+import { closeMenu } from "./main-menu.js?v=20260920-albumtools11";
+import { CACHE_TTL } from "./config.js?v=20260920-albumtools11";
+import { cacheGet, cacheSet, invalidateCommentCaches } from "./cache.js?v=20260920-albumtools11";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools11";
+import { openVkProfile, openVkPhoto, openVkTarget } from "./vk-links.js?v=20260920-albumtools11";
+import { openPhotoViewer } from "./photo-viewer.js?v=20260920-albumtools11";
 
 const GLOBAL_COMMENTS_DAYS = 5;
 const PAGE_SIZE = 100;

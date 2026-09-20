@@ -1,13 +1,13 @@
-import { state } from "./state.js?v=20260920-albumtools10";
-import { vkApi } from "./vk-api.js?v=20260920-albumtools10";
-import { getAlbumCover, getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260920-albumtools10";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools10";
+import { state } from "./state.js?v=20260920-albumtools11";
+import { vkApi } from "./vk-api.js?v=20260920-albumtools11";
+import { getAlbumCover, getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260920-albumtools11";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools11";
 import {
     invalidateAlbumCaches,
     invalidateAlbumPhotosCache
-} from "./cache.js?v=20260920-albumtools10";
-import { openVkTarget, openVkPhoto } from "./vk-links.js?v=20260920-albumtools10";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools10";
+} from "./cache.js?v=20260920-albumtools11";
+import { openVkTarget, openVkPhoto } from "./vk-links.js?v=20260920-albumtools11";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools11";
 
 const ALBUM_PAGE_SIZE = 100;
 
@@ -536,7 +536,7 @@ async function movePhoto(album) {
     // устаревшую карточку и сразу синхронизирует счётчик фотографий.
     if (sourceAlbum) {
         try {
-            const { loadPhotos } = await import("./photos.js?v=20260920-albumtools10");
+            const { loadPhotos } = await import("./photos.js?v=20260920-albumtools11");
             await loadPhotos(sourceAlbum, { force: true });
         } catch (error) {
             console.warn("Не удалось обновить альбом после перемещения фотографии:", error);

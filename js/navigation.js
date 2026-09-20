@@ -1,6 +1,6 @@
-import { state } from "./state.js?v=20260920-albumtools10";
-import { dom } from "./dom.js?v=20260920-albumtools10";
-import { handleOverlayPopState } from "./overlay-history.js?v=20260920-albumtools10";
+import { state } from "./state.js?v=20260920-albumtools11";
+import { dom } from "./dom.js?v=20260920-albumtools11";
+import { handleOverlayPopState } from "./overlay-history.js?v=20260920-albumtools11";
 
 let openAlbumFromHistory = null;
 let openPhotoFromHistory = null;

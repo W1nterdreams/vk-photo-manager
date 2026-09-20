@@ -1,7 +1,7 @@
-import { dom } from "./dom.js?v=20260920-albumtools10";
-import { state } from "./state.js?v=20260920-albumtools10";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools10";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools10";
+import { dom } from "./dom.js?v=20260920-albumtools11";
+import { state } from "./state.js?v=20260920-albumtools11";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools11";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools11";
 
 function visible(element) {
     return Boolean(element && !element.classList.contains("hidden"));

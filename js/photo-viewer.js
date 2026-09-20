@@ -1,15 +1,15 @@
-import { state } from "./state.js?v=20260920-albumtools10";
-import { dom } from "./dom.js?v=20260920-albumtools10";
-import { vkApi } from "./vk-api.js?v=20260920-albumtools10";
-import { getBestPhotoUrl, escapeHtml } from "./helpers.js?v=20260920-albumtools10";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools10";
+import { state } from "./state.js?v=20260920-albumtools11";
+import { dom } from "./dom.js?v=20260920-albumtools11";
+import { vkApi } from "./vk-api.js?v=20260920-albumtools11";
+import { getBestPhotoUrl, escapeHtml } from "./helpers.js?v=20260920-albumtools11";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools11";
 import {
     showPhotoViewerScreen,
     pushPhotoHistory
-} from "./navigation.js?v=20260920-albumtools10";
-import { photoCommentOwnerId } from "./photo-comment-api.js?v=20260920-albumtools10";
-import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260920-albumtools10";
-import { invalidatePhotoActivityCaches } from "./cache.js?v=20260920-albumtools10";
+} from "./navigation.js?v=20260920-albumtools11";
+import { photoCommentOwnerId } from "./photo-comment-api.js?v=20260920-albumtools11";
+import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260920-albumtools11";
+import { invalidatePhotoActivityCaches } from "./cache.js?v=20260920-albumtools11";
 
 const COMMENT_PAGE_SIZE = 100;
 const LONG_PRESS_MS = 460;
