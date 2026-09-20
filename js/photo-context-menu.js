@@ -1,13 +1,17 @@
-import { state } from "./state.js?v=20260920-albumtools11";
+import { state } from "./state.js?v=20260920-albumtools12";
 import {
     downloadPhotoFile,
     openPhotoDescriptionEditor,
     deletePhoto
-} from "./photo-menu.js?v=20260920-albumtools11";
-import { openPhotoTransfer } from "./photo-transfer.js?v=20260920-albumtools11";
-import { openPhotoReorder } from "./photo-reorder.js?v=20260920-albumtools11";
-import { getErrorMessage } from "./helpers.js?v=20260920-albumtools11";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools11";
+} from "./photo-menu.js?v=20260920-albumtools12";
+import { openPhotoTransfer } from "./photo-transfer.js?v=20260920-albumtools12";
+import { openPhotoReorder } from "./photo-reorder.js?v=20260920-albumtools12";
+import { getErrorMessage } from "./helpers.js?v=20260920-albumtools12";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools12";
+import {
+    isPhotoMultiSelectActive,
+    startPhotoMultiSelect
+} from "./photo-multiselect.js?v=20260920-albumtools12";
 
 const LONG_PRESS_MS = 520;
 const MOVE_CANCEL_PX = 12;
@@ -56,6 +60,11 @@ function createItem(label, action, extraClass = "") {
                 return;
             }
 
+            if (action === "select-many") {
+                startPhotoMultiSelect(photo);
+                return;
+            }
+
             if (action === "delete") {
                 await deletePhoto(photo, { returnFromViewer: false });
             }
@@ -85,6 +94,7 @@ function ensureMenu() {
         createItem("Копировать в альбом", "copy"),
         createItem("Переместить в альбом", "move"),
         createItem("Переместить внутри альбома", "reorder"),
+        createItem("Выбрать несколько", "select-many"),
         createItem("Удалить фото", "delete", "danger")
     );
 
@@ -151,6 +161,7 @@ export function bindPhotoContextLongPress(element, photo) {
     };
 
     element.addEventListener("pointerdown", event => {
+        if (isPhotoMultiSelectActive()) return;
         if (event.pointerType === "mouse" && event.button !== 0) return;
 
         clearTimer();
@@ -177,6 +188,7 @@ export function bindPhotoContextLongPress(element, photo) {
     element.addEventListener("contextmenu", event => {
         event.preventDefault();
         event.stopPropagation();
+        if (isPhotoMultiSelectActive()) return;
         trigger();
     });
 

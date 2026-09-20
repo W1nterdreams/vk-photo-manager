@@ -1,13 +1,13 @@
-import { state } from "./state.js?v=20260920-albumtools11";
-import { vkApi } from "./vk-api.js?v=20260920-albumtools11";
-import { getAlbumCover, getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260920-albumtools11";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools11";
+import { state } from "./state.js?v=20260920-albumtools12";
+import { vkApi } from "./vk-api.js?v=20260920-albumtools12";
+import { getAlbumCover, getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260920-albumtools12";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools12";
 import {
     invalidateAlbumCaches,
     invalidateAlbumPhotosCache
-} from "./cache.js?v=20260920-albumtools11";
-import { openVkTarget, openVkPhoto } from "./vk-links.js?v=20260920-albumtools11";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools11";
+} from "./cache.js?v=20260920-albumtools12";
+import { openVkTarget, openVkPhoto } from "./vk-links.js?v=20260920-albumtools12";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools12";
 
 const ALBUM_PAGE_SIZE = 100;
 
@@ -19,6 +19,8 @@ let title = null;
 let errorBox = null;
 let loadingBox = null;
 let activePhoto = null;
+let activePhotos = [];
+let onTransferComplete = null;
 let mode = "move";
 let originScreen = "albums";
 let busy = false;
@@ -374,8 +376,13 @@ function normalize(value) {
     return String(value || "").trim().toLocaleLowerCase("ru");
 }
 
+function transferPhotos() {
+    return activePhotos.length ? activePhotos : (activePhoto ? [activePhoto] : []);
+}
+
 function candidateAlbums() {
-    const sourceId = String(activePhoto?.album_id || state.currentAlbum?.id || "");
+    const firstPhoto = transferPhotos()[0];
+    const sourceId = String(firstPhoto?.album_id || state.currentAlbum?.id || "");
     const q = normalize(search?.value);
 
     return allAlbums.filter(album => {
@@ -429,6 +436,8 @@ function hideModalDirect() {
     loadGeneration += 1;
     overlay.classList.add("hidden");
     activePhoto = null;
+    activePhotos = [];
+    onTransferComplete = null;
     allAlbums = [];
     busy = false;
     if (search) search.value = "";
@@ -463,7 +472,7 @@ async function fetchTransferAlbums(generation) {
             offset
         });
 
-        if (generation !== loadGeneration || !activePhoto) return [];
+        if (generation !== loadGeneration || !transferPhotos().length) return [];
 
         const items = Array.isArray(result?.items) ? result.items : [];
         resultAlbums = mergeAlbums(resultAlbums, items);
@@ -480,14 +489,15 @@ async function fetchTransferAlbums(generation) {
     return resultAlbums;
 }
 
-function updateAlbumSizes(sourceAlbumId, targetAlbumId) {
+function updateAlbumSizes(sourceAlbumId, targetAlbumId, count = 1) {
+    const delta = Math.max(0, Number(count || 0));
     const update = album => {
         const id = Number(album.id);
         if (id === Number(sourceAlbumId)) {
-            return { ...album, size: Math.max(0, Number(album.size || 0) - 1) };
+            return { ...album, size: Math.max(0, Number(album.size || 0) - delta) };
         }
         if (id === Number(targetAlbumId)) {
-            return { ...album, size: Number(album.size || 0) + 1 };
+            return { ...album, size: Number(album.size || 0) + delta };
         }
         return album;
     };
@@ -529,6 +539,7 @@ async function movePhoto(album) {
     state.photos = state.photos.filter(item => Number(item.id) !== Number(photo.id));
     state.photosTotal = Math.max(0, Number(state.photosTotal || 0) - 1);
 
+    const callback = onTransferComplete;
     busy = false;
     await closeSwipeOverlay("photo-transfer");
 
@@ -536,7 +547,7 @@ async function movePhoto(album) {
     // устаревшую карточку и сразу синхронизирует счётчик фотографий.
     if (sourceAlbum) {
         try {
-            const { loadPhotos } = await import("./photos.js?v=20260920-albumtools11");
+            const { loadPhotos } = await import("./photos.js?v=20260920-albumtools12");
             await loadPhotos(sourceAlbum, { force: true });
         } catch (error) {
             console.warn("Не удалось обновить альбом после перемещения фотографии:", error);
@@ -548,6 +559,105 @@ async function movePhoto(album) {
     if (startedFromViewer) {
         history.back();
     }
+
+    callback?.({ moved: 1, failed: 0 });
+}
+
+async function refreshSourceAlbumAfterMove(sourceAlbum) {
+    if (!sourceAlbum) return;
+
+    try {
+        const { loadPhotos } = await import("./photos.js?v=20260920-albumtools12");
+        const freshSource = (
+            state.currentAlbum && String(state.currentAlbum.id) === String(sourceAlbum.id)
+                ? state.currentAlbum
+                : sourceAlbum
+        );
+        await loadPhotos(freshSource, { force: true });
+    } catch (error) {
+        console.warn("Не удалось обновить альбом после перемещения фотографий:", error);
+    }
+}
+
+async function moveManyPhotos(album, busyLabel, sourceButton) {
+    const photos = transferPhotos();
+    if (photos.length < 2) {
+        await movePhoto(album);
+        return;
+    }
+
+    const firstPhoto = photos[0];
+    const ownerId = Number(firstPhoto?.owner_id || getOwnerId());
+    const sourceAlbumId = Number(firstPhoto?.album_id || state.currentAlbum?.id || 0);
+    const targetAlbumId = Number(album.id);
+    const sourceAlbum = (
+        state.currentAlbum && Number(state.currentAlbum.id) === sourceAlbumId
+            ? state.currentAlbum
+            : state.albums.find(item => Number(item.id) === sourceAlbumId)
+    );
+
+    const moved = [];
+    const failed = [];
+
+    for (let i = 0; i < photos.length; i += 1) {
+        const photo = photos[i];
+        busyLabel.textContent = `Перемещаем ${i + 1} из ${photos.length}...`;
+
+        try {
+            const response = await vkApi("photos.move", {
+                owner_id: Number(photo?.owner_id || ownerId),
+                target_album_id: targetAlbumId,
+                photo_id: Number(photo.id)
+            });
+
+            if (response !== 1 && response !== true) {
+                throw new Error("VK не подтвердил перемещение фотографии.");
+            }
+
+            moved.push(photo);
+        } catch (error) {
+            failed.push({ photo, error });
+        }
+    }
+
+    if (moved.length) {
+        invalidateAlbumPhotosCache(ownerId, sourceAlbumId);
+        invalidateAlbumPhotosCache(ownerId, targetAlbumId);
+        invalidateAlbumCaches(ownerId);
+        updateAlbumSizes(sourceAlbumId, targetAlbumId, moved.length);
+
+        const movedIds = new Set(moved.map(photo => String(photo.id)));
+        state.photos = state.photos.filter(photo => !movedIds.has(String(photo.id)));
+        state.photosTotal = Math.max(0, Number(state.photosTotal || 0) - moved.length);
+    }
+
+    await refreshSourceAlbumAfterMove(sourceAlbum);
+
+    const callback = onTransferComplete;
+
+    if (!failed.length) {
+        busy = false;
+        await closeSwipeOverlay("photo-transfer");
+        callback?.({ moved: moved.length, failed: 0 });
+        return;
+    }
+
+    // Успешные уже перенесены. Оставляем в окне только неудавшиеся — их можно
+    // повторно отправить в тот же или другой альбом без повторного выбора.
+    activePhotos = failed.map(item => item.photo);
+    activePhoto = activePhotos[0] || null;
+    busy = false;
+    sourceButton.disabled = false;
+    busyLabel.remove();
+
+    const firstError = getErrorMessage(failed[0]?.error);
+    title.textContent = `Не перемещено: ${failed.length}`;
+    showError(
+        `Перемещено: ${moved.length}. Не удалось: ${failed.length}.` +
+        (firstError ? `\n${firstError}` : "")
+    );
+
+    callback?.({ moved: moved.length, failed: failed.length, partial: true });
 }
 
 async function downloadForNativeCopy(photo) {
@@ -605,7 +715,11 @@ async function chooseAlbum(album, button) {
 
     try {
         if (mode === "move") {
-            await movePhoto(album);
+            if (transferPhotos().length > 1) {
+                await moveManyPhotos(album, busyLabel, button);
+            } else {
+                await movePhoto(album);
+            }
         } else {
             await copyPhotoNative(album);
         }
@@ -630,6 +744,8 @@ export async function openPhotoTransfer(photo, requestedMode = "move") {
     ensureModal();
 
     activePhoto = photo;
+    activePhotos = [photo];
+    onTransferComplete = null;
     mode = requestedMode === "copy" ? "copy" : "move";
     originScreen = state.currentScreen;
     busy = false;
@@ -650,7 +766,63 @@ export async function openPhotoTransfer(photo, requestedMode = "move") {
 
     try {
         allAlbums = await fetchTransferAlbums(generation);
-        if (generation !== loadGeneration || !activePhoto) return;
+        if (generation !== loadGeneration || !transferPhotos().length) return;
+        renderAlbums();
+    } catch (error) {
+        if (generation !== loadGeneration) return;
+        showError(getErrorMessage(error));
+        grid.innerHTML = "";
+        grid.appendChild(create("div", "photo-transfer-status", "Не удалось загрузить альбомы."));
+    }
+}
+
+export async function openPhotoTransferMany(photos, { onComplete = null } = {}) {
+    const unique = [];
+    const seen = new Set();
+
+    for (const photo of Array.isArray(photos) ? photos : []) {
+        const id = String(photo?.id ?? "");
+        if (!id || seen.has(id)) continue;
+        seen.add(id);
+        unique.push(photo);
+    }
+
+    if (!unique.length) return;
+
+    const sourceAlbumId = String(unique[0]?.album_id || state.currentAlbum?.id || "");
+    const sameAlbum = unique.every(photo =>
+        String(photo?.album_id || state.currentAlbum?.id || "") === sourceAlbumId
+    );
+    if (!sameAlbum) {
+        throw new Error("Для группового перемещения выберите фотографии из одного альбома.");
+    }
+
+    ensureModal();
+
+    activePhotos = unique;
+    activePhoto = unique[0];
+    onTransferComplete = typeof onComplete === "function" ? onComplete : null;
+    mode = "move";
+    originScreen = state.currentScreen;
+    busy = false;
+    allAlbums = [];
+    search.value = "";
+    clearSearch.classList.add("hidden");
+    showError("");
+
+    title.textContent = unique.length === 1 ? "Переместить фото" : `Переместить ${unique.length} фото`;
+    grid.innerHTML = "";
+    loadingBox = create("div", "photo-transfer-status", "Загружаем альбомы...");
+    grid.appendChild(loadingBox);
+
+    overlay.classList.remove("hidden");
+    openSwipeOverlay("photo-transfer", hideModalDirect);
+
+    const generation = ++loadGeneration;
+
+    try {
+        allAlbums = await fetchTransferAlbums(generation);
+        if (generation !== loadGeneration || !transferPhotos().length) return;
         renderAlbums();
     } catch (error) {
         if (generation !== loadGeneration) return;

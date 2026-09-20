@@ -1,13 +1,13 @@
-import { state } from "./state.js?v=20260920-albumtools11";
-import { vkApi } from "./vk-api.js?v=20260920-albumtools11";
-import { getPhotoPreviewUrl, getErrorMessage } from "./helpers.js?v=20260920-albumtools11";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools11";
+import { state } from "./state.js?v=20260920-albumtools12";
+import { vkApi } from "./vk-api.js?v=20260920-albumtools12";
+import { getPhotoPreviewUrl, getErrorMessage } from "./helpers.js?v=20260920-albumtools12";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools12";
 import {
     cacheSet,
     albumPhotosKey,
     invalidateAlbumPhotosCache
-} from "./cache.js?v=20260920-albumtools11";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools11";
+} from "./cache.js?v=20260920-albumtools12";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools12";
 
 const PAGE_SIZE = 100;
 
@@ -637,7 +637,7 @@ async function chooseTarget(targetPhoto) {
             Number(state.currentAlbum.id) === albumIdToRefresh
         ) {
             try {
-                const { setPhotoDateSort } = await import("./photos.js?v=20260920-albumtools11");
+                const { setPhotoDateSort } = await import("./photos.js?v=20260920-albumtools12");
                 await setPhotoDateSort("vk");
             } catch (error) {
                 console.warn("Не удалось перерисовать альбом после перестановки:", error);

@@ -1,13 +1,19 @@
-import { state } from "./state.js?v=20260920-albumtools11";
-import { dom } from "./dom.js?v=20260920-albumtools11";
-import { vkApi } from "./vk-api.js?v=20260920-albumtools11";
-import { getPhotoPreviewUrl, escapeHtml, getErrorMessage } from "./helpers.js?v=20260920-albumtools11";
-import { showPhotosScreen, pushAlbumHistory } from "./navigation.js?v=20260920-albumtools11";
-import { CACHE_TTL } from "./config.js?v=20260920-albumtools11";
-import { cacheGet, cacheGetStale, cacheSet, albumPhotosKey } from "./cache.js?v=20260920-albumtools11";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools11";
-import { openPhotoViewer } from "./photo-viewer.js?v=20260920-albumtools11";
-import { bindPhotoContextLongPress } from "./photo-context-menu.js?v=20260920-albumtools11";
+import { state } from "./state.js?v=20260920-albumtools12";
+import { dom } from "./dom.js?v=20260920-albumtools12";
+import { vkApi } from "./vk-api.js?v=20260920-albumtools12";
+import { getPhotoPreviewUrl, escapeHtml, getErrorMessage } from "./helpers.js?v=20260920-albumtools12";
+import { showPhotosScreen, pushAlbumHistory } from "./navigation.js?v=20260920-albumtools12";
+import { CACHE_TTL } from "./config.js?v=20260920-albumtools12";
+import { cacheGet, cacheGetStale, cacheSet, albumPhotosKey } from "./cache.js?v=20260920-albumtools12";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools12";
+import { openPhotoViewer } from "./photo-viewer.js?v=20260920-albumtools12";
+import { bindPhotoContextLongPress } from "./photo-context-menu.js?v=20260920-albumtools12";
+import {
+    isPhotoMultiSelectActive,
+    isPhotoSelected,
+    togglePhotoSelection,
+    cancelPhotoMultiSelect
+} from "./photo-multiselect.js?v=20260920-albumtools12";
 
 const PAGE_SIZE = 20;
 const SORT_FETCH_SIZE = 100;
@@ -279,6 +285,8 @@ export async function refreshCurrentAlbumPhotos() {
 }
 
 export async function openAlbum(album, { fromHistory = false, restoreScroll = 0 } = {}) {
+    cancelPhotoMultiSelect({ silent: true });
+
     if (!fromHistory) {
         pushAlbumHistory(album);
     }
@@ -291,6 +299,7 @@ export async function openAlbum(album, { fromHistory = false, restoreScroll = 0 
     dom.photoCount.textContent = `${album.size || 0} фото`;
 
     initPhotoPagination();
+    initPhotoMultiSelectRendering();
     initPhotoSortControls();
     updatePhotoSortButtons();
 
@@ -407,6 +416,17 @@ function handlePhotoScroll() {
     });
 }
 
+
+let photoMultiSelectRenderInitialized = false;
+
+function initPhotoMultiSelectRendering() {
+    if (photoMultiSelectRenderInitialized) return;
+    photoMultiSelectRenderInitialized = true;
+    window.addEventListener("photo-multiselect-change", () => {
+        if (state.currentScreen === "photos") renderPhotos();
+    });
+}
+
 function initPhotoPagination() {
     if (photosInitialized) return;
     photosInitialized = true;
@@ -460,9 +480,26 @@ export function renderPhotos() {
         stats.append(likes, comments);
         card.appendChild(stats);
 
+        if (isPhotoMultiSelectActive()) {
+            const selected = isPhotoSelected(photo);
+            card.classList.toggle("photo-multi-selected", selected);
+
+            const check = document.createElement("span");
+            check.className = "photo-select-check";
+            check.textContent = selected ? "✓" : "";
+            card.appendChild(check);
+        }
+
         bindPhotoContextLongPress(card, photo);
 
         card.addEventListener("click", event => {
+            if (isPhotoMultiSelectActive()) {
+                event.preventDefault();
+                event.stopPropagation();
+                togglePhotoSelection(photo);
+                return;
+            }
+
             if (Date.now() < Number(state.suppressPhotoOpenUntil || 0)) {
                 event.preventDefault();
                 event.stopPropagation();

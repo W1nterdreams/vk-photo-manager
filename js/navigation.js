@@ -1,6 +1,7 @@
-import { state } from "./state.js?v=20260920-albumtools11";
-import { dom } from "./dom.js?v=20260920-albumtools11";
-import { handleOverlayPopState } from "./overlay-history.js?v=20260920-albumtools11";
+import { state } from "./state.js?v=20260920-albumtools12";
+import { dom } from "./dom.js?v=20260920-albumtools12";
+import { cancelPhotoMultiSelect } from "./photo-multiselect.js?v=20260920-albumtools12";
+import { handleOverlayPopState } from "./overlay-history.js?v=20260920-albumtools12";
 
 let openAlbumFromHistory = null;
 let openPhotoFromHistory = null;
@@ -22,6 +23,7 @@ function setScrollLater(y = 0) {
 }
 
 export function showAlbumsScreen({ restoreScroll = 0 } = {}) {
+    cancelPhotoMultiSelect({ silent: true });
     hideScreens();
     dom.albumsScreen.classList.remove("hidden");
 
@@ -57,6 +59,7 @@ export function showPhotosScreen({ restoreScroll = 0 } = {}) {
 }
 
 export function showCommentsScreen({ restoreScroll = 0 } = {}) {
+    cancelPhotoMultiSelect({ silent: true });
     hideScreens();
     dom.commentsScreen.classList.remove("hidden");
 
@@ -73,6 +76,7 @@ export function showCommentsScreen({ restoreScroll = 0 } = {}) {
 }
 
 export function showPhotoViewerScreen({ restoreScroll = 0 } = {}) {
+    cancelPhotoMultiSelect({ silent: true });
     hideScreens();
     dom.photoViewerScreen.classList.remove("hidden");
 
