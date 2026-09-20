@@ -1,13 +1,13 @@
-import { state } from "./state.js?v=20260920-albumtools09";
-import { vkApi } from "./vk-api.js?v=20260920-albumtools09";
-import { getPhotoPreviewUrl, getErrorMessage } from "./helpers.js?v=20260920-albumtools09";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools09";
+import { state } from "./state.js?v=20260920-albumtools10";
+import { vkApi } from "./vk-api.js?v=20260920-albumtools10";
+import { getPhotoPreviewUrl, getErrorMessage } from "./helpers.js?v=20260920-albumtools10";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools10";
 import {
     cacheSet,
     albumPhotosKey,
     invalidateAlbumPhotosCache
-} from "./cache.js?v=20260920-albumtools09";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools09";
+} from "./cache.js?v=20260920-albumtools10";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools10";
 
 const PAGE_SIZE = 100;
 
@@ -447,8 +447,38 @@ function renderPhotos() {
 function localReorder(items, sourceIndex, targetIndex) {
     const result = [...items];
     const [moved] = result.splice(sourceIndex, 1);
-    result.splice(targetIndex, 0, moved);
+    const safeTarget = Math.max(0, Math.min(Number(targetIndex), result.length));
+    result.splice(safeTarget, 0, moved);
     return result;
+}
+
+function buildReorderParams(desiredOrder, targetIndex, ownerId, photoId) {
+    const params = {
+        owner_id: Number(ownerId),
+        photo_id: Number(photoId)
+    };
+
+    // Надёжнее привязывать фотографию к СОСЕДУ в уже желаемом порядке,
+    // а не к карточке, по которой нажали. Для всех позиций, кроме последней,
+    // используем before. Это исключает сдвиг индекса при переносе вниз.
+    const next = desiredOrder[targetIndex + 1];
+    const previous = desiredOrder[targetIndex - 1];
+
+    if (next?.id) {
+        params.before = Number(next.id);
+    } else if (previous?.id) {
+        params.after = Number(previous.id);
+    }
+
+    return params;
+}
+
+function photoIndex(items, photoId) {
+    return items.findIndex(item => Number(item.id) === Number(photoId));
+}
+
+function sleep(ms) {
+    return new Promise(resolve => window.setTimeout(resolve, ms));
 }
 
 function saveReorderedState(items) {
@@ -489,8 +519,8 @@ function addBusyLayer() {
 async function chooseTarget(targetPhoto) {
     if (busy || !activePhoto || !targetPhoto) return;
 
-    const sourceIndex = albumPhotos.findIndex(photo => Number(photo.id) === Number(activePhoto.id));
-    const targetIndex = albumPhotos.findIndex(photo => Number(photo.id) === Number(targetPhoto.id));
+    const sourceIndex = photoIndex(albumPhotos, activePhoto.id);
+    const targetIndex = photoIndex(albumPhotos, targetPhoto.id);
 
     if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) return;
 
@@ -499,19 +529,14 @@ async function chooseTarget(targetPhoto) {
     const busyLayer = addBusyLayer();
 
     const ownerId = Number(activePhoto.owner_id || activeAlbum?.owner_id || getOwnerId());
-    const params = {
-        owner_id: ownerId,
-        photo_id: Number(activePhoto.id)
-    };
+    const photoId = Number(activePhoto.id);
+    const generation = loadGeneration;
+    const albumToRefresh = activeAlbum || state.currentAlbum;
 
-    // Нажатая карточка означает именно её текущую позицию.
-    // При движении вверх ставим фото ПЕРЕД целью, при движении вниз — ПОСЛЕ цели.
-    // Так выбранное фото занимает тот индекс, на который пользователь нажал.
-    if (sourceIndex > targetIndex) {
-        params.before = Number(targetPhoto.id);
-    } else {
-        params.after = Number(targetPhoto.id);
-    }
+    // Сначала строим именно тот порядок, который ожидает пользователь:
+    // выбранная фотография должна занять индекс нажатой карточки.
+    const desiredOrder = localReorder(albumPhotos, sourceIndex, targetIndex);
+    const params = buildReorderParams(desiredOrder, targetIndex, ownerId, photoId);
 
     try {
         const response = await vkApi("photos.reorderPhotos", params);
@@ -519,13 +544,62 @@ async function chooseTarget(targetPhoto) {
             throw new Error("VK не подтвердил изменение порядка фотографий.");
         }
 
-        const reordered = localReorder(albumPhotos, sourceIndex, targetIndex);
-        saveReorderedState(reordered);
-        state.suppressPhotoOpenUntil = Date.now() + 900;
+        // Не доверяем только локальной перестановке: перечитываем реальный
+        // порядок с сервера VK. Небольшая задержка нужна, потому что изменение
+        // порядка иногда становится видимым не мгновенно.
+        await sleep(250);
+        let serverOrder = await fetchAllPhotos(generation);
+        if (generation !== loadGeneration || !activePhoto) return;
+
+        let serverIndex = photoIndex(serverOrder, photoId);
+
+        // Если VK применил перестановку относительно устаревшего порядка,
+        // выполняем один корректирующий запрос уже относительно свежего списка.
+        if (serverIndex >= 0 && serverIndex !== targetIndex) {
+            const correctedDesired = localReorder(serverOrder, serverIndex, targetIndex);
+            const correctionParams = buildReorderParams(
+                correctedDesired,
+                targetIndex,
+                ownerId,
+                photoId
+            );
+
+            const correctionResponse = await vkApi("photos.reorderPhotos", correctionParams);
+            if (correctionResponse !== 1 && correctionResponse !== true) {
+                throw new Error("VK не подтвердил корректировку порядка фотографий.");
+            }
+
+            await sleep(350);
+            serverOrder = await fetchAllPhotos(generation);
+            if (generation !== loadGeneration || !activePhoto) return;
+            serverIndex = photoIndex(serverOrder, photoId);
+        }
+
+        // Если сервер по какой-то причине ещё не отдал новый порядок, не рисуем
+        // старый список поверх результата. В крайнем случае используем ожидаемый
+        // порядок, а ниже всё равно запускаем полноценное обновление альбома.
+        const finalOrder = serverIndex >= 0 ? serverOrder : desiredOrder;
+        saveReorderedState(finalOrder);
+        state.suppressPhotoOpenUntil = Date.now() + 1000;
 
         busy = false;
         busyLayer.remove();
         await closeSwipeOverlay("photo-reorder");
+
+        // Автоматически перечитываем открытый альбом после перестановки.
+        // Пользователю больше не нужно нажимать ↻ вручную.
+        if (
+            albumToRefresh &&
+            state.currentAlbum &&
+            Number(state.currentAlbum.id) === Number(albumToRefresh.id)
+        ) {
+            try {
+                const { loadPhotos } = await import("./photos.js?v=20260920-albumtools10");
+                await loadPhotos(state.currentAlbum, { force: true });
+            } catch (error) {
+                console.warn("Не удалось автоматически обновить альбом после перестановки:", error);
+            }
+        }
     } catch (error) {
         busy = false;
         busyLayer.remove();

@@ -160,9 +160,9 @@ export function openVkProfile(id) {
     openVkTarget(target);
 }
 
-export function openVkPhoto(photo, fallbackOwnerId = 0) {
+export function openVkPhoto(photo, fallbackOwnerId = 0, nativeContext = null) {
     const target = photoTarget(photo, fallbackOwnerId);
-    if (!target) return;
+    if (!target) return false;
 
     const photoId = Number(photo?.id || 0);
     const ownerId = Number(photo?.owner_id || fallbackOwnerId || 0);
@@ -172,6 +172,8 @@ export function openVkPhoto(photo, fallbackOwnerId = 0) {
         type: "photo",
         photoId,
         ownerId,
-        albumId
+        albumId,
+        ...(nativeContext || {})
     });
+    return true;
 }

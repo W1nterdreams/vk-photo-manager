@@ -1,13 +1,13 @@
-import { state } from "./state.js?v=20260920-albumtools09";
-import { vkApi } from "./vk-api.js?v=20260920-albumtools09";
-import { getAlbumCover, getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260920-albumtools09";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools09";
+import { state } from "./state.js?v=20260920-albumtools10";
+import { vkApi } from "./vk-api.js?v=20260920-albumtools10";
+import { getAlbumCover, getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260920-albumtools10";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools10";
 import {
     invalidateAlbumCaches,
     invalidateAlbumPhotosCache
-} from "./cache.js?v=20260920-albumtools09";
-import { openVkTarget, openVkPhoto } from "./vk-links.js?v=20260920-albumtools09";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools09";
+} from "./cache.js?v=20260920-albumtools10";
+import { openVkTarget, openVkPhoto } from "./vk-links.js?v=20260920-albumtools10";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools10";
 
 const ALBUM_PAGE_SIZE = 100;
 
@@ -20,6 +20,7 @@ let errorBox = null;
 let loadingBox = null;
 let activePhoto = null;
 let mode = "move";
+let originScreen = "albums";
 let busy = false;
 let allAlbums = [];
 let loadGeneration = 0;
@@ -503,6 +504,12 @@ async function movePhoto(album) {
     const photo = activePhoto;
     const ownerId = Number(photo?.owner_id || getOwnerId());
     const sourceAlbumId = Number(photo?.album_id || state.currentAlbum?.id || 0);
+    const sourceAlbum = (
+        state.currentAlbum && Number(state.currentAlbum.id) === sourceAlbumId
+            ? state.currentAlbum
+            : state.albums.find(item => Number(item.id) === sourceAlbumId)
+    );
+    const startedFromViewer = originScreen === "photo";
 
     const response = await vkApi("photos.move", {
         owner_id: ownerId,
@@ -524,7 +531,23 @@ async function movePhoto(album) {
 
     busy = false;
     await closeSwipeOverlay("photo-transfer");
-    history.back();
+
+    // После перемещения перечитываем исходный альбом с VK. Это устраняет
+    // устаревшую карточку и сразу синхронизирует счётчик фотографий.
+    if (sourceAlbum) {
+        try {
+            const { loadPhotos } = await import("./photos.js?v=20260920-albumtools10");
+            await loadPhotos(sourceAlbum, { force: true });
+        } catch (error) {
+            console.warn("Не удалось обновить альбом после перемещения фотографии:", error);
+        }
+    }
+
+    // Из общего просмотра фотографии возвращаемся в исходный альбом.
+    // При перемещении через long press уже на экране альбома остаёмся там.
+    if (startedFromViewer) {
+        history.back();
+    }
 }
 
 async function downloadForNativeCopy(photo) {
@@ -608,6 +631,7 @@ export async function openPhotoTransfer(photo, requestedMode = "move") {
 
     activePhoto = photo;
     mode = requestedMode === "copy" ? "copy" : "move";
+    originScreen = state.currentScreen;
     busy = false;
     allAlbums = [];
     search.value = "";

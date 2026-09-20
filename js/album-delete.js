@@ -1,6 +1,6 @@
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools09";
-import { openVkTarget } from "./vk-links.js?v=20260920-albumtools09";
-import { loadAlbums } from "./albums.js?v=20260920-albumtools09";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools10";
+import { openVkTarget } from "./vk-links.js?v=20260920-albumtools10";
+import { loadAlbums } from "./albums.js?v=20260920-albumtools10";
 
 let waitingForVkReturn = false;
 let refreshingAfterReturn = false;
