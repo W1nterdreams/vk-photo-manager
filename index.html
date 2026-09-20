@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <!-- CACHE_VERSION: 20260920-albumtools05 -->
+    <!-- CACHE_VERSION: 20260920-albumtools06 -->
     <meta charset="UTF-8">
 
     <meta
@@ -11,7 +11,7 @@
 
     <title>Фотоальбомы VK</title>
 
-    <link rel="stylesheet" href="./style.css?v=20260920-albumtools05">
+    <link rel="stylesheet" href="./style.css?v=20260920-albumtools06">
 
     <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
 </head>
@@ -177,6 +177,16 @@
                 aria-pressed="false"
             >
                 Старые
+            </button>
+
+            <button
+                id="sortCurrentButton"
+                class="topbar-sort-button"
+                type="button"
+                aria-pressed="true"
+                title="Текущий порядок фотографий в альбоме"
+            >
+                Текущая
             </button>
         </div>
 
@@ -688,7 +698,7 @@
 </div>
 
 
-<script type="module" src="./js/app.js?v=20260920-albumtools05"></script>
+<script type="module" src="./js/app.js?v=20260920-albumtools06"></script>
     
 </body>
 </html>

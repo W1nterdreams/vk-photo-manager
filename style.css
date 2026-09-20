@@ -140,8 +140,8 @@ img {
     display: flex;
     align-items: center;
     justify-content: flex-start;
-    gap: 7px;
-    padding: 0 5px;
+    gap: 5px;
+    padding: 0 3px;
 }
 
 .topbar-sort-button {
@@ -2254,14 +2254,14 @@ img {
 
 @media (max-width: 420px) {
     .topbar-sort-controls {
-        gap: 5px;
-        padding-left: 2px;
-        padding-right: 2px;
+        gap: 4px;
+        padding-left: 1px;
+        padding-right: 1px;
     }
 
     .topbar-sort-button {
-        min-height: 32px;
-        padding: 5px 9px;
-        font-size: 13px;
+        min-height: 31px;
+        padding: 5px 7px;
+        font-size: 12px;
     }
 }
