@@ -1,12 +1,12 @@
-import { state } from "./state.js?v=20260920-uploadsafe01";
-import { dom } from "./dom.js?v=20260920-uploadsafe01";
-import { vkApi } from "./vk-api.js?v=20260920-uploadsafe01";
-import { getPhotoPreviewUrl, escapeHtml, getErrorMessage } from "./helpers.js?v=20260920-uploadsafe01";
-import { showPhotosScreen, pushAlbumHistory } from "./navigation.js?v=20260920-uploadsafe01";
-import { CACHE_TTL } from "./config.js?v=20260920-uploadsafe01";
-import { cacheGet, cacheGetStale, cacheSet, albumPhotosKey } from "./cache.js?v=20260920-uploadsafe01";
-import { getOwnerId } from "./group-context.js?v=20260920-uploadsafe01";
-import { openPhotoViewer } from "./photo-viewer.js?v=20260920-uploadsafe01";
+import { state } from "./state.js?v=20260920-photomenu01";
+import { dom } from "./dom.js?v=20260920-photomenu01";
+import { vkApi } from "./vk-api.js?v=20260920-photomenu01";
+import { getPhotoPreviewUrl, escapeHtml, getErrorMessage } from "./helpers.js?v=20260920-photomenu01";
+import { showPhotosScreen, pushAlbumHistory } from "./navigation.js?v=20260920-photomenu01";
+import { CACHE_TTL } from "./config.js?v=20260920-photomenu01";
+import { cacheGet, cacheGetStale, cacheSet, albumPhotosKey } from "./cache.js?v=20260920-photomenu01";
+import { getOwnerId } from "./group-context.js?v=20260920-photomenu01";
+import { openPhotoViewer } from "./photo-viewer.js?v=20260920-photomenu01";
 
 const PAGE_SIZE = 20;
 let photoScrollTicking = false;

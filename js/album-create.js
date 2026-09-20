@@ -1,11 +1,11 @@
-import { state } from "./state.js?v=20260920-uploadsafe01";
-import { dom } from "./dom.js?v=20260920-uploadsafe01";
-import { vkApi } from "./vk-api.js?v=20260920-uploadsafe01";
-import { getErrorMessage } from "./helpers.js?v=20260920-uploadsafe01";
-import { loadAlbums } from "./albums.js?v=20260920-uploadsafe01";
-import { closeMenu } from "./main-menu.js?v=20260920-uploadsafe01";
-import { getGroupId, getOwnerId } from "./group-context.js?v=20260920-uploadsafe01";
-import { invalidateAlbumCaches } from "./cache.js?v=20260920-uploadsafe01";
+import { state } from "./state.js?v=20260920-photomenu01";
+import { dom } from "./dom.js?v=20260920-photomenu01";
+import { vkApi } from "./vk-api.js?v=20260920-photomenu01";
+import { getErrorMessage } from "./helpers.js?v=20260920-photomenu01";
+import { loadAlbums } from "./albums.js?v=20260920-photomenu01";
+import { closeMenu } from "./main-menu.js?v=20260920-photomenu01";
+import { getGroupId, getOwnerId } from "./group-context.js?v=20260920-photomenu01";
+import { invalidateAlbumCaches } from "./cache.js?v=20260920-photomenu01";
 
 function openModal() {
     closeMenu();

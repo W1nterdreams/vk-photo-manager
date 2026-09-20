@@ -1,22 +1,22 @@
-import { dom } from "./dom.js?v=20260920-uploadsafe01";
+import { dom } from "./dom.js?v=20260920-photomenu01";
 
-function isAlbumOpen() {
-    // Определяем экран по реально видимому DOM, а не по состоянию/history.
-    // Это не вмешивается в навигацию и одинаково работает после обычного
-    // открытия альбома и возврата через history.
-    return Boolean(
-        dom.photosScreen &&
-        !dom.photosScreen.classList.contains("hidden")
-    );
+function visible(element) {
+    return Boolean(element && !element.classList.contains("hidden"));
 }
 
-function setMenuItemVisible(element, visible) {
+function currentMenuContext() {
+    if (visible(dom.photoViewerScreen)) return "photo";
+    if (visible(dom.photosScreen)) return "album";
+    return "main";
+}
+
+function setMenuItemVisible(element, isVisible) {
     if (!element) return;
 
-    element.classList.toggle("hidden", !visible);
-    element.hidden = !visible;
+    element.classList.toggle("hidden", !isVisible);
+    element.hidden = !isVisible;
 
-    if (visible) {
+    if (isVisible) {
         element.removeAttribute("hidden");
         element.style.setProperty("display", "flex", "important");
     } else {
@@ -25,20 +25,28 @@ function setMenuItemVisible(element, visible) {
 }
 
 export function syncMainMenu() {
-    const inAlbum = isAlbumOpen();
+    const context = currentMenuContext();
+    const onMain = context === "main";
+    const inAlbum = context === "album";
+    const onPhoto = context === "photo";
 
-    // Главный экран: создать альбом + общие комментарии.
-    setMenuItemVisible(dom.createAlbumMenuButton, !inAlbum);
-    setMenuItemVisible(dom.commentsMenuButton, !inAlbum);
+    // Главный экран / экран общих комментариев.
+    setMenuItemVisible(dom.createAlbumMenuButton, onMain);
+    setMenuItemVisible(dom.commentsMenuButton, onMain);
 
-    // Открытый альбом: только загрузить фото.
+    // Открытый альбом.
     setMenuItemVisible(dom.uploadPhotoMenuButton, inAlbum);
+
+    // Открытая фотография.
+    setMenuItemVisible(dom.downloadPhotoMenuButton, onPhoto);
+    setMenuItemVisible(dom.editPhotoDescriptionMenuButton, onPhoto);
+    setMenuItemVisible(dom.copyPhotoMenuButton, onPhoto);
+    setMenuItemVisible(dom.movePhotoMenuButton, onPhoto);
 }
 
 export function openMenu() {
     if (!dom.mainMenu) return;
 
-    // Состав меню вычисляем непосредственно в момент нажатия на кнопку.
     syncMainMenu();
 
     dom.mainMenu.classList.remove("hidden");
@@ -50,7 +58,7 @@ export function openMenu() {
         position: "fixed",
         top: "62px",
         left: "8px",
-        width: "240px",
+        width: "250px",
         zIndex: "2147483647",
         visibility: "visible",
         opacity: "1",
@@ -81,11 +89,8 @@ export function initMainMenu() {
             dom.mainMenu.hidden ||
             getComputedStyle(dom.mainMenu).display === "none";
 
-        if (closed) {
-            openMenu();
-        } else {
-            closeMenu();
-        }
+        if (closed) openMenu();
+        else closeMenu();
     });
 
     dom.mainMenu?.addEventListener("click", event => event.stopPropagation());

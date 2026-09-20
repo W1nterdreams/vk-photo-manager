@@ -1,9 +1,9 @@
-import { state } from "./state.js?v=20260920-uploadsafe01";
-import { dom } from "./dom.js?v=20260920-uploadsafe01";
-import { vkApi } from "./vk-api.js?v=20260920-uploadsafe01";
-import { getAlbumCover, escapeHtml, getErrorMessage } from "./helpers.js?v=20260920-uploadsafe01";
-import { openAlbum } from "./photos.js?v=20260920-uploadsafe01";
-import { CACHE_TTL } from "./config.js?v=20260920-uploadsafe01";
+import { state } from "./state.js?v=20260920-photomenu01";
+import { dom } from "./dom.js?v=20260920-photomenu01";
+import { vkApi } from "./vk-api.js?v=20260920-photomenu01";
+import { getAlbumCover, escapeHtml, getErrorMessage } from "./helpers.js?v=20260920-photomenu01";
+import { openAlbum } from "./photos.js?v=20260920-photomenu01";
+import { CACHE_TTL } from "./config.js?v=20260920-photomenu01";
 import {
     cacheGet,
     cacheGetStale,
@@ -11,9 +11,9 @@ import {
     invalidateAlbumCaches,
     albumsKey,
     albumIndexKey
-} from "./cache.js?v=20260920-uploadsafe01";
-import { getOwnerId } from "./group-context.js?v=20260920-uploadsafe01";
-import { bindAlbumLongPress } from "./album-menu.js?v=20260920-uploadsafe01";
+} from "./cache.js?v=20260920-photomenu01";
+import { getOwnerId } from "./group-context.js?v=20260920-photomenu01";
+import { bindAlbumLongPress } from "./album-menu.js?v=20260920-photomenu01";
 
 const PAGE_SIZE = 20;
 const INDEX_PAGE_SIZE = 100;

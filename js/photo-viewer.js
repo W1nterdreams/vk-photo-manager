@@ -1,15 +1,15 @@
-import { state } from "./state.js?v=20260920-uploadsafe01";
-import { dom } from "./dom.js?v=20260920-uploadsafe01";
-import { vkApi } from "./vk-api.js?v=20260920-uploadsafe01";
-import { getBestPhotoUrl, escapeHtml } from "./helpers.js?v=20260920-uploadsafe01";
-import { getOwnerId } from "./group-context.js?v=20260920-uploadsafe01";
+import { state } from "./state.js?v=20260920-photomenu01";
+import { dom } from "./dom.js?v=20260920-photomenu01";
+import { vkApi } from "./vk-api.js?v=20260920-photomenu01";
+import { getBestPhotoUrl, escapeHtml } from "./helpers.js?v=20260920-photomenu01";
+import { getOwnerId } from "./group-context.js?v=20260920-photomenu01";
 import {
     showPhotoViewerScreen,
     pushPhotoHistory
-} from "./navigation.js?v=20260920-uploadsafe01";
-import { photoCommentOwnerId } from "./photo-comment-api.js?v=20260920-uploadsafe01";
-import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260920-uploadsafe01";
-import { invalidatePhotoActivityCaches } from "./cache.js?v=20260920-uploadsafe01";
+} from "./navigation.js?v=20260920-photomenu01";
+import { photoCommentOwnerId } from "./photo-comment-api.js?v=20260920-photomenu01";
+import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260920-photomenu01";
+import { invalidatePhotoActivityCaches } from "./cache.js?v=20260920-photomenu01";
 
 const COMMENT_PAGE_SIZE = 100;
 const LONG_PRESS_MS = 460;
@@ -538,5 +538,14 @@ export function initPhotoViewer() {
 
     window.addEventListener("vk-native-return", event => {
         void refreshAfterNativePhotoReturn(event?.detail);
+    });
+
+    window.addEventListener("photo-data-updated", event => {
+        const updated = event?.detail?.photo;
+        if (!updated || !activePhoto) return;
+        if (Number(updated.id) !== Number(activePhoto.id)) return;
+        activePhoto = { ...activePhoto, ...updated };
+        state.currentPhoto = activePhoto;
+        renderPhotoHeader(activePhoto);
     });
 }
