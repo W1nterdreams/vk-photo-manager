@@ -390,7 +390,7 @@ function renderPhotoCard(photo) {
         selected ? "Выбранная фотография" : "Переместить выбранную фотографию на это место"
     );
 
-    const url = getPhotoPreviewUrl(photo, 320);
+    const url = getPhotoPreviewUrl(photo, 220);
     if (url) {
         const image = create("img");
         image.src = url;
