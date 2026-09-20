@@ -1,13 +1,13 @@
-import { state } from "./state.js?v=20260920-albumtools02";
-import { vkApi } from "./vk-api.js?v=20260920-albumtools02";
-import { ensureAlbumIndex } from "./albums.js?v=20260920-albumtools02";
-import { getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260920-albumtools02";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools02";
+import { state } from "./state.js?v=20260920-albumtools04";
+import { vkApi } from "./vk-api.js?v=20260920-albumtools04";
+import { ensureAlbumIndex } from "./albums.js?v=20260920-albumtools04";
+import { getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260920-albumtools04";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools04";
 import {
     invalidateAlbumCaches,
     invalidateAlbumPhotosCache
-} from "./cache.js?v=20260920-albumtools02";
-import { openVkTarget, openVkPhoto } from "./vk-links.js?v=20260920-albumtools02";
+} from "./cache.js?v=20260920-albumtools04";
+import { openVkTarget, openVkPhoto } from "./vk-links.js?v=20260920-albumtools04";
 
 let overlay = null;
 let list = null;

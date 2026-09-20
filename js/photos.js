@@ -1,23 +1,123 @@
-import { state } from "./state.js?v=20260920-albumtools02";
-import { dom } from "./dom.js?v=20260920-albumtools02";
-import { vkApi } from "./vk-api.js?v=20260920-albumtools02";
-import { getPhotoPreviewUrl, escapeHtml, getErrorMessage } from "./helpers.js?v=20260920-albumtools02";
-import { showPhotosScreen, pushAlbumHistory } from "./navigation.js?v=20260920-albumtools02";
-import { CACHE_TTL } from "./config.js?v=20260920-albumtools02";
-import { cacheGet, cacheGetStale, cacheSet, albumPhotosKey } from "./cache.js?v=20260920-albumtools02";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools02";
-import { openPhotoViewer } from "./photo-viewer.js?v=20260920-albumtools02";
+import { state } from "./state.js?v=20260920-albumtools04";
+import { dom } from "./dom.js?v=20260920-albumtools04";
+import { vkApi } from "./vk-api.js?v=20260920-albumtools04";
+import { getPhotoPreviewUrl, escapeHtml, getErrorMessage } from "./helpers.js?v=20260920-albumtools04";
+import { showPhotosScreen, pushAlbumHistory } from "./navigation.js?v=20260920-albumtools04";
+import { CACHE_TTL } from "./config.js?v=20260920-albumtools04";
+import { cacheGet, cacheGetStale, cacheSet, albumPhotosKey } from "./cache.js?v=20260920-albumtools04";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools04";
+import { openPhotoViewer } from "./photo-viewer.js?v=20260920-albumtools04";
 
 const PAGE_SIZE = 20;
+const SORT_FETCH_SIZE = 100;
 
-export function setPhotoDateSort(mode = "vk") {
-    const allowed = new Set(["vk", "newest", "oldest"]);
-    state.photoSortMode = allowed.has(mode) ? mode : "vk";
-    renderPhotos();
-}
+let sortingAllPhotos = false;
+let photoSortControlsInitialized = false;
 
 export function getPhotoDateSort() {
     return state.photoSortMode || "vk";
+}
+
+function updatePhotoSortButtons() {
+    const current = getPhotoDateSort();
+    const newestActive = current === "newest";
+    const oldestActive = current === "oldest";
+
+    dom.sortNewestButton?.classList.toggle("active", newestActive);
+    dom.sortNewestButton?.setAttribute("aria-pressed", newestActive ? "true" : "false");
+    dom.sortNewestButton?.classList.toggle("loading", sortingAllPhotos);
+    if (dom.sortNewestButton) dom.sortNewestButton.disabled = sortingAllPhotos;
+
+    dom.sortOldestButton?.classList.toggle("active", oldestActive);
+    dom.sortOldestButton?.setAttribute("aria-pressed", oldestActive ? "true" : "false");
+    dom.sortOldestButton?.classList.toggle("loading", sortingAllPhotos);
+    if (dom.sortOldestButton) dom.sortOldestButton.disabled = sortingAllPhotos;
+}
+
+async function ensureAllPhotosLoadedForSort() {
+    const album = state.currentAlbum;
+    if (!album) return;
+
+    const expectedTotal = Math.max(
+        Number(state.photosTotal || 0),
+        Number(album.size || 0),
+        state.photos.length
+    );
+
+    if (expectedTotal > 0 && state.photos.length >= expectedTotal && !state.photosHasMore) {
+        return;
+    }
+
+    sortingAllPhotos = true;
+    updatePhotoSortButtons();
+
+    try {
+        let offset = 0;
+        let total = expectedTotal;
+        let allPhotos = [];
+
+        while (true) {
+            const result = await fetchPhotoPage(album, offset, SORT_FETCH_SIZE);
+            if (!currentAlbumIs(album)) return;
+
+            const items = Array.isArray(result?.items) ? result.items : [];
+            allPhotos = mergePhotos(allPhotos, items);
+
+            const apiTotal = Number(result?.count);
+            if (Number.isFinite(apiTotal) && apiTotal >= 0) {
+                total = Math.max(apiTotal, allPhotos.length);
+            } else {
+                total = Math.max(total, allPhotos.length);
+            }
+
+            offset += items.length;
+
+            if (!items.length || offset >= total || items.length < SORT_FETCH_SIZE) {
+                break;
+            }
+        }
+
+        if (!currentAlbumIs(album)) return;
+
+        state.photos = allPhotos;
+        state.photosTotal = Math.max(total, allPhotos.length);
+        state.photosOffset = allPhotos.length;
+        state.photosHasMore = false;
+        state.photosLoadingMore = false;
+
+        updateAlbumSize(album, state.photosTotal);
+        savePhotosCache(album);
+        updatePhotoCount();
+    } finally {
+        sortingAllPhotos = false;
+        updatePhotoSortButtons();
+    }
+}
+
+export async function setPhotoDateSort(mode = "vk") {
+    const allowed = new Set(["vk", "newest", "oldest"]);
+    const nextMode = allowed.has(mode) ? mode : "vk";
+
+    if ((nextMode === "newest" || nextMode === "oldest") && state.currentAlbum) {
+        await ensureAllPhotosLoadedForSort();
+    }
+
+    state.photoSortMode = nextMode;
+    updatePhotoSortButtons();
+    renderPhotos();
+}
+
+function initPhotoSortControls() {
+    if (photoSortControlsInitialized) return;
+    photoSortControlsInitialized = true;
+
+    dom.sortNewestButton?.addEventListener("click", () => {
+        void setPhotoDateSort("newest");
+    });
+
+    dom.sortOldestButton?.addEventListener("click", () => {
+        void setPhotoDateSort("oldest");
+    });
 }
 
 function photosForRender() {
@@ -162,12 +262,13 @@ export async function openAlbum(album, { fromHistory = false, restoreScroll = 0 
     state.currentAlbum = album;
     showPhotosScreen({ restoreScroll });
 
-    dom.pageTitle.textContent = album.title || "Альбом";
     dom.albumTitle.textContent = album.title || "Альбом";
     dom.albumDescription.textContent = album.description || "";
     dom.photoCount.textContent = `${album.size || 0} фото`;
 
     initPhotoPagination();
+    initPhotoSortControls();
+    updatePhotoSortButtons();
 
     try {
         await loadPhotos(album);
@@ -291,6 +392,7 @@ function initPhotoPagination() {
 }
 
 export function renderPhotos() {
+    updatePhotoSortButtons();
     dom.photos.innerHTML = "";
 
     if (!state.photos.length) {

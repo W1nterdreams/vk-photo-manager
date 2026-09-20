@@ -1,5 +1,5 @@
-import { state } from "./state.js?v=20260920-albumtools02";
-import { dom } from "./dom.js?v=20260920-albumtools02";
+import { state } from "./state.js?v=20260920-albumtools04";
+import { dom } from "./dom.js?v=20260920-albumtools04";
 
 let openAlbumFromHistory = null;
 let openPhotoFromHistory = null;
@@ -29,6 +29,8 @@ export function showAlbumsScreen({ restoreScroll = 0 } = {}) {
     state.currentPhoto = null;
 
     dom.pageTitle.textContent = "Фотоальбомы";
+    dom.pageTitle.classList.remove("hidden");
+    dom.albumSortControls?.classList.add("hidden");
     dom.backButton.classList.add("hidden");
     dom.refreshAlbums.classList.remove("hidden");
 
@@ -43,6 +45,9 @@ export function showPhotosScreen({ restoreScroll = 0 } = {}) {
     state.currentScreen = "photos";
     state.currentPhoto = null;
 
+    dom.pageTitle.textContent = "";
+    dom.pageTitle.classList.add("hidden");
+    dom.albumSortControls?.classList.remove("hidden");
     dom.backButton.classList.remove("hidden");
     dom.refreshAlbums.classList.remove("hidden");
 
@@ -57,6 +62,8 @@ export function showCommentsScreen({ restoreScroll = 0 } = {}) {
     state.currentScreen = "comments";
 
     dom.pageTitle.textContent = "Комментарии";
+    dom.pageTitle.classList.remove("hidden");
+    dom.albumSortControls?.classList.add("hidden");
     dom.backButton.classList.remove("hidden");
     dom.refreshAlbums.classList.add("hidden");
 
@@ -71,6 +78,8 @@ export function showPhotoViewerScreen({ restoreScroll = 0 } = {}) {
     state.currentScreen = "photo";
 
     dom.pageTitle.textContent = "Фотография";
+    dom.pageTitle.classList.remove("hidden");
+    dom.albumSortControls?.classList.add("hidden");
     dom.backButton.classList.remove("hidden");
     dom.refreshAlbums.classList.add("hidden");
 
