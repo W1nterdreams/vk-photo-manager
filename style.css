@@ -2034,3 +2034,47 @@ img {
         left: -17px;
     }
 }
+
+
+/* =========================================================
+   PHOTO UPLOAD
+   ========================================================= */
+
+.upload-photo-album-name {
+    margin: -5px 0 8px;
+    color: #aeb5bb;
+    font-size: 14px;
+    line-height: 1.35;
+    word-break: break-word;
+}
+
+.upload-photo-file-input {
+    height: auto;
+    min-height: 46px;
+    padding: 8px;
+}
+
+.upload-photo-file-input::file-selector-button {
+    margin-right: 10px;
+    padding: 7px 10px;
+    border: 0;
+    border-radius: 7px;
+    background: #353a3f;
+    color: #fff;
+}
+
+.upload-photo-selection,
+.upload-photo-progress {
+    margin-top: 8px;
+    color: #aeb5bb;
+    font-size: 13px;
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+.upload-photo-progress {
+    padding: 9px 10px;
+    border-radius: 8px;
+    background: #181b1e;
+    color: #c9d7e3;
+}

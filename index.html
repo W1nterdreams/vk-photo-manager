@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <!-- CACHE_VERSION: 20260920-albumscroll03 -->
+    <!-- CACHE_VERSION: 20260920-upload01 -->
     <meta charset="UTF-8">
 
     <meta
@@ -11,7 +11,7 @@
 
     <title>Фотоальбомы VK</title>
 
-    <link rel="stylesheet" href="./style.css?v=20260920-threadsearch02">
+    <link rel="stylesheet" href="./style.css?v=20260920-upload01">
 
     <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
 </head>
@@ -75,6 +75,18 @@
 
                     <span>
                         Комментарии
+                    </span>
+                </button>
+
+                <button
+                    id="uploadPhotoMenuButton"
+                    class="menu-item hidden"
+                    type="button"
+                >
+                    <span class="menu-item-icon">⬆</span>
+
+                    <span>
+                        Загрузить фото
                     </span>
                 </button>
 
@@ -500,7 +512,107 @@
 </div>
 
 
-<script type="module" src="./js/app.js?v=20260920-albumscroll03"></script>
+
+
+<!-- ==================================
+     ЗАГРУЗКА ФОТОГРАФИЙ
+     ================================== -->
+
+<div
+    id="uploadPhotoModal"
+    class="modal-overlay hidden"
+>
+
+    <div class="modal">
+
+        <div class="modal-header">
+
+            <div class="modal-title">
+                Загрузить фото
+            </div>
+
+            <button
+                id="closeUploadPhoto"
+                class="modal-close"
+                type="button"
+            >
+                ×
+            </button>
+
+        </div>
+
+        <div
+            id="uploadPhotoAlbumName"
+            class="upload-photo-album-name"
+        ></div>
+
+        <label class="form-label" for="uploadPhotoFiles">
+            Фотографии
+        </label>
+
+        <input
+            id="uploadPhotoFiles"
+            class="form-input upload-photo-file-input"
+            type="file"
+            accept="image/*"
+            multiple
+        >
+
+        <div
+            id="uploadPhotoSelection"
+            class="upload-photo-selection"
+        >
+            Файлы не выбраны
+        </div>
+
+        <label class="form-label" for="uploadPhotoCaption">
+            Описание
+        </label>
+
+        <textarea
+            id="uploadPhotoCaption"
+            class="form-textarea"
+            maxlength="1000"
+            placeholder="Необязательно. Будет применено к загружаемым фотографиям."
+        ></textarea>
+
+        <div
+            id="uploadPhotoProgress"
+            class="upload-photo-progress hidden"
+        ></div>
+
+        <div
+            id="uploadPhotoError"
+            class="form-error hidden"
+        ></div>
+
+        <div class="modal-actions">
+
+            <button
+                id="cancelUploadPhoto"
+                class="secondary-button"
+                type="button"
+            >
+                Отмена
+            </button>
+
+            <button
+                id="submitUploadPhoto"
+                class="primary-button"
+                type="button"
+                disabled
+            >
+                Загрузить
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<script type="module" src="./js/app.js?v=20260920-upload01"></script>
     
 </body>
 </html>
