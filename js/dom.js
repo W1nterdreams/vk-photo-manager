@@ -1,7 +1,7 @@
 const id = name => document.getElementById(name);
 export const dom = {
  user:id("user"), pageTitle:id("pageTitle"), albumsScreen:id("albumsScreen"), photosScreen:id("photosScreen"), commentsScreen:id("commentsScreen"), photoViewerScreen:id("photoViewerScreen"),
- albums:id("albums"), photos:id("photos"), comments:id("comments"), albumTitle:id("albumTitle"), albumDescription:id("albumDescription"), photoCount:id("photoCount"),
+ albums:id("albums"), photos:id("photos"), comments:id("comments"), albumTitle:id("albumTitle"), albumDescription:id("albumDescription"), photoCount:id("photoCount"), photoSearch:id("photoSearch"), clearPhotoSearch:id("clearPhotoSearch"),
  photoViewerImage:id("photoViewerImage"), photoViewerDescription:id("photoViewerDescription"), photoViewerLikes:id("photoViewerLikes"), photoViewerReposts:id("photoViewerReposts"), photoViewerComments:id("photoViewerComments"),
  photoViewerReplyTarget:id("photoViewerReplyTarget"), photoViewerReplyCancel:id("photoViewerReplyCancel"), photoViewerCommentInput:id("photoViewerCommentInput"), photoViewerCommentError:id("photoViewerCommentError"), photoViewerCommentSubmit:id("photoViewerCommentSubmit"),
  albumSortControls:id("albumSortControls"), sortNewestButton:id("sortNewestButton"), sortOldestButton:id("sortOldestButton"), sortCurrentButton:id("sortCurrentButton"), refreshAlbums:id("refreshAlbums"), refreshComments:id("refreshComments"), backButton:id("backButton"), albumSearch:id("albumSearch"), clearSearch:id("clearSearch"),

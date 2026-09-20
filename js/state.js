@@ -22,6 +22,7 @@ export const state = {
     photosHasMore: false,
     photosLoadingMore: false,
     photoSortMode: "vk",
+    photoSearchText: "",
     suppressPhotoOpenUntil: 0,
 
     albumSearchText: "",

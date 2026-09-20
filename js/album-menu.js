@@ -1,5 +1,5 @@
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools14";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools14";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools15";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools15";
 
 const LONG_PRESS_MS = 520;
 const MOVE_CANCEL_PX = 12;

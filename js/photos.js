@@ -1,25 +1,28 @@
-import { state } from "./state.js?v=20260920-albumtools14";
-import { dom } from "./dom.js?v=20260920-albumtools14";
-import { vkApi } from "./vk-api.js?v=20260920-albumtools14";
-import { getPhotoPreviewUrl, escapeHtml, getErrorMessage } from "./helpers.js?v=20260920-albumtools14";
-import { showPhotosScreen, pushAlbumHistory } from "./navigation.js?v=20260920-albumtools14";
-import { CACHE_TTL } from "./config.js?v=20260920-albumtools14";
-import { cacheGet, cacheGetStale, cacheSet, albumPhotosKey } from "./cache.js?v=20260920-albumtools14";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools14";
-import { openPhotoViewer } from "./photo-viewer.js?v=20260920-albumtools14";
-import { bindPhotoContextLongPress } from "./photo-context-menu.js?v=20260920-albumtools14";
+import { state } from "./state.js?v=20260920-albumtools15";
+import { dom } from "./dom.js?v=20260920-albumtools15";
+import { vkApi } from "./vk-api.js?v=20260920-albumtools15";
+import { getPhotoPreviewUrl, escapeHtml, getErrorMessage } from "./helpers.js?v=20260920-albumtools15";
+import { showPhotosScreen, pushAlbumHistory } from "./navigation.js?v=20260920-albumtools15";
+import { CACHE_TTL } from "./config.js?v=20260920-albumtools15";
+import { cacheGet, cacheGetStale, cacheSet, albumPhotosKey } from "./cache.js?v=20260920-albumtools15";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools15";
+import { openPhotoViewer } from "./photo-viewer.js?v=20260920-albumtools15";
+import { bindPhotoContextLongPress } from "./photo-context-menu.js?v=20260920-albumtools15";
 import {
     isPhotoMultiSelectActive,
     isPhotoSelected,
     togglePhotoSelection,
     cancelPhotoMultiSelect
-} from "./photo-multiselect.js?v=20260920-albumtools14";
+} from "./photo-multiselect.js?v=20260920-albumtools15";
 
 const PAGE_SIZE = 20;
 const SORT_FETCH_SIZE = 100;
 
 let sortingAllPhotos = false;
 let photoSortControlsInitialized = false;
+let photoSearchControlsInitialized = false;
+let photoSearchRequestToken = 0;
+let allPhotosLoadPromise = null;
 
 export function getPhotoDateSort() {
     return state.photoSortMode || "vk";
@@ -61,49 +64,62 @@ async function ensureAllPhotosLoadedForSort() {
         return;
     }
 
-    sortingAllPhotos = true;
-    updatePhotoSortButtons();
+    if (allPhotosLoadPromise) {
+        await allPhotosLoadPromise;
+        return;
+    }
 
-    try {
-        let offset = 0;
-        let total = expectedTotal;
-        let allPhotos = [];
+    allPhotosLoadPromise = (async () => {
+        sortingAllPhotos = true;
+        updatePhotoSortButtons();
 
-        while (true) {
-            const result = await fetchPhotoPage(album, offset, SORT_FETCH_SIZE);
+        try {
+            let offset = 0;
+            let total = expectedTotal;
+            let allPhotos = [];
+
+            while (true) {
+                const result = await fetchPhotoPage(album, offset, SORT_FETCH_SIZE);
+                if (!currentAlbumIs(album)) return;
+
+                const items = Array.isArray(result?.items) ? result.items : [];
+                allPhotos = mergePhotos(allPhotos, items);
+
+                const apiTotal = Number(result?.count);
+                if (Number.isFinite(apiTotal) && apiTotal >= 0) {
+                    total = Math.max(apiTotal, allPhotos.length);
+                } else {
+                    total = Math.max(total, allPhotos.length);
+                }
+
+                offset += items.length;
+
+                if (!items.length || offset >= total || items.length < SORT_FETCH_SIZE) {
+                    break;
+                }
+            }
+
             if (!currentAlbumIs(album)) return;
 
-            const items = Array.isArray(result?.items) ? result.items : [];
-            allPhotos = mergePhotos(allPhotos, items);
+            state.photos = allPhotos;
+            state.photosTotal = Math.max(total, allPhotos.length);
+            state.photosOffset = allPhotos.length;
+            state.photosHasMore = false;
+            state.photosLoadingMore = false;
 
-            const apiTotal = Number(result?.count);
-            if (Number.isFinite(apiTotal) && apiTotal >= 0) {
-                total = Math.max(apiTotal, allPhotos.length);
-            } else {
-                total = Math.max(total, allPhotos.length);
-            }
-
-            offset += items.length;
-
-            if (!items.length || offset >= total || items.length < SORT_FETCH_SIZE) {
-                break;
-            }
+            updateAlbumSize(album, state.photosTotal);
+            savePhotosCache(album);
+            updatePhotoCount();
+        } finally {
+            sortingAllPhotos = false;
+            updatePhotoSortButtons();
         }
+    })();
 
-        if (!currentAlbumIs(album)) return;
-
-        state.photos = allPhotos;
-        state.photosTotal = Math.max(total, allPhotos.length);
-        state.photosOffset = allPhotos.length;
-        state.photosHasMore = false;
-        state.photosLoadingMore = false;
-
-        updateAlbumSize(album, state.photosTotal);
-        savePhotosCache(album);
-        updatePhotoCount();
+    try {
+        await allPhotosLoadPromise;
     } finally {
-        sortingAllPhotos = false;
-        updatePhotoSortButtons();
+        allPhotosLoadPromise = null;
     }
 }
 
@@ -137,6 +153,75 @@ function initPhotoSortControls() {
     });
 }
 
+function normalizePhotoSearchText(value = "") {
+    return String(value)
+        .toLocaleLowerCase("ru-RU")
+        .replace(/ё/g, "е")
+        .replace(/\s+/g, " ")
+        .trim();
+}
+
+function updatePhotoSearchUi() {
+    if (!dom.photoSearch || !dom.clearPhotoSearch) return;
+    const hasQuery = Boolean(state.photoSearchText);
+    dom.clearPhotoSearch.classList.toggle("hidden", !hasQuery);
+}
+
+async function applyPhotoSearchFromInput() {
+    const query = normalizePhotoSearchText(dom.photoSearch?.value || "");
+    state.photoSearchText = query;
+    updatePhotoSearchUi();
+    renderPhotos();
+
+    if (!query || !state.currentAlbum) return;
+
+    const requestToken = ++photoSearchRequestToken;
+    const albumId = String(state.currentAlbum.id);
+
+    try {
+        await ensureAllPhotosLoadedForSort();
+    } catch (error) {
+        console.warn("Не удалось загрузить все фотографии для поиска:", error);
+        return;
+    }
+
+    if (
+        requestToken !== photoSearchRequestToken ||
+        !state.currentAlbum ||
+        String(state.currentAlbum.id) !== albumId ||
+        state.photoSearchText !== query
+    ) {
+        return;
+    }
+
+    renderPhotos();
+}
+
+function initPhotoSearchControls() {
+    if (photoSearchControlsInitialized) return;
+    photoSearchControlsInitialized = true;
+
+    let inputTimer = 0;
+
+    dom.photoSearch?.addEventListener("input", () => {
+        window.clearTimeout(inputTimer);
+        inputTimer = window.setTimeout(() => {
+            void applyPhotoSearchFromInput();
+        }, 180);
+    });
+
+    dom.clearPhotoSearch?.addEventListener("click", () => {
+        photoSearchRequestToken += 1;
+        state.photoSearchText = "";
+        if (dom.photoSearch) {
+            dom.photoSearch.value = "";
+            dom.photoSearch.focus();
+        }
+        updatePhotoSearchUi();
+        renderPhotos();
+    });
+}
+
 function formatPhotoDate(timestamp) {
     const seconds = Number(timestamp || 0);
     if (!Number.isFinite(seconds) || seconds <= 0) return "";
@@ -151,7 +236,15 @@ function formatPhotoDate(timestamp) {
 }
 
 function photosForRender() {
-    const items = [...state.photos];
+    const query = normalizePhotoSearchText(state.photoSearchText || "");
+    const tokens = query ? query.split(" ").filter(Boolean) : [];
+
+    const items = state.photos.filter(photo => {
+        if (!tokens.length) return true;
+        const description = normalizePhotoSearchText(photo?.text || "");
+        return tokens.every(token => description.includes(token));
+    });
+
     if (state.photoSortMode === "newest") {
         items.sort((a, b) => Number(b?.date || 0) - Number(a?.date || 0));
     } else if (state.photoSortMode === "oldest") {
@@ -287,8 +380,18 @@ export async function refreshCurrentAlbumPhotos() {
 export async function openAlbum(album, { fromHistory = false, restoreScroll = 0 } = {}) {
     cancelPhotoMultiSelect({ silent: true });
 
+    const previousAlbumId = state.currentAlbum ? String(state.currentAlbum.id) : "";
+    const nextAlbumId = String(album?.id || "");
+    const keepSearch = fromHistory && previousAlbumId === nextAlbumId;
+
     if (!fromHistory) {
         pushAlbumHistory(album);
+    }
+
+    if (!keepSearch) {
+        photoSearchRequestToken += 1;
+        state.photoSearchText = "";
+        if (dom.photoSearch) dom.photoSearch.value = "";
     }
 
     state.currentAlbum = album;
@@ -301,7 +404,9 @@ export async function openAlbum(album, { fromHistory = false, restoreScroll = 0 
     initPhotoPagination();
     initPhotoMultiSelectRendering();
     initPhotoSortControls();
+    initPhotoSearchControls();
     updatePhotoSortButtons();
+    updatePhotoSearchUi();
 
     try {
         await loadPhotos(album);
@@ -437,6 +542,7 @@ function initPhotoPagination() {
 
 export function renderPhotos() {
     updatePhotoSortButtons();
+    updatePhotoSearchUi();
     dom.photos.innerHTML = "";
 
     if (!state.photos.length) {
@@ -444,7 +550,14 @@ export function renderPhotos() {
         return;
     }
 
-    photosForRender().forEach(photo => {
+    const photosToRender = photosForRender();
+
+    if (!photosToRender.length && state.photoSearchText) {
+        dom.photos.innerHTML = '<div class="status-message">По описанию ничего не найдено</div>';
+        return;
+    }
+
+    photosToRender.forEach(photo => {
         const card = document.createElement("div");
         card.className = "photo-card";
         card.dataset.photoId = String(photo.id);
