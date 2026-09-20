@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <!-- CACHE_VERSION: 20260920-albumtools14 -->
+    <!-- CACHE_VERSION: 20260920-albumtools15 -->
     <meta charset="UTF-8">
 
     <meta
@@ -11,7 +11,7 @@
 
     <title>Фотоальбомы VK</title>
 
-    <link rel="stylesheet" href="./style.css?v=20260920-albumtools14">
+    <link rel="stylesheet" href="./style.css?v=20260920-albumtools15">
 
     <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
 </head>
@@ -312,6 +312,29 @@
                 id="albumDescription"
                 class="album-description"
             ></div>
+
+            <div class="photo-search-container">
+                <div class="search-box photo-search-box">
+                    <span class="search-icon">🔎</span>
+
+                    <input
+                        id="photoSearch"
+                        type="search"
+                        placeholder="Поиск по описанию фото..."
+                        autocomplete="off"
+                        spellcheck="false"
+                    >
+
+                    <button
+                        id="clearPhotoSearch"
+                        class="clear-search hidden"
+                        type="button"
+                        aria-label="Очистить поиск"
+                    >
+                        ×
+                    </button>
+                </div>
+            </div>
 
         </section>
 
@@ -716,7 +739,7 @@
 </div>
 
 
-<script type="module" src="./js/app.js?v=20260920-albumtools14"></script>
+<script type="module" src="./js/app.js?v=20260920-albumtools15"></script>
     
 </body>
 </html>

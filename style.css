@@ -476,7 +476,8 @@ img {
    SEARCH INPUT
    ========================================================= */
 
-#albumSearch {
+#albumSearch,
+#photoSearch {
     flex: 1;
 
     min-width: 0;
@@ -494,11 +495,13 @@ img {
     font-size: 17px;
 }
 
-#albumSearch::placeholder {
+#albumSearch::placeholder,
+#photoSearch::placeholder {
     color: #96999d;
 }
 
-#albumSearch::-webkit-search-cancel-button {
+#albumSearch::-webkit-search-cancel-button,
+#photoSearch::-webkit-search-cancel-button {
     display: none;
 }
 
@@ -795,6 +798,20 @@ img {
     line-height: 1.4;
 
     white-space: pre-wrap;
+}
+
+.photo-search-container {
+    width: 100%;
+    margin-top: 11px;
+}
+
+.photo-search-box {
+    height: 40px;
+    background: #151719;
+}
+
+#photoSearch {
+    font-size: 15px;
 }
 
 
