@@ -78,7 +78,7 @@ export function getAlbumCover(a) {
 
     if (!sizes.length) return "";
 
-    const TARGET = 640;
+    const TARGET = 320;
 
     const suitable = sizes
         .filter(x => Math.max(x.width || 0, x.height || 0) >= TARGET)
