@@ -1,17 +1,17 @@
-import { state } from "./state.js?v=20260920-albumtools17";
-import { dom } from "./dom.js?v=20260920-albumtools17";
-import { vkApi } from "./vk-api.js?v=20260920-albumtools17";
-import { getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260920-albumtools17";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools17";
+import { state } from "./state.js?v=20260920-albumtools18";
+import { dom } from "./dom.js?v=20260920-albumtools18";
+import { vkApi } from "./vk-api.js?v=20260920-albumtools18";
+import { getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260920-albumtools18";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools18";
 import {
     invalidateAlbumPhotosCache,
     invalidateAlbumCaches
-} from "./cache.js?v=20260920-albumtools17";
-import { closeMenu } from "./main-menu.js?v=20260920-albumtools17";
-import { openPhotoTransfer } from "./photo-transfer.js?v=20260920-albumtools17";
-import { openPhotoReorder } from "./photo-reorder.js?v=20260920-albumtools17";
-import { openVkPhoto } from "./vk-links.js?v=20260920-albumtools17";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools17";
+} from "./cache.js?v=20260920-albumtools18";
+import { closeMenu } from "./main-menu.js?v=20260920-albumtools18";
+import { openPhotoTransfer } from "./photo-transfer.js?v=20260920-albumtools18";
+import { openPhotoReorder } from "./photo-reorder.js?v=20260920-albumtools18";
+import { openVkPhoto } from "./vk-links.js?v=20260920-albumtools18";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools18";
 
 let editOverlay = null;
 let editInput = null;
@@ -245,6 +245,83 @@ async function onReorder() {
     void openPhotoReorder(photo);
 }
 
+function showActionToast(message) {
+    let toast = document.getElementById("photoActionToast");
+    if (!toast) {
+        toast = document.createElement("div");
+        toast.id = "photoActionToast";
+        toast.style.cssText = [
+            "position:fixed", "left:50%", "bottom:24px", "transform:translateX(-50%)",
+            "z-index:2147483647", "max-width:calc(100% - 32px)", "padding:10px 14px",
+            "border-radius:10px", "background:rgba(36,39,42,.96)", "color:#fff",
+            "font-size:14px", "box-shadow:0 6px 24px rgba(0,0,0,.45)",
+            "text-align:center", "pointer-events:none"
+        ].join(";");
+        document.body.appendChild(toast);
+    }
+    toast.textContent = message;
+    toast.classList.remove("hidden");
+    window.clearTimeout(showActionToast.timer);
+    showActionToast.timer = window.setTimeout(() => toast.classList.add("hidden"), 1800);
+}
+
+export async function makePhotoAlbumCover(photo) {
+    if (!photo?.id) return false;
+
+    const ownerId = Number(photo.owner_id || getOwnerId());
+    const albumId = Number(photo.album_id || state.currentAlbum?.id || 0);
+    if (!albumId || albumId <= 0) {
+        throw new Error("Для этого альбома нельзя изменить обложку.");
+    }
+
+    const response = await vkApi("photos.makeCover", {
+        owner_id: ownerId,
+        photo_id: Number(photo.id),
+        album_id: albumId
+    });
+
+    if (response !== 1 && response !== true) {
+        throw new Error("VK не подтвердил изменение обложки альбома.");
+    }
+
+    const preview = getBestPhotoUrl(photo);
+    const patch = {
+        thumb_id: Number(photo.id),
+        ...(preview ? { thumb_src: preview } : {}),
+        ...(Array.isArray(photo.sizes) ? { sizes: photo.sizes } : {})
+    };
+
+    state.albums = state.albums.map(album =>
+        Number(album.id) === albumId ? { ...album, ...patch } : album
+    );
+    state.albumIndex = state.albumIndex.map(album =>
+        Number(album.id) === albumId ? { ...album, ...patch } : album
+    );
+    if (state.currentAlbum && Number(state.currentAlbum.id) === albumId) {
+        state.currentAlbum = { ...state.currentAlbum, ...patch };
+    }
+
+    invalidateAlbumCaches(ownerId);
+    try {
+        await window.vkBridge?.send?.("VKWebAppTapticNotification", { type: "success" });
+    } catch {}
+    showActionToast("Обложка альбома изменена");
+    return true;
+}
+
+async function onMakeCover() {
+    const photo = currentPhoto();
+    if (!photo) return;
+    await closeMenu();
+    try {
+        await makePhotoAlbumCover(photo);
+    } catch (error) {
+        alert(`Не удалось сделать фотографию обложкой.
+
+${getErrorMessage(error)}`);
+    }
+}
+
 
 
 async function refreshAfterNativeDelete(detail) {
@@ -280,7 +357,7 @@ async function refreshAfterNativeDelete(detail) {
 
     if (album) {
         try {
-            const { loadPhotos } = await import("./photos.js?v=20260920-albumtools17");
+            const { loadPhotos } = await import("./photos.js?v=20260920-albumtools18");
             await loadPhotos(album, { force: true });
         } catch (error) {
             console.warn("Не удалось обновить альбом после возврата из VK:", error);
@@ -329,6 +406,7 @@ export function initPhotoMenu() {
     dom.copyPhotoMenuButton?.addEventListener("click", () => void onCopy());
     dom.movePhotoMenuButton?.addEventListener("click", () => void onMove());
     dom.reorderPhotoMenuButton?.addEventListener("click", () => void onReorder());
+    dom.makeCoverPhotoMenuButton?.addEventListener("click", () => void onMakeCover());
     dom.deletePhotoMenuButton?.addEventListener("click", () => void onDelete());
 
     window.addEventListener("vk-native-return", event => {

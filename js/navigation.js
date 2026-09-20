@@ -1,7 +1,7 @@
-import { state } from "./state.js?v=20260920-albumtools17";
-import { dom } from "./dom.js?v=20260920-albumtools17";
-import { cancelPhotoMultiSelect } from "./photo-multiselect.js?v=20260920-albumtools17";
-import { handleOverlayPopState } from "./overlay-history.js?v=20260920-albumtools17";
+import { state } from "./state.js?v=20260920-albumtools18";
+import { dom } from "./dom.js?v=20260920-albumtools18";
+import { cancelPhotoMultiSelect } from "./photo-multiselect.js?v=20260920-albumtools18";
+import { handleOverlayPopState } from "./overlay-history.js?v=20260920-albumtools18";
 
 let openAlbumFromHistory = null;
 let openPhotoFromHistory = null;

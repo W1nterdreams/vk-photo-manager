@@ -1,4 +1,4 @@
-import { state } from "./state.js?v=20260920-albumtools17";
+import { state } from "./state.js?v=20260920-albumtools18";
 
 let activeOverlay = null;
 let closingPromise = null;

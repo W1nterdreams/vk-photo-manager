@@ -1,17 +1,18 @@
-import { state } from "./state.js?v=20260920-albumtools17";
+import { state } from "./state.js?v=20260920-albumtools18";
 import {
     downloadPhotoFile,
     openPhotoDescriptionEditor,
-    deletePhoto
-} from "./photo-menu.js?v=20260920-albumtools17";
-import { openPhotoTransfer } from "./photo-transfer.js?v=20260920-albumtools17";
-import { openPhotoReorder } from "./photo-reorder.js?v=20260920-albumtools17";
-import { getErrorMessage } from "./helpers.js?v=20260920-albumtools17";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools17";
+    deletePhoto,
+    makePhotoAlbumCover
+} from "./photo-menu.js?v=20260920-albumtools18";
+import { openPhotoTransfer } from "./photo-transfer.js?v=20260920-albumtools18";
+import { openPhotoReorder } from "./photo-reorder.js?v=20260920-albumtools18";
+import { getErrorMessage } from "./helpers.js?v=20260920-albumtools18";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools18";
 import {
     isPhotoMultiSelectActive,
     startPhotoMultiSelect
-} from "./photo-multiselect.js?v=20260920-albumtools17";
+} from "./photo-multiselect.js?v=20260920-albumtools18";
 
 const LONG_PRESS_MS = 520;
 const MOVE_CANCEL_PX = 12;
@@ -65,6 +66,11 @@ function createItem(label, action, extraClass = "") {
                 return;
             }
 
+            if (action === "make-cover") {
+                await makePhotoAlbumCover(photo);
+                return;
+            }
+
             if (action === "delete") {
                 await deletePhoto(photo, { returnFromViewer: false });
             }
@@ -94,6 +100,7 @@ function ensureMenu() {
         createItem("Копировать в альбом", "copy"),
         createItem("Переместить в альбом", "move"),
         createItem("Переместить внутри альбома", "reorder"),
+        createItem("Сделать обложкой альбома", "make-cover"),
         createItem("Выбрать несколько", "select-many"),
         createItem("Удалить фото", "delete", "danger")
     );

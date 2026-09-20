@@ -1,7 +1,8 @@
-import { dom } from "./dom.js?v=20260920-albumtools17";
-import { state } from "./state.js?v=20260920-albumtools17";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools17";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools17";
+import { dom } from "./dom.js?v=20260920-albumtools18";
+import { state } from "./state.js?v=20260920-albumtools18";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools18";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools18";
+import { openAlbumReorderMode } from "./photo-reorder.js?v=20260920-albumtools18";
 
 function visible(element) {
     return Boolean(element && !element.classList.contains("hidden"));
@@ -70,9 +71,11 @@ export function syncMainMenu() {
     // Главный экран / экран общих комментариев.
     setMenuItemVisible(dom.createAlbumMenuButton, onMain);
     setMenuItemVisible(dom.commentsMenuButton, onMain);
+    setMenuItemVisible(dom.globalPhotoSearchMenuButton, onMain);
 
     // Открытый альбом.
     setMenuItemVisible(dom.uploadPhotoMenuButton, inAlbum);
+    setMenuItemVisible(dom.reorderAlbumPhotosMenuButton, inAlbum);
     setMenuItemVisible(dom.copyAlbumLinkMenuButton, inAlbum);
     setMenuItemVisible(dom.editAlbumMenuButton, inAlbum);
 
@@ -82,6 +85,7 @@ export function syncMainMenu() {
     setMenuItemVisible(dom.copyPhotoMenuButton, onPhoto);
     setMenuItemVisible(dom.movePhotoMenuButton, onPhoto);
     setMenuItemVisible(dom.reorderPhotoMenuButton, onPhoto);
+    setMenuItemVisible(dom.makeCoverPhotoMenuButton, onPhoto);
     setMenuItemVisible(dom.deletePhotoMenuButton, onPhoto);
 }
 
@@ -141,6 +145,19 @@ export function initMainMenu() {
 
         if (closed) openMenu();
         else void closeMenu();
+    });
+
+    dom.globalPhotoSearchMenuButton?.addEventListener("click", async () => {
+        await closeMenu();
+        const { openGlobalPhotoSearch } = await import("./global-photo-search.js?v=20260920-albumtools18");
+        void openGlobalPhotoSearch();
+    });
+
+    dom.reorderAlbumPhotosMenuButton?.addEventListener("click", async () => {
+        const album = state.currentAlbum;
+        await closeMenu();
+        if (!album) return;
+        void openAlbumReorderMode(album);
     });
 
     dom.copyAlbumLinkMenuButton?.addEventListener("click", async () => {

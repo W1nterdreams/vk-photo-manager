@@ -1,13 +1,13 @@
-import { state } from "./state.js?v=20260920-albumtools17";
-import { vkApi } from "./vk-api.js?v=20260920-albumtools17";
-import { getPhotoPreviewUrl, getErrorMessage } from "./helpers.js?v=20260920-albumtools17";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools17";
+import { state } from "./state.js?v=20260920-albumtools18";
+import { vkApi } from "./vk-api.js?v=20260920-albumtools18";
+import { getPhotoPreviewUrl, getErrorMessage } from "./helpers.js?v=20260920-albumtools18";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools18";
 import {
     cacheSet,
     albumPhotosKey,
     invalidateAlbumPhotosCache
-} from "./cache.js?v=20260920-albumtools17";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools17";
+} from "./cache.js?v=20260920-albumtools18";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools18";
 
 const PAGE_SIZE = 1000;
 
@@ -16,11 +16,14 @@ let grid = null;
 let title = null;
 let subtitle = null;
 let errorBox = null;
+let hint = null;
 let activePhoto = null;
 let activeAlbum = null;
 let albumPhotos = [];
 let busy = false;
 let loadGeneration = 0;
+let persistentMode = false;
+let persistentDirty = false;
 
 function create(tag, className = "", text = "") {
     const element = document.createElement(tag);
@@ -296,7 +299,7 @@ function ensureModal() {
     close.addEventListener("click", () => void closeModal());
     header.append(heading, close);
 
-    const hint = create(
+    hint = create(
         "div",
         "photo-reorder-hint",
         "Нажмите на фотографию, место которой должна занять выбранная фотография."
@@ -320,13 +323,30 @@ function showError(message = "") {
 
 function hideModalDirect() {
     if (!overlay) return;
+
+    const albumToRefresh = persistentMode && persistentDirty ? activeAlbum : null;
+
     loadGeneration += 1;
     overlay.classList.add("hidden");
     activePhoto = null;
     activeAlbum = null;
     albumPhotos = [];
     busy = false;
+    persistentMode = false;
+    persistentDirty = false;
     showError("");
+
+    if (albumToRefresh && state.currentAlbum && Number(state.currentAlbum.id) === Number(albumToRefresh.id)) {
+        window.setTimeout(async () => {
+            try {
+                if (!state.currentAlbum || Number(state.currentAlbum.id) !== Number(albumToRefresh.id)) return;
+                const { loadPhotos } = await import("./photos.js?v=20260920-albumtools18");
+                await loadPhotos(albumToRefresh, { force: true });
+            } catch (error) {
+                console.warn("Не удалось обновить альбом после режима порядка:", error);
+            }
+        }, 0);
+    }
 }
 
 function closeModal() {
@@ -363,7 +383,7 @@ async function fetchAllPhotosFor(ownerId, albumId, generation = null) {
             offset
         });
 
-        if (generation !== null && (generation !== loadGeneration || !activePhoto)) return [];
+        if (generation !== null && (generation !== loadGeneration || !activeAlbum)) return [];
 
         const items = Array.isArray(result?.items) ? result.items : [];
         if (!items.length) break;
@@ -397,7 +417,9 @@ function renderPhotoCard(photo) {
     button.classList.toggle("photo-reorder-card-selected", selected);
     button.setAttribute(
         "aria-label",
-        selected ? "Выбранная фотография" : "Переместить выбранную фотографию на это место"
+        persistentMode
+            ? (selected ? "Снять выбор фотографии" : (activePhoto ? "Переместить выбранную фотографию сюда" : "Выбрать фотографию для перемещения"))
+            : (selected ? "Выбранная фотография" : "Переместить выбранную фотографию на это место")
     );
 
     const url = getPhotoPreviewUrl(photo, 200);
@@ -421,7 +443,7 @@ function renderPhotoCard(photo) {
     );
     button.appendChild(stats);
 
-    if (selected) {
+    if (selected && !persistentMode) {
         button.disabled = true;
     } else {
         button.addEventListener("pointerdown", event => {
@@ -435,6 +457,25 @@ function renderPhotoCard(photo) {
             event.stopPropagation();
             event.stopImmediatePropagation();
             state.suppressPhotoOpenUntil = Date.now() + 900;
+
+            if (persistentMode) {
+                if (!activePhoto) {
+                    activePhoto = photo;
+                    subtitle.textContent = `${activeAlbum?.title || "Альбом"} · выбрана фотография`;
+                    if (hint) hint.textContent = "Теперь нажмите на фотографию, место которой должна занять выбранная.";
+                    renderPhotos();
+                    return;
+                }
+
+                if (selected) {
+                    activePhoto = null;
+                    subtitle.textContent = activeAlbum?.title || "Альбом";
+                    if (hint) hint.textContent = "Нажмите фотографию для выбора, затем нажмите место, куда её переместить.";
+                    renderPhotos();
+                    return;
+                }
+            }
+
             void chooseTarget(photo);
         });
     }
@@ -547,7 +588,7 @@ async function redrawCurrentAlbum(albumId) {
     if (!state.currentAlbum || Number(state.currentAlbum.id) !== Number(albumId)) return;
 
     try {
-        const { setPhotoDateSort } = await import("./photos.js?v=20260920-albumtools17");
+        const { setPhotoDateSort } = await import("./photos.js?v=20260920-albumtools18");
         setPhotoDateSort("vk");
     } catch (error) {
         console.warn("Не удалось перерисовать альбом после перестановки:", error);
@@ -644,14 +685,27 @@ async function chooseTarget(targetPhoto) {
             throw new Error("VK не подтвердил изменение порядка фотографий.");
         }
 
-        // Сразу применяем ожидаемый порядок локально и возвращаем пользователя
-        // в альбом. Медленная серверная сверка выполняется уже в фоне.
+        // Сразу применяем ожидаемый порядок локально.
         saveReorderedState(desiredOrder, { ownerId, albumId, photoId });
+        albumPhotos = desiredOrder;
         state.suppressPhotoOpenUntil = Date.now() + 1000;
         await redrawCurrentAlbum(albumId);
 
         busy = false;
         busyLayer.remove();
+
+        if (persistentMode) {
+            // В режиме управления порядком остаёмся внутри окна и даём сразу
+            // выбрать следующую фотографию. Серверный порядок перечитаем при
+            // выходе из режима — это заметно быстрее нескольких полных циклов.
+            persistentDirty = true;
+            activePhoto = null;
+            subtitle.textContent = activeAlbum?.title || "Альбом";
+            if (hint) hint.textContent = "Готово. Выберите следующую фотографию, затем её новое место.";
+            renderPhotos();
+            return;
+        }
+
         await closeSwipeOverlay("photo-reorder");
 
         void reconcileReorderInBackground({
@@ -671,6 +725,8 @@ export async function openPhotoReorder(photo) {
     if (!photo?.id) return;
     ensureModal();
 
+    persistentMode = false;
+    persistentDirty = false;
     activePhoto = photo;
     activeAlbum = state.currentAlbum || state.albums.find(
         album => Number(album.id) === Number(photo.album_id)
@@ -682,6 +738,7 @@ export async function openPhotoReorder(photo) {
     const albumName = activeAlbum?.title || "Альбом";
     title.textContent = "Переместить внутри альбома";
     subtitle.textContent = albumName;
+    if (hint) hint.textContent = "Нажмите на фотографию, место которой должна занять выбранная фотография.";
     grid.innerHTML = "";
     grid.appendChild(create("div", "photo-reorder-status", "Загружаем фотографии..."));
 
@@ -713,6 +770,59 @@ export async function openPhotoReorder(photo) {
             throw new Error("Выбранная фотография не найдена в этом альбоме.");
         }
 
+        renderPhotos();
+    } catch (error) {
+        if (generation !== loadGeneration) return;
+        grid.innerHTML = "";
+        grid.appendChild(create("div", "photo-reorder-status", "Не удалось загрузить фотографии."));
+        showError(getErrorMessage(error));
+    }
+}
+
+export async function openAlbumReorderMode(album) {
+    if (!album?.id) return;
+    if (Number(album.id) <= 0) {
+        alert("Изменение порядка доступно только для обычных фотоальбомов.");
+        return;
+    }
+
+    ensureModal();
+    persistentMode = true;
+    persistentDirty = false;
+    activePhoto = null;
+    activeAlbum = album;
+    albumPhotos = [];
+    busy = false;
+    showError("");
+
+    title.textContent = "Изменить порядок";
+    subtitle.textContent = album.title || "Альбом";
+    if (hint) hint.textContent = "Нажмите фотографию для выбора, затем нажмите место, куда её переместить.";
+    grid.innerHTML = "";
+    grid.appendChild(create("div", "photo-reorder-status", "Загружаем текущий порядок фотографий..."));
+
+    overlay.classList.remove("hidden");
+    openSwipeOverlay("photo-reorder", hideModalDirect);
+
+    const generation = ++loadGeneration;
+
+    try {
+        const sameAlbumOpen = Boolean(
+            state.currentAlbum && Number(state.currentAlbum.id) === Number(album.id)
+        );
+        const stateHasWholeAlbum = Boolean(
+            sameAlbumOpen &&
+            Array.isArray(state.photos) &&
+            state.photos.length > 0 &&
+            !state.photosHasMore &&
+            state.photos.length >= Number(state.photosTotal || state.photos.length)
+        );
+
+        albumPhotos = stateHasWholeAlbum
+            ? [...state.photos]
+            : await fetchAllPhotosFor(Number(album.owner_id || getOwnerId()), Number(album.id), generation);
+
+        if (generation !== loadGeneration || !activeAlbum || !persistentMode) return;
         renderPhotos();
     } catch (error) {
         if (generation !== loadGeneration) return;
