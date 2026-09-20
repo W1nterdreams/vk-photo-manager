@@ -1,20 +1,20 @@
-import { dom } from "./dom.js?v=20260920-albumtools16";
-import { state } from "./state.js?v=20260920-albumtools16";
-import { vkApi } from "./vk-api.js?v=20260920-albumtools16";
+import { dom } from "./dom.js?v=20260920-albumtools17";
+import { state } from "./state.js?v=20260920-albumtools17";
+import { vkApi } from "./vk-api.js?v=20260920-albumtools17";
 import {
     escapeHtml,
     getPhotoPreviewUrl
-} from "./helpers.js?v=20260920-albumtools16";
+} from "./helpers.js?v=20260920-albumtools17";
 import {
     showCommentsScreen,
     pushCommentsHistory
-} from "./navigation.js?v=20260920-albumtools16";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools16";
-import { cacheGet, cacheSet, invalidateCommentCaches } from "./cache.js?v=20260920-albumtools16";
-import { CACHE_TTL } from "./config.js?v=20260920-albumtools16";
-import { createPhotoComment, getPhotoCommentErrorText } from "./photo-comment-api.js?v=20260920-albumtools16";
-import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260920-albumtools16";
-import { openPhotoViewer } from "./photo-viewer.js?v=20260920-albumtools16";
+} from "./navigation.js?v=20260920-albumtools17";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools17";
+import { cacheGet, cacheSet, invalidateCommentCaches } from "./cache.js?v=20260920-albumtools17";
+import { CACHE_TTL } from "./config.js?v=20260920-albumtools17";
+import { createPhotoComment, getPhotoCommentErrorText } from "./photo-comment-api.js?v=20260920-albumtools17";
+import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260920-albumtools17";
+import { openPhotoViewer } from "./photo-viewer.js?v=20260920-albumtools17";
 
 const ALBUM_COMMENTS_DAYS = 3;
 const PAGE_SIZE = 100;
@@ -1227,7 +1227,7 @@ function openAlbumComments(album) {
         }
 
         void loadAlbumComments(activeAlbum, { force: true });
-    }, 120);
+    }, 0);
 }
 
 export function initAlbumComments() {
@@ -1278,27 +1278,43 @@ export function initAlbumComments() {
     });
 
     window.addEventListener("popstate", event => {
-        // События popstate используются также нашими временными оверлеями.
-        // Не инвалидируем загрузку комментариев из-за закрытия постороннего
-        // меню: это и могло оставлять первоначальный экран на «Загрузка…».
         if (!albumCommentsSessionActive) return;
 
         closeCommentMenu();
         clearReplyEditor();
 
+        // popstate также используется overlay-history для закрытия меню
+        // долгого нажатия. Решать, покинул ли пользователь комментарии,
+        // прямо внутри этого события нельзя: следующий переход экрана может
+        // быть продолжением `await closeSwipeOverlay()`.
+        // Проверяем фактический экран уже в следующей задаче event loop.
         if (event?.state?.screen !== "comments") {
-            albumCommentsSessionActive = false;
-            ++albumCommentsOpenSequence;
-            ++loadSequence;
-            if (initialLoadTimer !== null) {
-                window.clearTimeout(initialLoadTimer);
-                initialLoadTimer = null;
-            }
+            const sessionSeq = albumCommentsOpenSequence;
+
+            window.setTimeout(() => {
+                if (!albumCommentsSessionActive) return;
+                if (sessionSeq !== albumCommentsOpenSequence) return;
+
+                // Если за время завершения popstate мы уже открыли экран
+                // комментариев альбома, это было лишь закрытие оверлея.
+                if (state.currentScreen === "comments" && activeAlbum) {
+                    return;
+                }
+
+                albumCommentsSessionActive = false;
+                ++albumCommentsOpenSequence;
+                ++loadSequence;
+
+                if (initialLoadTimer !== null) {
+                    window.clearTimeout(initialLoadTimer);
+                    initialLoadTimer = null;
+                }
+            }, 0);
             return;
         }
 
         if (!activeAlbum) return;
-        setTimeout(() => {
+        window.setTimeout(() => {
             if (albumCommentsSessionActive && activeAlbum && state.currentScreen === "comments") {
                 void loadAlbumComments(activeAlbum, { force: true, silent: true });
             }

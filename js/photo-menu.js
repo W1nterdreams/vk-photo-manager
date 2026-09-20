@@ -1,17 +1,17 @@
-import { state } from "./state.js?v=20260920-albumtools16";
-import { dom } from "./dom.js?v=20260920-albumtools16";
-import { vkApi } from "./vk-api.js?v=20260920-albumtools16";
-import { getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260920-albumtools16";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools16";
+import { state } from "./state.js?v=20260920-albumtools17";
+import { dom } from "./dom.js?v=20260920-albumtools17";
+import { vkApi } from "./vk-api.js?v=20260920-albumtools17";
+import { getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260920-albumtools17";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools17";
 import {
     invalidateAlbumPhotosCache,
     invalidateAlbumCaches
-} from "./cache.js?v=20260920-albumtools16";
-import { closeMenu } from "./main-menu.js?v=20260920-albumtools16";
-import { openPhotoTransfer } from "./photo-transfer.js?v=20260920-albumtools16";
-import { openPhotoReorder } from "./photo-reorder.js?v=20260920-albumtools16";
-import { openVkPhoto } from "./vk-links.js?v=20260920-albumtools16";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools16";
+} from "./cache.js?v=20260920-albumtools17";
+import { closeMenu } from "./main-menu.js?v=20260920-albumtools17";
+import { openPhotoTransfer } from "./photo-transfer.js?v=20260920-albumtools17";
+import { openPhotoReorder } from "./photo-reorder.js?v=20260920-albumtools17";
+import { openVkPhoto } from "./vk-links.js?v=20260920-albumtools17";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools17";
 
 let editOverlay = null;
 let editInput = null;
@@ -280,7 +280,7 @@ async function refreshAfterNativeDelete(detail) {
 
     if (album) {
         try {
-            const { loadPhotos } = await import("./photos.js?v=20260920-albumtools16");
+            const { loadPhotos } = await import("./photos.js?v=20260920-albumtools17");
             await loadPhotos(album, { force: true });
         } catch (error) {
             console.warn("Не удалось обновить альбом после возврата из VK:", error);

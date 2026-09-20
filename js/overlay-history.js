@@ -1,4 +1,4 @@
-import { state } from "./state.js?v=20260920-albumtools16";
+import { state } from "./state.js?v=20260920-albumtools17";
 
 let activeOverlay = null;
 let closingPromise = null;
@@ -40,8 +40,17 @@ function finishClose() {
 
     const resolve = resolveClosing;
     resolveClosing = null;
-    closingPromise = null;
-    resolve?.(true);
+
+    // ВАЖНО: finishClose() вызывается прямо из обработчика popstate.
+    // Если разрешить Promise немедленно, код после `await closeSwipeOverlay()`
+    // может продолжить навигацию, пока другие popstate-listener'ы ещё
+    // обрабатывают старое состояние истории. Это создавало гонку, при которой
+    // открытие комментариев альбома тут же принималось за уход с экрана.
+    // Переносим продолжение в следующую задачу event loop.
+    window.setTimeout(() => {
+        closingPromise = null;
+        resolve?.(true);
+    }, 0);
 }
 
 export function openSwipeOverlay(id, closeDirect) {

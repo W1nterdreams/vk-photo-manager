@@ -1,14 +1,14 @@
-import { state } from "./state.js?v=20260920-albumtools16";
-import { dom } from "./dom.js?v=20260920-albumtools16";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools16";
-import { closeMenu } from "./main-menu.js?v=20260920-albumtools16";
-import { openVkTarget } from "./vk-links.js?v=20260920-albumtools16";
-import { loadPhotos } from "./photos.js?v=20260920-albumtools16";
-import { renderAlbums } from "./albums.js?v=20260920-albumtools16";
+import { state } from "./state.js?v=20260920-albumtools17";
+import { dom } from "./dom.js?v=20260920-albumtools17";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools17";
+import { closeMenu } from "./main-menu.js?v=20260920-albumtools17";
+import { openVkTarget } from "./vk-links.js?v=20260920-albumtools17";
+import { loadPhotos } from "./photos.js?v=20260920-albumtools17";
+import { renderAlbums } from "./albums.js?v=20260920-albumtools17";
 import {
     invalidateAlbumCaches,
     invalidateAlbumPhotosCache
-} from "./cache.js?v=20260920-albumtools16";
+} from "./cache.js?v=20260920-albumtools17";
 
 function findAlbum(albumId) {
     const id = String(albumId || "");
