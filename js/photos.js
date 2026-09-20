@@ -1,19 +1,19 @@
-import { state } from "./state.js?v=20260920-albumtools15";
-import { dom } from "./dom.js?v=20260920-albumtools15";
-import { vkApi } from "./vk-api.js?v=20260920-albumtools15";
-import { getPhotoPreviewUrl, escapeHtml, getErrorMessage } from "./helpers.js?v=20260920-albumtools15";
-import { showPhotosScreen, pushAlbumHistory } from "./navigation.js?v=20260920-albumtools15";
-import { CACHE_TTL } from "./config.js?v=20260920-albumtools15";
-import { cacheGet, cacheGetStale, cacheSet, albumPhotosKey } from "./cache.js?v=20260920-albumtools15";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools15";
-import { openPhotoViewer } from "./photo-viewer.js?v=20260920-albumtools15";
-import { bindPhotoContextLongPress } from "./photo-context-menu.js?v=20260920-albumtools15";
+import { state } from "./state.js?v=20260920-albumtools16";
+import { dom } from "./dom.js?v=20260920-albumtools16";
+import { vkApi } from "./vk-api.js?v=20260920-albumtools16";
+import { getPhotoPreviewUrl, escapeHtml, getErrorMessage } from "./helpers.js?v=20260920-albumtools16";
+import { showPhotosScreen, pushAlbumHistory } from "./navigation.js?v=20260920-albumtools16";
+import { CACHE_TTL } from "./config.js?v=20260920-albumtools16";
+import { cacheGet, cacheGetStale, cacheSet, albumPhotosKey } from "./cache.js?v=20260920-albumtools16";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools16";
+import { openPhotoViewer } from "./photo-viewer.js?v=20260920-albumtools16";
+import { bindPhotoContextLongPress } from "./photo-context-menu.js?v=20260920-albumtools16";
 import {
     isPhotoMultiSelectActive,
     isPhotoSelected,
     togglePhotoSelection,
     cancelPhotoMultiSelect
-} from "./photo-multiselect.js?v=20260920-albumtools15";
+} from "./photo-multiselect.js?v=20260920-albumtools16";
 
 const PAGE_SIZE = 20;
 const SORT_FETCH_SIZE = 100;

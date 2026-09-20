@@ -1,5 +1,5 @@
-import { state } from "./state.js?v=20260920-albumtools15";
-import { openPhotoTransferMany } from "./photo-transfer.js?v=20260920-albumtools15";
+import { state } from "./state.js?v=20260920-albumtools16";
+import { openPhotoTransferMany } from "./photo-transfer.js?v=20260920-albumtools16";
 
 let active = false;
 let selectedIds = new Set();

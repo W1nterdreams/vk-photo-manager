@@ -1,20 +1,20 @@
-import { dom } from "./dom.js?v=20260920-albumtools15";
-import { state } from "./state.js?v=20260920-albumtools15";
-import { vkApi } from "./vk-api.js?v=20260920-albumtools15";
+import { dom } from "./dom.js?v=20260920-albumtools16";
+import { state } from "./state.js?v=20260920-albumtools16";
+import { vkApi } from "./vk-api.js?v=20260920-albumtools16";
 import {
     escapeHtml,
     getPhotoPreviewUrl
-} from "./helpers.js?v=20260920-albumtools15";
+} from "./helpers.js?v=20260920-albumtools16";
 import {
     showCommentsScreen,
     pushCommentsHistory
-} from "./navigation.js?v=20260920-albumtools15";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools15";
-import { cacheGet, cacheSet, invalidateCommentCaches } from "./cache.js?v=20260920-albumtools15";
-import { CACHE_TTL } from "./config.js?v=20260920-albumtools15";
-import { createPhotoComment, getPhotoCommentErrorText } from "./photo-comment-api.js?v=20260920-albumtools15";
-import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260920-albumtools15";
-import { openPhotoViewer } from "./photo-viewer.js?v=20260920-albumtools15";
+} from "./navigation.js?v=20260920-albumtools16";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools16";
+import { cacheGet, cacheSet, invalidateCommentCaches } from "./cache.js?v=20260920-albumtools16";
+import { CACHE_TTL } from "./config.js?v=20260920-albumtools16";
+import { createPhotoComment, getPhotoCommentErrorText } from "./photo-comment-api.js?v=20260920-albumtools16";
+import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260920-albumtools16";
+import { openPhotoViewer } from "./photo-viewer.js?v=20260920-albumtools16";
 
 const ALBUM_COMMENTS_DAYS = 3;
 const PAGE_SIZE = 100;
@@ -32,6 +32,8 @@ let replyEditor = null;
 let commentMenuOverlay = null;
 let loadSequence = 0;
 let albumCommentsSessionActive = false;
+let albumCommentsOpenSequence = 0;
+let initialLoadTimer = null;
 
 function commentsTitleElement() {
     return document.querySelector(".comments-title");
@@ -1071,12 +1073,6 @@ function currentRequestIsValid(seq, album) {
     return seq === loadSequence && activeAlbum && String(activeAlbum.id) === String(album.id);
 }
 
-function nextPaint() {
-    return new Promise(resolve => {
-        requestAnimationFrame(() => requestAnimationFrame(resolve));
-    });
-}
-
 async function enrichFastAuthors(album, data, seq, key) {
     try {
         const authors = await loadAuthors(data.comments);
@@ -1192,26 +1188,46 @@ export async function loadAlbumComments(album, { force = false, silent = false }
     }
 }
 
-async function openAlbumComments(album) {
+function openAlbumComments(album) {
+    if (!album) return;
+
+    const openSeq = ++albumCommentsOpenSequence;
     activeAlbum = album;
     albumCommentsSessionActive = true;
+
+    if (initialLoadTimer !== null) {
+        window.clearTimeout(initialLoadTimer);
+        initialLoadTimer = null;
+    }
+
     pushCommentsHistory();
     showCommentsScreen();
     updateCommentsTitle(album);
 
-    // Даём WebView завершить закрытие контекстного меню и отрисовать экран
-    // комментариев. На некоторых Android WebView первый API-запрос, начатый
-    // в тот же тик, мог быть вытеснен переходом истории и экран оставался
-    // на «Загрузка…» до ручного обновления.
     dom.comments.innerHTML = `
         <div class="status-message">
             Загружаем последние ${MAX_COMMENTS} комментариев за ${ALBUM_COMMENTS_DAYS} дня...
         </div>
     `;
-    await nextPaint();
 
-    if (!albumCommentsSessionActive || activeAlbum !== album || state.currentScreen !== "comments") return;
-    await loadAlbumComments(album, { force: true });
+    // Контекстное меню альбома закрывается через history.back(). В Android
+    // WebView VK следующий Bridge/API-вызов в тот же цикл иногда терялся.
+    // Запускаем чтение отдельной задачей уже после завершения перехода.
+    initialLoadTimer = window.setTimeout(() => {
+        initialLoadTimer = null;
+
+        const sameAlbum = activeAlbum && String(activeAlbum.id) === String(album.id);
+        if (
+            openSeq !== albumCommentsOpenSequence ||
+            !albumCommentsSessionActive ||
+            !sameAlbum ||
+            state.currentScreen !== "comments"
+        ) {
+            return;
+        }
+
+        void loadAlbumComments(activeAlbum, { force: true });
+    }, 120);
 }
 
 export function initAlbumComments() {
@@ -1219,7 +1235,7 @@ export function initAlbumComments() {
         if (event?.detail?.action !== "comments") return;
         const album = event.detail.album;
         if (!album) return;
-        void openAlbumComments(album);
+        openAlbumComments(album);
     });
 
     dom.refreshComments.addEventListener("click", event => {
@@ -1232,7 +1248,12 @@ export function initAlbumComments() {
     dom.commentsMenuButton.addEventListener("click", () => {
         albumCommentsSessionActive = false;
         activeAlbum = null;
+        ++albumCommentsOpenSequence;
         ++loadSequence;
+        if (initialLoadTimer !== null) {
+            window.clearTimeout(initialLoadTimer);
+            initialLoadTimer = null;
+        }
         clearReplyEditor();
         closeCommentMenu();
         const title = commentsTitleElement();
@@ -1267,7 +1288,12 @@ export function initAlbumComments() {
 
         if (event?.state?.screen !== "comments") {
             albumCommentsSessionActive = false;
+            ++albumCommentsOpenSequence;
             ++loadSequence;
+            if (initialLoadTimer !== null) {
+                window.clearTimeout(initialLoadTimer);
+                initialLoadTimer = null;
+            }
             return;
         }
 
