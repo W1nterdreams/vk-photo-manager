@@ -1,12 +1,12 @@
-import { state } from "./state.js?v=20260920-uploadmenu02";
-import { dom } from "./dom.js?v=20260920-uploadmenu02";
-import { vkApi } from "./vk-api.js?v=20260920-uploadmenu02";
-import { getErrorMessage, logError } from "./helpers.js?v=20260920-uploadmenu02";
-import { getGroupId, getOwnerId } from "./group-context.js?v=20260920-uploadmenu02";
-import { closeMenu } from "./main-menu.js?v=20260920-uploadmenu02";
-import { loadPhotos } from "./photos.js?v=20260920-uploadmenu02";
-import { renderAlbums } from "./albums.js?v=20260920-uploadmenu02";
-import { cacheRemove, albumsKey } from "./cache.js?v=20260920-uploadmenu02";
+import { state } from "./state.js?v=20260920-uploadsafe01";
+import { dom } from "./dom.js?v=20260920-uploadsafe01";
+import { vkApi } from "./vk-api.js?v=20260920-uploadsafe01";
+import { getErrorMessage, logError } from "./helpers.js?v=20260920-uploadsafe01";
+import { getGroupId, getOwnerId } from "./group-context.js?v=20260920-uploadsafe01";
+import { closeMenu } from "./main-menu.js?v=20260920-uploadsafe01";
+import { loadPhotos } from "./photos.js?v=20260920-uploadsafe01";
+import { renderAlbums } from "./albums.js?v=20260920-uploadsafe01";
+import { cacheRemove, albumsKey } from "./cache.js?v=20260920-uploadsafe01";
 
 let uploading = false;
 

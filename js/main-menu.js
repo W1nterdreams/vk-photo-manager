@@ -1,42 +1,50 @@
-import { dom } from "./dom.js?v=20260920-uploadmenu02";
-import { state } from "./state.js?v=20260920-uploadmenu02";
+import { dom } from "./dom.js?v=20260920-uploadsafe01";
 
-function setVisible(element, visible) {
-    if (!element) return;
-    element.classList.toggle("hidden", !visible);
-    element.hidden = !visible;
-}
-
-function isAlbumScreenVisible() {
+function isAlbumOpen() {
+    // Определяем экран по реально видимому DOM, а не по состоянию/history.
+    // Это не вмешивается в навигацию и одинаково работает после обычного
+    // открытия альбома и возврата через history.
     return Boolean(
         dom.photosScreen &&
         !dom.photosScreen.classList.contains("hidden")
     );
 }
 
-export function syncMainMenu() {
-    // Не полагаемся только на state.currentScreen: в WebView экран может
-    // успеть перерисоваться раньше/позже состояния. Сверяем и состояние,
-    // и реально видимый экран альбома.
-    const inAlbum = Boolean(state.currentAlbum) && (
-        state.currentScreen === "photos" ||
-        isAlbumScreenVisible()
-    );
+function setMenuItemVisible(element, visible) {
+    if (!element) return;
 
-    setVisible(dom.createAlbumMenuButton, !inAlbum);
-    setVisible(dom.commentsMenuButton, !inAlbum);
-    setVisible(dom.uploadPhotoMenuButton, inAlbum);
+    element.classList.toggle("hidden", !visible);
+    element.hidden = !visible;
+
+    if (visible) {
+        element.removeAttribute("hidden");
+        element.style.setProperty("display", "flex", "important");
+    } else {
+        element.style.setProperty("display", "none", "important");
+    }
+}
+
+export function syncMainMenu() {
+    const inAlbum = isAlbumOpen();
+
+    // Главный экран: создать альбом + общие комментарии.
+    setMenuItemVisible(dom.createAlbumMenuButton, !inAlbum);
+    setMenuItemVisible(dom.commentsMenuButton, !inAlbum);
+
+    // Открытый альбом: только загрузить фото.
+    setMenuItemVisible(dom.uploadPhotoMenuButton, inAlbum);
 }
 
 export function openMenu() {
     if (!dom.mainMenu) return;
 
-    // Каждый раз перед открытием пересобираем состав меню под текущий экран.
+    // Состав меню вычисляем непосредственно в момент нажатия на кнопку.
     syncMainMenu();
 
     dom.mainMenu.classList.remove("hidden");
     dom.mainMenu.hidden = false;
     dom.mainMenu.removeAttribute("hidden");
+
     Object.assign(dom.mainMenu.style, {
         display: "block",
         position: "fixed",
@@ -64,8 +72,6 @@ export function initMainMenu() {
         document.body.appendChild(dom.mainMenu);
     }
 
-    syncMainMenu();
-
     dom.menuButton?.addEventListener("click", event => {
         event.preventDefault();
         event.stopPropagation();
@@ -75,7 +81,11 @@ export function initMainMenu() {
             dom.mainMenu.hidden ||
             getComputedStyle(dom.mainMenu).display === "none";
 
-        closed ? openMenu() : closeMenu();
+        if (closed) {
+            openMenu();
+        } else {
+            closeMenu();
+        }
     });
 
     dom.mainMenu?.addEventListener("click", event => event.stopPropagation());

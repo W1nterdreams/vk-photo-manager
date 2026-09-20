@@ -1,5 +1,5 @@
-import { state } from "./state.js?v=20260920-threadsearch02";
-import { vkApi } from "./vk-api.js?v=20260920-threadsearch02";
+import { state } from "./state.js?v=20260920-uploadsafe01";
+import { vkApi } from "./vk-api.js?v=20260920-uploadsafe01";
 
 /**
  * Получает ID сообщества из параметров запуска VK Mini Apps.

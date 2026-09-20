@@ -1,6 +1,5 @@
-import { state } from "./state.js?v=20260920-uploadmenu02";
-import { dom } from "./dom.js?v=20260920-uploadmenu02";
-import { syncMainMenu, closeMenu } from "./main-menu.js?v=20260920-uploadmenu02";
+import { state } from "./state.js?v=20260920-uploadsafe01";
+import { dom } from "./dom.js?v=20260920-uploadsafe01";
 
 let openAlbumFromHistory = null;
 let openPhotoFromHistory = null;
@@ -21,11 +20,6 @@ function setScrollLater(y = 0) {
     });
 }
 
-function finishScreenChange() {
-    closeMenu();
-    syncMainMenu();
-}
-
 export function showAlbumsScreen({ restoreScroll = 0 } = {}) {
     hideScreens();
     dom.albumsScreen.classList.remove("hidden");
@@ -38,7 +32,6 @@ export function showAlbumsScreen({ restoreScroll = 0 } = {}) {
     dom.backButton.classList.add("hidden");
     dom.refreshAlbums.classList.remove("hidden");
 
-    finishScreenChange();
     setVkSwipeHistory(false);
     setScrollLater(restoreScroll);
 }
@@ -53,7 +46,6 @@ export function showPhotosScreen({ restoreScroll = 0 } = {}) {
     dom.backButton.classList.remove("hidden");
     dom.refreshAlbums.classList.add("hidden");
 
-    finishScreenChange();
     setVkSwipeHistory(true);
     setScrollLater(restoreScroll);
 }
@@ -68,7 +60,6 @@ export function showCommentsScreen({ restoreScroll = 0 } = {}) {
     dom.backButton.classList.remove("hidden");
     dom.refreshAlbums.classList.add("hidden");
 
-    finishScreenChange();
     setVkSwipeHistory(true);
     setScrollLater(restoreScroll);
 }
@@ -83,7 +74,6 @@ export function showPhotoViewerScreen({ restoreScroll = 0 } = {}) {
     dom.backButton.classList.remove("hidden");
     dom.refreshAlbums.classList.add("hidden");
 
-    finishScreenChange();
     setVkSwipeHistory(true);
     setScrollLater(restoreScroll);
 }
@@ -159,6 +149,10 @@ export function pushPhotoHistory(photo, album, { fromComments = false } = {}) {
     const photoId = String(photo?.id || "");
     if (!albumId || !photoId) return;
 
+    // Всегда сохраняем экран-источник как отдельную запись истории.
+    // Поэтому:
+    //   Альбом -> Общее фото -> Назад = Альбом
+    //   Комментарии -> Общее фото -> Назад = Комментарии
     saveCurrentScrollToHistory();
 
     history.pushState(
