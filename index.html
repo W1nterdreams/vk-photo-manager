@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <!-- CACHE_VERSION: 20260920-albumtools06 -->
+    <!-- CACHE_VERSION: 20260920-albumtools07 -->
     <meta charset="UTF-8">
 
     <meta
@@ -11,7 +11,7 @@
 
     <title>Фотоальбомы VK</title>
 
-    <link rel="stylesheet" href="./style.css?v=20260920-albumtools06">
+    <link rel="stylesheet" href="./style.css?v=20260920-albumtools07">
 
     <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
 </head>
@@ -142,6 +142,15 @@
                 >
                     <span class="menu-item-icon">↪</span>
                     <span>Переместить в альбом</span>
+                </button>
+
+                <button
+                    id="reorderPhotoMenuButton"
+                    class="menu-item hidden"
+                    type="button"
+                >
+                    <span class="menu-item-icon">↕</span>
+                    <span>Переместить внутри альбома</span>
                 </button>
 
             </div>
@@ -698,7 +707,7 @@
 </div>
 
 
-<script type="module" src="./js/app.js?v=20260920-albumtools06"></script>
+<script type="module" src="./js/app.js?v=20260920-albumtools07"></script>
     
 </body>
 </html>
