@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <!-- CACHE_VERSION: 20260920-albumtools02 -->
+    <!-- CACHE_VERSION: 20260920-albumtools03 -->
     <meta charset="UTF-8">
 
     <meta
@@ -11,7 +11,7 @@
 
     <title>Фотоальбомы VK</title>
 
-    <link rel="stylesheet" href="./style.css?v=20260920-albumtools02">
+    <link rel="stylesheet" href="./style.css?v=20260920-albumtools03">
 
     <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
 </head>
@@ -265,6 +265,24 @@
 
             </div>
 
+            <div class="album-header-actions">
+                <button
+                    id="sortNewestButton"
+                    class="album-sort-button"
+                    type="button"
+                >
+                    Новые
+                </button>
+
+                <button
+                    id="sortOldestButton"
+                    class="album-sort-button"
+                    type="button"
+                >
+                    Старые
+                </button>
+            </div>
+
             <div
                 id="albumDescription"
                 class="album-description"
@@ -481,25 +499,35 @@
     class="modal-overlay hidden"
 >
 
-    <div class="modal">
+    <div class="modal edit-album-modal-window">
 
-        <div class="modal-header">
+        <div class="modal-header edit-album-modal-header">
 
-            <div class="modal-title">
-                Редактировать альбом
+            <div class="modal-title edit-album-modal-title">
+                Редактировать<br>альбом
             </div>
+
+            <button
+                id="saveEditAlbum"
+                class="primary-button modal-header-save"
+                type="submit"
+                form="editAlbumForm"
+            >
+                Сохранить
+            </button>
 
             <button
                 id="closeEditAlbum"
                 class="modal-close"
                 type="button"
+                aria-label="Закрыть"
             >
                 ×
             </button>
 
         </div>
 
-        <form id="editAlbumForm">
+        <form id="editAlbumForm" class="edit-album-form">
 
             <label class="form-label" for="editAlbumTitle">
                 Название
@@ -548,25 +576,13 @@
                 class="form-error hidden"
             ></div>
 
-            <div class="modal-actions">
-
-                <button
-                    id="cancelEditAlbum"
-                    class="secondary-button"
-                    type="button"
-                >
-                    Отмена
-                </button>
-
-                <button
-                    id="saveEditAlbum"
-                    class="primary-button"
-                    type="submit"
-                >
-                    Сохранить
-                </button>
-
-            </div>
+            <button
+                id="cancelEditAlbum"
+                class="hidden"
+                type="button"
+            >
+                Отмена
+            </button>
 
         </form>
 
@@ -675,7 +691,7 @@
 </div>
 
 
-<script type="module" src="./js/app.js?v=20260920-albumtools02"></script>
+<script type="module" src="./js/app.js?v=20260920-albumtools03"></script>
     
 </body>
 </html>

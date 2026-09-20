@@ -737,7 +737,7 @@ img {
 }
 
 .album-description {
-    margin-top: 5px;
+    margin-top: 7px;
 
     color: #aeb3b7;
 
@@ -746,6 +746,36 @@ img {
     line-height: 1.4;
 
     white-space: pre-wrap;
+}
+
+.album-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.album-sort-button {
+    min-height: 34px;
+    padding: 6px 13px;
+    border: 1px solid #454a4f;
+    border-radius: 999px;
+    background: #202326;
+    color: #e8eaed;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.album-sort-button.active {
+    border-color: #73a5c9;
+    background: #39779b;
+    color: #ffffff;
+}
+
+.album-sort-button:active {
+    transform: scale(0.98);
 }
 
 
@@ -2085,4 +2115,108 @@ img {
 .album-context-item.selected {
     font-weight: 600;
     background: #eef5fb;
+}
+
+
+/* =========================================================
+   EDIT ALBUM MODAL COMPACT LAYOUT
+   ========================================================= */
+
+.edit-album-modal-window {
+    width: min(440px, 100%);
+    max-height: 84vh;
+    padding: 12px 14px 14px;
+}
+
+.edit-album-modal-header {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    align-items: flex-start;
+    margin: -4px -2px 12px;
+    padding: 2px 2px 8px;
+    background: #202326;
+}
+
+.edit-album-modal-title {
+    font-size: 17px;
+    line-height: 1.05;
+    font-weight: 600;
+    white-space: normal;
+    max-width: 150px;
+}
+
+.modal-header-save {
+    flex: 0 0 auto;
+    min-height: 34px;
+    padding: 6px 12px;
+    font-size: 14px;
+    white-space: nowrap;
+}
+
+.edit-album-form .form-label {
+    margin: 10px 0 6px;
+}
+
+.edit-album-form .form-input {
+    height: 42px;
+}
+
+.edit-album-form .form-textarea {
+    min-height: 82px;
+    max-height: 140px;
+    resize: vertical;
+}
+
+.edit-album-form .form-checkbox-row {
+    margin-top: 12px;
+    font-size: 14px;
+}
+
+.edit-album-form .form-checkbox-hint {
+    margin-left: 30px;
+    font-size: 12px;
+}
+
+.edit-album-form .form-error {
+    margin-top: 12px;
+}
+
+@media (max-width: 420px) {
+    .album-header-main {
+        gap: 8px;
+    }
+
+    .album-header h1 {
+        font-size: 18px;
+    }
+
+    .photo-count {
+        font-size: 13px;
+    }
+
+    .album-header-actions {
+        gap: 6px;
+    }
+
+    .album-sort-button {
+        min-height: 32px;
+        padding: 5px 11px;
+        font-size: 13px;
+    }
+
+    .edit-album-modal-window {
+        max-height: 80vh;
+        padding: 10px 12px 12px;
+    }
+
+    .edit-album-modal-title {
+        font-size: 16px;
+        max-width: 122px;
+    }
+
+    .modal-header-save {
+        padding: 6px 10px;
+        font-size: 13px;
+    }
 }
