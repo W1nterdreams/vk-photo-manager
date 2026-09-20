@@ -1,12 +1,12 @@
-import { state } from "./state.js?v=20260920-photomenu01";
-import { dom } from "./dom.js?v=20260920-photomenu01";
-import { vkApi } from "./vk-api.js?v=20260920-photomenu01";
-import { getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260920-photomenu01";
-import { getOwnerId } from "./group-context.js?v=20260920-photomenu01";
-import { invalidateAlbumPhotosCache } from "./cache.js?v=20260920-photomenu01";
-import { closeMenu } from "./main-menu.js?v=20260920-photomenu01";
-import { openPhotoTransfer } from "./photo-transfer.js?v=20260920-photomenu01";
-import { openVkPhoto } from "./vk-links.js?v=20260920-photomenu01";
+import { state } from "./state.js?v=20260920-albumtools02";
+import { dom } from "./dom.js?v=20260920-albumtools02";
+import { vkApi } from "./vk-api.js?v=20260920-albumtools02";
+import { getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260920-albumtools02";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools02";
+import { invalidateAlbumPhotosCache } from "./cache.js?v=20260920-albumtools02";
+import { closeMenu } from "./main-menu.js?v=20260920-albumtools02";
+import { openPhotoTransfer } from "./photo-transfer.js?v=20260920-albumtools02";
+import { openVkPhoto } from "./vk-links.js?v=20260920-albumtools02";
 
 let editOverlay = null;
 let editInput = null;

@@ -21,6 +21,7 @@ export const state = {
     photosOffset: 0,
     photosHasMore: false,
     photosLoadingMore: false,
+    photoSortMode: "vk",
 
     albumSearchText: "",
     currentScreen: "albums"

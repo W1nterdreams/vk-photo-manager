@@ -1,6 +1,6 @@
-import { vkApi } from "./vk-api.js?v=20260920-photomenu01";
-import { getOwnerId } from "./group-context.js?v=20260920-photomenu01";
-import { state } from "./state.js?v=20260920-photomenu01";
+import { vkApi } from "./vk-api.js?v=20260920-albumtools02";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools02";
+import { state } from "./state.js?v=20260920-albumtools02";
 
 function errorCode(error) {
     return Number(

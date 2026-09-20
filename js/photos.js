@@ -1,14 +1,35 @@
-import { state } from "./state.js?v=20260920-photomenu01";
-import { dom } from "./dom.js?v=20260920-photomenu01";
-import { vkApi } from "./vk-api.js?v=20260920-photomenu01";
-import { getPhotoPreviewUrl, escapeHtml, getErrorMessage } from "./helpers.js?v=20260920-photomenu01";
-import { showPhotosScreen, pushAlbumHistory } from "./navigation.js?v=20260920-photomenu01";
-import { CACHE_TTL } from "./config.js?v=20260920-photomenu01";
-import { cacheGet, cacheGetStale, cacheSet, albumPhotosKey } from "./cache.js?v=20260920-photomenu01";
-import { getOwnerId } from "./group-context.js?v=20260920-photomenu01";
-import { openPhotoViewer } from "./photo-viewer.js?v=20260920-photomenu01";
+import { state } from "./state.js?v=20260920-albumtools02";
+import { dom } from "./dom.js?v=20260920-albumtools02";
+import { vkApi } from "./vk-api.js?v=20260920-albumtools02";
+import { getPhotoPreviewUrl, escapeHtml, getErrorMessage } from "./helpers.js?v=20260920-albumtools02";
+import { showPhotosScreen, pushAlbumHistory } from "./navigation.js?v=20260920-albumtools02";
+import { CACHE_TTL } from "./config.js?v=20260920-albumtools02";
+import { cacheGet, cacheGetStale, cacheSet, albumPhotosKey } from "./cache.js?v=20260920-albumtools02";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools02";
+import { openPhotoViewer } from "./photo-viewer.js?v=20260920-albumtools02";
 
 const PAGE_SIZE = 20;
+
+export function setPhotoDateSort(mode = "vk") {
+    const allowed = new Set(["vk", "newest", "oldest"]);
+    state.photoSortMode = allowed.has(mode) ? mode : "vk";
+    renderPhotos();
+}
+
+export function getPhotoDateSort() {
+    return state.photoSortMode || "vk";
+}
+
+function photosForRender() {
+    const items = [...state.photos];
+    if (state.photoSortMode === "newest") {
+        items.sort((a, b) => Number(b?.date || 0) - Number(a?.date || 0));
+    } else if (state.photoSortMode === "oldest") {
+        items.sort((a, b) => Number(a?.date || 0) - Number(b?.date || 0));
+    }
+    return items;
+}
+
 let photoScrollTicking = false;
 let photosInitialized = false;
 let firstPageRefreshToken = 0;
@@ -277,7 +298,7 @@ export function renderPhotos() {
         return;
     }
 
-    state.photos.forEach(photo => {
+    photosForRender().forEach(photo => {
         const card = document.createElement("div");
         card.className = "photo-card";
         const url = getPhotoPreviewUrl(photo, 640);

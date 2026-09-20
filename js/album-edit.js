@@ -1,10 +1,10 @@
-import { state } from "./state.js?v=20260920-photomenu01";
-import { dom } from "./dom.js?v=20260920-photomenu01";
-import { vkApi } from "./vk-api.js?v=20260920-photomenu01";
-import { getErrorMessage } from "./helpers.js?v=20260920-photomenu01";
-import { getOwnerId } from "./group-context.js?v=20260920-photomenu01";
-import { cacheSet, cacheRemove, albumsKey, albumIndexKey } from "./cache.js?v=20260920-photomenu01";
-import { renderAlbums, ensureAlbumIndex } from "./albums.js?v=20260920-photomenu01";
+import { state } from "./state.js?v=20260920-albumtools02";
+import { dom } from "./dom.js?v=20260920-albumtools02";
+import { vkApi } from "./vk-api.js?v=20260920-albumtools02";
+import { getErrorMessage } from "./helpers.js?v=20260920-albumtools02";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools02";
+import { cacheSet, cacheRemove, albumsKey, albumIndexKey } from "./cache.js?v=20260920-albumtools02";
+import { renderAlbums, ensureAlbumIndex } from "./albums.js?v=20260920-albumtools02";
 
 let activeAlbum = null;
 let opening = false;
@@ -100,6 +100,12 @@ function replaceAlbumInState(updated) {
 
     if (state.currentAlbum && String(state.currentAlbum.id) === String(updated.id)) {
         state.currentAlbum = { ...state.currentAlbum, ...updated };
+
+        if (state.currentScreen === "photos") {
+            dom.pageTitle.textContent = updated.title || "Альбом";
+            dom.albumTitle.textContent = updated.title || "Альбом";
+            dom.albumDescription.textContent = updated.description || "";
+        }
     }
 }
 

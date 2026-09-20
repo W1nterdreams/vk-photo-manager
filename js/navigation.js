@@ -1,5 +1,5 @@
-import { state } from "./state.js?v=20260920-photomenu01";
-import { dom } from "./dom.js?v=20260920-photomenu01";
+import { state } from "./state.js?v=20260920-albumtools02";
+import { dom } from "./dom.js?v=20260920-albumtools02";
 
 let openAlbumFromHistory = null;
 let openPhotoFromHistory = null;
@@ -44,7 +44,7 @@ export function showPhotosScreen({ restoreScroll = 0 } = {}) {
     state.currentPhoto = null;
 
     dom.backButton.classList.remove("hidden");
-    dom.refreshAlbums.classList.add("hidden");
+    dom.refreshAlbums.classList.remove("hidden");
 
     setVkSwipeHistory(true);
     setScrollLater(restoreScroll);

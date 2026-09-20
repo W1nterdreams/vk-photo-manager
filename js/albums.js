@@ -1,9 +1,9 @@
-import { state } from "./state.js?v=20260920-photomenu01";
-import { dom } from "./dom.js?v=20260920-photomenu01";
-import { vkApi } from "./vk-api.js?v=20260920-photomenu01";
-import { getAlbumCover, escapeHtml, getErrorMessage } from "./helpers.js?v=20260920-photomenu01";
-import { openAlbum } from "./photos.js?v=20260920-photomenu01";
-import { CACHE_TTL } from "./config.js?v=20260920-photomenu01";
+import { state } from "./state.js?v=20260920-albumtools02";
+import { dom } from "./dom.js?v=20260920-albumtools02";
+import { vkApi } from "./vk-api.js?v=20260920-albumtools02";
+import { getAlbumCover, escapeHtml, getErrorMessage } from "./helpers.js?v=20260920-albumtools02";
+import { openAlbum, loadPhotos } from "./photos.js?v=20260920-albumtools02";
+import { CACHE_TTL } from "./config.js?v=20260920-albumtools02";
 import {
     cacheGet,
     cacheGetStale,
@@ -11,9 +11,9 @@ import {
     invalidateAlbumCaches,
     albumsKey,
     albumIndexKey
-} from "./cache.js?v=20260920-photomenu01";
-import { getOwnerId } from "./group-context.js?v=20260920-photomenu01";
-import { bindAlbumLongPress } from "./album-menu.js?v=20260920-photomenu01";
+} from "./cache.js?v=20260920-albumtools02";
+import { getOwnerId } from "./group-context.js?v=20260920-albumtools02";
+import { bindAlbumLongPress } from "./album-menu.js?v=20260920-albumtools02";
 
 const PAGE_SIZE = 20;
 const INDEX_PAGE_SIZE = 100;
@@ -605,10 +605,15 @@ export function initAlbums() {
     dom.refreshAlbums.addEventListener("click", async () => {
         dom.refreshAlbums.disabled = true;
         try {
-            await loadAlbums({ force: true });
+            if (state.currentScreen === "photos" && state.currentAlbum) {
+                await loadPhotos(state.currentAlbum, { force: true });
+            } else {
+                await loadAlbums({ force: true });
+            }
         } catch (error) {
-            dom.albums.innerHTML =
-                `<div class="error">Не удалось обновить альбомы.<br><br>${escapeHtml(getErrorMessage(error))}</div>`;
+            const target = state.currentScreen === "photos" ? dom.photos : dom.albums;
+            target.innerHTML =
+                `<div class="error">Не удалось обновить данные.<br><br>${escapeHtml(getErrorMessage(error))}</div>`;
         } finally {
             dom.refreshAlbums.disabled = false;
         }
