@@ -12,7 +12,7 @@ import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=202609
 import { invalidatePhotoActivityCaches } from "./cache.js?v=20260921-photoindex23";
 
 const COMMENT_PAGE_SIZE = 100;
-const LONG_PRESS_MS = 800;
+const LONG_PRESS_MS = 1000;
 const MOVE_TOLERANCE = 15;
 
 let initialized = false;
