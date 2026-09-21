@@ -1,25 +1,26 @@
-import { dom } from "./dom.js?v=20260921-photoindex23";
-import { state } from "./state.js?v=20260921-photoindex23";
-import { vkApi } from "./vk-api.js?v=20260921-photoindex23";
+import { dom } from "./dom.js?v=20260921-photoindex25";
+import { state } from "./state.js?v=20260921-photoindex25";
+import { vkApi } from "./vk-api.js?v=20260921-photoindex25";
 import {
     escapeHtml,
     getPhotoPreviewUrl
-} from "./helpers.js?v=20260921-photoindex23";
+} from "./helpers.js?v=20260921-photoindex25";
 import {
     showCommentsScreen,
     pushCommentsHistory
-} from "./navigation.js?v=20260921-photoindex23";
-import { getOwnerId } from "./group-context.js?v=20260921-photoindex23";
-import { cacheGet, cacheSet, invalidateCommentCaches } from "./cache.js?v=20260921-photoindex23";
-import { CACHE_TTL } from "./config.js?v=20260921-photoindex23";
-import { createPhotoComment, getPhotoCommentErrorText } from "./photo-comment-api.js?v=20260921-photoindex23";
-import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260921-photoindex23";
-import { openPhotoViewer } from "./photo-viewer.js?v=20260921-photoindex23";
+} from "./navigation.js?v=20260921-photoindex25";
+import { getOwnerId } from "./group-context.js?v=20260921-photoindex25";
+import { cacheGet, cacheSet, invalidateCommentCaches } from "./cache.js?v=20260921-photoindex25";
+import { CACHE_TTL } from "./config.js?v=20260921-photoindex25";
+import { createPhotoComment, getPhotoCommentErrorText } from "./photo-comment-api.js?v=20260921-photoindex25";
+import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260921-photoindex25";
+import { openPhotoViewer } from "./photo-viewer.js?v=20260921-photoindex25";
+import { armLongPressReleaseGuard, consumeLongPressSyntheticClick } from "./long-press-guard.js?v=20260921-photoindex25";
 
 const ALBUM_COMMENTS_DAYS = 3;
 const PAGE_SIZE = 100;
 const MAX_COMMENTS = 30;
-const LONG_PRESS_MS = 800;
+const LONG_PRESS_MS = 900;
 const MOVE_TOLERANCE = 15;
 const READ_TIMEOUT_MS = 7000;
 const PHOTO_LIST_TIMEOUT_MS = 10000;
@@ -893,8 +894,9 @@ function openCommentMenu({ card, body, comment }) {
 
     overlay.appendChild(menu);
     overlay.addEventListener("click", event => {
+        if (consumeLongPressSyntheticClick(event)) return;
         if (event.target === overlay) closeCommentMenu();
-    });
+    }, true);
 
     document.body.appendChild(overlay);
     commentMenuOverlay = overlay;
@@ -919,6 +921,7 @@ function installLongPress(card, handler) {
         clear();
         timer = setTimeout(() => {
             longPressed = true;
+            armLongPressReleaseGuard(event.pointerId);
             handler(event);
         }, LONG_PRESS_MS);
     };

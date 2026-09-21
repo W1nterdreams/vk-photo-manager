@@ -1,7 +1,11 @@
-import { getOwnerId } from "./group-context.js?v=20260921-photoindex23";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260921-photoindex23";
+import { getOwnerId } from "./group-context.js?v=20260921-photoindex25";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260921-photoindex25";
+import {
+    armLongPressReleaseGuard,
+    consumeLongPressSyntheticClick
+} from "./long-press-guard.js?v=20260921-photoindex25";
 
-const LONG_PRESS_MS = 800;
+const LONG_PRESS_MS = 900;
 const MOVE_CANCEL_PX = 15;
 
 let overlay = null;
@@ -90,8 +94,9 @@ function ensureMenu() {
     document.body.appendChild(overlay);
 
     overlay.addEventListener("click", event => {
+        if (consumeLongPressSyntheticClick(event)) return;
         if (event.target === overlay) void closeAlbumMenu();
-    });
+    }, true);
 
     menu.addEventListener("click", event => event.stopPropagation());
 
@@ -129,6 +134,7 @@ export function bindAlbumLongPress(element, album) {
     let startX = 0;
     let startY = 0;
     let longPressTriggered = false;
+    let activePointerId = null;
 
     const clearTimer = () => {
         if (timer !== null) {
@@ -142,12 +148,14 @@ export function bindAlbumLongPress(element, album) {
 
         clearTimer();
         longPressTriggered = false;
+        activePointerId = event.pointerId;
         startX = event.clientX;
         startY = event.clientY;
 
         timer = window.setTimeout(() => {
             timer = null;
             longPressTriggered = true;
+            armLongPressReleaseGuard(activePointerId);
             openAlbumMenu(album);
 
             // Небольшой отклик на телефоне, если браузер его поддерживает.
@@ -173,7 +181,9 @@ export function bindAlbumLongPress(element, album) {
     element.addEventListener("contextmenu", event => {
         event.preventDefault();
         clearTimer();
+        if (longPressTriggered) return;
         longPressTriggered = true;
+        armLongPressReleaseGuard(activePointerId);
         openAlbumMenu(album);
     });
 

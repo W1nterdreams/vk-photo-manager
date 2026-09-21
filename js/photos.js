@@ -1,19 +1,19 @@
-import { state } from "./state.js?v=20260921-photoindex23";
-import { dom } from "./dom.js?v=20260921-photoindex23";
-import { vkApi } from "./vk-api.js?v=20260921-photoindex23";
-import { getPhotoPreviewUrl, escapeHtml, getErrorMessage } from "./helpers.js?v=20260921-photoindex23";
-import { showPhotosScreen, pushAlbumHistory } from "./navigation.js?v=20260921-photoindex23";
-import { CACHE_TTL } from "./config.js?v=20260921-photoindex23";
-import { cacheGet, cacheGetStale, cacheSet, albumPhotosKey } from "./cache.js?v=20260921-photoindex23";
-import { getOwnerId } from "./group-context.js?v=20260921-photoindex23";
-import { openPhotoViewer } from "./photo-viewer.js?v=20260921-photoindex23";
-import { bindPhotoContextLongPress } from "./photo-context-menu.js?v=20260921-photoindex23";
+import { state } from "./state.js?v=20260921-photoindex25";
+import { dom } from "./dom.js?v=20260921-photoindex25";
+import { vkApi } from "./vk-api.js?v=20260921-photoindex25";
+import { getPhotoPreviewUrl, escapeHtml, getErrorMessage } from "./helpers.js?v=20260921-photoindex25";
+import { showPhotosScreen, pushAlbumHistory } from "./navigation.js?v=20260921-photoindex25";
+import { CACHE_TTL } from "./config.js?v=20260921-photoindex25";
+import { cacheGet, cacheGetStale, cacheSet, albumPhotosKey } from "./cache.js?v=20260921-photoindex25";
+import { getOwnerId } from "./group-context.js?v=20260921-photoindex25";
+import { openPhotoViewer } from "./photo-viewer.js?v=20260921-photoindex25";
+import { bindPhotoContextLongPress } from "./photo-context-menu.js?v=20260921-photoindex25";
 import {
     isPhotoMultiSelectActive,
     isPhotoSelected,
     togglePhotoSelection,
     cancelPhotoMultiSelect
-} from "./photo-multiselect.js?v=20260921-photoindex23";
+} from "./photo-multiselect.js?v=20260921-photoindex25";
 
 const PAGE_SIZE = 20;
 const SORT_FETCH_SIZE = 100;

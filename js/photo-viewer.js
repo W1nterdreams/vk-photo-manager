@@ -1,18 +1,19 @@
-import { state } from "./state.js?v=20260921-photoindex23";
-import { dom } from "./dom.js?v=20260921-photoindex23";
-import { vkApi } from "./vk-api.js?v=20260921-photoindex23";
-import { getBestPhotoUrl, getPhotoPreviewUrl, escapeHtml } from "./helpers.js?v=20260921-photoindex23";
-import { getOwnerId } from "./group-context.js?v=20260921-photoindex23";
+import { armLongPressReleaseGuard, consumeLongPressSyntheticClick } from "./long-press-guard.js?v=20260921-photoindex25";
+import { state } from "./state.js?v=20260921-photoindex25";
+import { dom } from "./dom.js?v=20260921-photoindex25";
+import { vkApi } from "./vk-api.js?v=20260921-photoindex25";
+import { getBestPhotoUrl, getPhotoPreviewUrl, escapeHtml } from "./helpers.js?v=20260921-photoindex25";
+import { getOwnerId } from "./group-context.js?v=20260921-photoindex25";
 import {
     showPhotoViewerScreen,
     pushPhotoHistory
-} from "./navigation.js?v=20260921-photoindex23";
-import { photoCommentOwnerId } from "./photo-comment-api.js?v=20260921-photoindex23";
-import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260921-photoindex23";
-import { invalidatePhotoActivityCaches } from "./cache.js?v=20260921-photoindex23";
+} from "./navigation.js?v=20260921-photoindex25";
+import { photoCommentOwnerId } from "./photo-comment-api.js?v=20260921-photoindex25";
+import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260921-photoindex25";
+import { invalidatePhotoActivityCaches } from "./cache.js?v=20260921-photoindex25";
 
 const COMMENT_PAGE_SIZE = 100;
-const LONG_PRESS_MS = 1000;
+const LONG_PRESS_MS = 900;
 const MOVE_TOLERANCE = 15;
 
 let initialized = false;
@@ -299,8 +300,9 @@ function openCommentContext(comment) {
     sheet.appendChild(makeMenuButton("Отмена", async () => {}));
     overlay.appendChild(sheet);
     overlay.addEventListener("click", event => {
+        if (consumeLongPressSyntheticClick(event)) return;
         if (event.target === overlay) closeContextMenu();
-    });
+    }, true);
     document.body.appendChild(overlay);
     contextOverlay = overlay;
 }
@@ -320,7 +322,10 @@ function installLongPress(element, handler) {
         x = event.clientX;
         y = event.clientY;
         clear();
-        timer = setTimeout(() => handler(), LONG_PRESS_MS);
+        timer = setTimeout(() => {
+            armLongPressReleaseGuard(event.pointerId);
+            handler();
+        }, LONG_PRESS_MS);
     }, { passive: true });
 
     element.addEventListener("pointermove", event => {

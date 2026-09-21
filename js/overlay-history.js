@@ -1,4 +1,4 @@
-import { state } from "./state.js?v=20260921-photoindex23";
+import { state } from "./state.js?v=20260921-photoindex25";
 
 let activeOverlay = null;
 let closingPromise = null;

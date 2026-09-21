@@ -1,20 +1,24 @@
-import { state } from "./state.js?v=20260921-photoindex23";
+import { state } from "./state.js?v=20260921-photoindex25";
 import {
     downloadPhotoFile,
     openPhotoDescriptionEditor,
     deletePhoto,
     makePhotoAlbumCover
-} from "./photo-menu.js?v=20260921-photoindex23";
-import { openPhotoTransfer } from "./photo-transfer.js?v=20260921-photoindex23";
-import { openPhotoReorder } from "./photo-reorder.js?v=20260921-photoindex23";
-import { getErrorMessage } from "./helpers.js?v=20260921-photoindex23";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260921-photoindex23";
+} from "./photo-menu.js?v=20260921-photoindex25";
+import { openPhotoTransfer } from "./photo-transfer.js?v=20260921-photoindex25";
+import { openPhotoReorder } from "./photo-reorder.js?v=20260921-photoindex25";
+import { getErrorMessage } from "./helpers.js?v=20260921-photoindex25";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260921-photoindex25";
+import {
+    armLongPressReleaseGuard,
+    consumeLongPressSyntheticClick
+} from "./long-press-guard.js?v=20260921-photoindex25";
 import {
     isPhotoMultiSelectActive,
     startPhotoMultiSelect
-} from "./photo-multiselect.js?v=20260921-photoindex23";
+} from "./photo-multiselect.js?v=20260921-photoindex25";
 
-const LONG_PRESS_MS = 800;
+const LONG_PRESS_MS = 900;
 const MOVE_CANCEL_PX = 15;
 
 let overlay = null;
@@ -109,8 +113,9 @@ function ensureMenu() {
     document.body.appendChild(overlay);
 
     overlay.addEventListener("click", event => {
+        if (consumeLongPressSyntheticClick(event)) return;
         if (event.target === overlay) void closePhotoContextMenu();
-    });
+    }, true);
 
     menu.addEventListener("click", event => event.stopPropagation());
 
@@ -150,6 +155,7 @@ export function bindPhotoContextLongPress(element, photo) {
     let startX = 0;
     let startY = 0;
     let longPressTriggered = false;
+    let activePointerId = null;
 
     const clearTimer = () => {
         if (timer !== null) {
@@ -158,10 +164,11 @@ export function bindPhotoContextLongPress(element, photo) {
         }
     };
 
-    const trigger = () => {
+    const trigger = (pointerId = activePointerId) => {
         clearTimer();
         if (longPressTriggered) return;
         longPressTriggered = true;
+        armLongPressReleaseGuard(pointerId);
         state.suppressPhotoOpenUntil = Date.now() + 1200;
         openPhotoContextMenu(photo);
         try { navigator.vibrate?.(18); } catch {}
@@ -173,10 +180,11 @@ export function bindPhotoContextLongPress(element, photo) {
 
         clearTimer();
         longPressTriggered = false;
+        activePointerId = event.pointerId;
         startX = event.clientX;
         startY = event.clientY;
 
-        timer = window.setTimeout(trigger, LONG_PRESS_MS);
+        timer = window.setTimeout(() => trigger(activePointerId), LONG_PRESS_MS);
     }, { passive: true });
 
     element.addEventListener("pointermove", event => {
@@ -196,7 +204,7 @@ export function bindPhotoContextLongPress(element, photo) {
         event.preventDefault();
         event.stopPropagation();
         if (isPhotoMultiSelectActive()) return;
-        trigger();
+        trigger(activePointerId);
     });
 
     // Важно: capture-обработчик срабатывает раньше обычного click на карточке.
