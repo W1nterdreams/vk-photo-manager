@@ -1,8 +1,8 @@
 import { getOwnerId } from "./group-context.js?v=20260921-photoindex23";
 import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260921-photoindex23";
 
-const LONG_PRESS_MS = 520;
-const MOVE_CANCEL_PX = 12;
+const LONG_PRESS_MS = 800;
+const MOVE_CANCEL_PX = 15;
 
 let overlay = null;
 let menu = null;
