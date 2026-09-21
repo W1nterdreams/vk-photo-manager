@@ -1,15 +1,15 @@
-import { state } from "./state.js?v=20260921-photoindex25";
-import { dom } from "./dom.js?v=20260921-photoindex25";
-import { getOwnerId } from "./group-context.js?v=20260921-photoindex25";
-import { closeMenu } from "./main-menu.js?v=20260921-photoindex25";
-import { openVkTarget } from "./vk-links.js?v=20260921-photoindex25";
-import { loadPhotos } from "./photos.js?v=20260921-photoindex25";
-import { renderAlbums } from "./albums.js?v=20260921-photoindex25";
+import { state } from "./state.js?v=20260921-scroll26";
+import { dom } from "./dom.js?v=20260921-scroll26";
+import { getOwnerId } from "./group-context.js?v=20260921-scroll26";
+import { closeMenu } from "./main-menu.js?v=20260921-scroll26";
+import { openVkTarget } from "./vk-links.js?v=20260921-scroll26";
+import { loadPhotos } from "./photos.js?v=20260921-scroll26";
+import { renderAlbums } from "./albums.js?v=20260921-scroll26";
 import {
     invalidateAlbumCaches,
     invalidateAlbumPhotosCache
-} from "./cache.js?v=20260921-photoindex25";
-import { markPhotoIndexAlbumDirty } from "./photo-index-db.js?v=20260921-photoindex25";
+} from "./cache.js?v=20260921-scroll26";
+import { markPhotoIndexAlbumDirty } from "./photo-index-db.js?v=20260921-scroll26";
 
 function findAlbum(albumId) {
     const id = String(albumId || "");

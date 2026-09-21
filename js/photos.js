@@ -1,19 +1,19 @@
-import { state } from "./state.js?v=20260921-photoindex25";
-import { dom } from "./dom.js?v=20260921-photoindex25";
-import { vkApi } from "./vk-api.js?v=20260921-photoindex25";
-import { getPhotoPreviewUrl, escapeHtml, getErrorMessage } from "./helpers.js?v=20260921-photoindex25";
-import { showPhotosScreen, pushAlbumHistory } from "./navigation.js?v=20260921-photoindex25";
-import { CACHE_TTL } from "./config.js?v=20260921-photoindex25";
-import { cacheGet, cacheGetStale, cacheSet, albumPhotosKey } from "./cache.js?v=20260921-photoindex25";
-import { getOwnerId } from "./group-context.js?v=20260921-photoindex25";
-import { openPhotoViewer } from "./photo-viewer.js?v=20260921-photoindex25";
-import { bindPhotoContextLongPress } from "./photo-context-menu.js?v=20260921-photoindex25";
+import { state } from "./state.js?v=20260921-scroll26";
+import { dom } from "./dom.js?v=20260921-scroll26";
+import { vkApi } from "./vk-api.js?v=20260921-scroll26";
+import { getPhotoPreviewUrl, escapeHtml, getErrorMessage } from "./helpers.js?v=20260921-scroll26";
+import { showPhotosScreen, pushAlbumHistory } from "./navigation.js?v=20260921-scroll26";
+import { CACHE_TTL } from "./config.js?v=20260921-scroll26";
+import { cacheGet, cacheGetStale, cacheSet, albumPhotosKey } from "./cache.js?v=20260921-scroll26";
+import { getOwnerId } from "./group-context.js?v=20260921-scroll26";
+import { openPhotoViewer } from "./photo-viewer.js?v=20260921-scroll26";
+import { bindPhotoContextLongPress } from "./photo-context-menu.js?v=20260921-scroll26";
 import {
     isPhotoMultiSelectActive,
     isPhotoSelected,
     togglePhotoSelection,
     cancelPhotoMultiSelect
-} from "./photo-multiselect.js?v=20260921-photoindex25";
+} from "./photo-multiselect.js?v=20260921-scroll26";
 
 const PAGE_SIZE = 20;
 const SORT_FETCH_SIZE = 100;
@@ -330,14 +330,18 @@ function restorePhotosCache(cached, album) {
 function applyFirstPage(album, result, { preserveLoadedTail = false } = {}) {
     if (!currentAlbumIs(album)) return false;
 
+    const previousFirstIds = state.photos
+        .slice(0, PAGE_SIZE)
+        .map(photo => String(photo.id));
     const items = Array.isArray(result?.items) ? result.items : [];
+    const nextFirstIds = items.map(photo => String(photo.id));
     const apiTotal = Number(result?.count);
     const total = Number.isFinite(apiTotal) && apiTotal >= 0
         ? Math.max(apiTotal, items.length)
         : Math.max(Number(album.size || 0), items.length);
 
     if (preserveLoadedTail && state.photos.length > PAGE_SIZE) {
-        const firstIds = new Set(items.map(photo => String(photo.id)));
+        const firstIds = new Set(nextFirstIds);
         const tail = state.photos
             .slice(PAGE_SIZE)
             .filter(photo => !firstIds.has(String(photo.id)));
@@ -351,7 +355,25 @@ function applyFirstPage(album, result, { preserveLoadedTail = false } = {}) {
     state.photosHasMore = state.photosOffset < state.photosTotal;
     updateAlbumSize(album, total);
     savePhotosCache(album);
-    renderPhotos();
+
+    const sameFirstPage = (
+        preserveLoadedTail &&
+        previousFirstIds.length === nextFirstIds.length &&
+        previousFirstIds.every((id, index) => id === nextFirstIds[index])
+    );
+    const canRefreshInPlace = (
+        sameFirstPage &&
+        getPhotoDateSort() === "vk" &&
+        !state.photoSearchText
+    );
+
+    if (canRefreshInPlace) {
+        replacePhotoCards(items);
+        setPhotoLoadingMoreVisible(state.photosLoadingMore);
+    } else {
+        renderPhotos();
+    }
+
     updatePhotoCount();
     setTimeout(handlePhotoScroll, 0);
     return true;
@@ -455,12 +477,19 @@ export async function loadMorePhotos() {
     if (state.photosLoadingMore || !state.photosHasMore) return;
 
     state.photosLoadingMore = true;
-    renderPhotos();
+    setPhotoLoadingMoreVisible(true);
+
+    let shouldFullRender = false;
 
     try {
+        const existingIds = new Set(state.photos.map(photo => String(photo.id)));
         const result = await fetchPhotoPage(album, state.photosOffset, PAGE_SIZE);
-        const items = Array.isArray(result?.items) ? result.items : [];
 
+        // Пользователь мог успеть уйти в другой альбом, пока VK отвечал.
+        // В таком случае старый ответ вообще не должен менять текущую сетку.
+        if (!currentAlbumIs(album) || state.currentScreen !== "photos") return;
+
+        const items = Array.isArray(result?.items) ? result.items : [];
         const beforeCount = state.photos.length;
         state.photos = mergePhotos(state.photos, items);
         const addedCount = state.photos.length - beforeCount;
@@ -487,13 +516,32 @@ export async function loadMorePhotos() {
 
         updateAlbumSize(album, state.photosTotal);
         savePhotosCache(album);
+
+        const newPhotos = state.photos.filter(photo => !existingIds.has(String(photo.id)));
+        const canAppendIncrementally = (
+            getPhotoDateSort() === "vk" &&
+            !state.photoSearchText
+        );
+
+        if (canAppendIncrementally) {
+            const overlappingPhotos = items.filter(photo => existingIds.has(String(photo.id)));
+            replacePhotoCards(overlappingPhotos);
+            appendPhotoCards(newPhotos);
+        } else {
+            // При поиске/сортировке порядок карточек зависит от всего набора.
+            // Там оставляем полный рендер, чтобы не нарушать сортировку.
+            shouldFullRender = true;
+        }
     } catch (error) {
         console.warn("Не удалось догрузить фотографии:", error);
     } finally {
-        state.photosLoadingMore = false;
-        renderPhotos();
-        updatePhotoCount();
-        setTimeout(handlePhotoScroll, 0);
+        if (currentAlbumIs(album)) {
+            state.photosLoadingMore = false;
+            setPhotoLoadingMoreVisible(false);
+            if (shouldFullRender) renderPhotos();
+            updatePhotoCount();
+            setTimeout(handlePhotoScroll, 0);
+        }
     }
 }
 
@@ -515,6 +563,8 @@ function handlePhotoScroll() {
         photoScrollTicking = false;
         if (
             state.currentScreen === "photos" &&
+            getPhotoDateSort() === "vk" &&
+            !state.photoSearchText &&
             state.photosHasMore &&
             !state.photosLoadingMore &&
             isNearPageBottom()
@@ -543,6 +593,123 @@ function initPhotoPagination() {
     window.addEventListener("resize", handlePhotoScroll, { passive: true });
 }
 
+function createPhotoCard(photo) {
+    const card = document.createElement("div");
+    card.className = "photo-card";
+    card.dataset.photoId = String(photo.id);
+    const url = getPhotoPreviewUrl(photo, 130);
+
+    if (url) {
+        const image = document.createElement("img");
+        image.src = url;
+        image.alt = photo.text || "";
+        image.loading = "lazy";
+        image.decoding = "async";
+        card.appendChild(image);
+    }
+
+    const uploadedDate = formatPhotoDate(photo?.date);
+    if (uploadedDate) {
+        const dateBadge = document.createElement("span");
+        dateBadge.className = "photo-card-date";
+        dateBadge.textContent = uploadedDate;
+        card.appendChild(dateBadge);
+    }
+
+    const stats = document.createElement("div");
+    stats.className = "photo-card-stats";
+
+    const likes = document.createElement("span");
+    likes.className = "photo-card-stat";
+    likes.textContent = `♥ ${Number(photo?.likes?.count || 0)}`;
+
+    const comments = document.createElement("span");
+    comments.className = "photo-card-stat";
+    comments.textContent = `💬 ${Number(photo?.comments?.count || 0)}`;
+
+    stats.append(likes, comments);
+    card.appendChild(stats);
+
+    if (isPhotoMultiSelectActive()) {
+        const selected = isPhotoSelected(photo);
+        card.classList.toggle("photo-multi-selected", selected);
+
+        const check = document.createElement("span");
+        check.className = "photo-select-check";
+        check.textContent = selected ? "✓" : "";
+        card.appendChild(check);
+    }
+
+    bindPhotoContextLongPress(card, photo);
+
+    card.addEventListener("click", event => {
+        if (isPhotoMultiSelectActive()) {
+            event.preventDefault();
+            event.stopPropagation();
+            togglePhotoSelection(photo);
+            return;
+        }
+
+        if (Date.now() < Number(state.suppressPhotoOpenUntil || 0)) {
+            event.preventDefault();
+            event.stopPropagation();
+            return;
+        }
+        void openPhotoViewer(photo, state.currentAlbum);
+    });
+
+    return card;
+}
+
+function replacePhotoCards(photos) {
+    if (!Array.isArray(photos) || !photos.length) return;
+
+    const renderedCards = new Map(
+        [...dom.photos.querySelectorAll(".photo-card")]
+            .map(card => [String(card.dataset.photoId), card])
+    );
+
+    photos.forEach(photo => {
+        const current = renderedCards.get(String(photo.id));
+        if (current) current.replaceWith(createPhotoCard(photo));
+    });
+}
+
+function getPhotoLoadingMoreNode() {
+    return dom.photos.querySelector(".photo-grid-loading-more");
+}
+
+function setPhotoLoadingMoreVisible(visible) {
+    const existing = getPhotoLoadingMoreNode();
+
+    if (!visible) {
+        existing?.remove();
+        return;
+    }
+
+    if (existing) return;
+
+    const loading = document.createElement("div");
+    loading.className = "status-message photo-grid-loading-more";
+    loading.textContent = "Загружаем ещё фотографии...";
+    dom.photos.appendChild(loading);
+}
+
+function appendPhotoCards(photos) {
+    if (!Array.isArray(photos) || !photos.length) return;
+
+    const fragment = document.createDocumentFragment();
+    photos.forEach(photo => fragment.appendChild(createPhotoCard(photo)));
+
+    // Индикатор догрузки должен оставаться последним элементом сетки.
+    const loading = getPhotoLoadingMoreNode();
+    if (loading) {
+        dom.photos.insertBefore(fragment, loading);
+    } else {
+        dom.photos.appendChild(fragment);
+    }
+}
+
 export function renderPhotos() {
     updatePhotoSortButtons();
     updatePhotoSearchUi();
@@ -560,76 +727,6 @@ export function renderPhotos() {
         return;
     }
 
-    photosToRender.forEach(photo => {
-        const card = document.createElement("div");
-        card.className = "photo-card";
-        card.dataset.photoId = String(photo.id);
-        const url = getPhotoPreviewUrl(photo, 130);
-
-        if (url) {
-            const image = document.createElement("img");
-            image.src = url;
-            image.alt = photo.text || "";
-            image.loading = "lazy";
-            card.appendChild(image);
-        }
-
-        const uploadedDate = formatPhotoDate(photo?.date);
-        if (uploadedDate) {
-            const dateBadge = document.createElement("span");
-            dateBadge.className = "photo-card-date";
-            dateBadge.textContent = uploadedDate;
-            card.appendChild(dateBadge);
-        }
-
-        const stats = document.createElement("div");
-        stats.className = "photo-card-stats";
-
-        const likes = document.createElement("span");
-        likes.className = "photo-card-stat";
-        likes.textContent = `♥ ${Number(photo?.likes?.count || 0)}`;
-
-        const comments = document.createElement("span");
-        comments.className = "photo-card-stat";
-        comments.textContent = `💬 ${Number(photo?.comments?.count || 0)}`;
-
-        stats.append(likes, comments);
-        card.appendChild(stats);
-
-        if (isPhotoMultiSelectActive()) {
-            const selected = isPhotoSelected(photo);
-            card.classList.toggle("photo-multi-selected", selected);
-
-            const check = document.createElement("span");
-            check.className = "photo-select-check";
-            check.textContent = selected ? "✓" : "";
-            card.appendChild(check);
-        }
-
-        bindPhotoContextLongPress(card, photo);
-
-        card.addEventListener("click", event => {
-            if (isPhotoMultiSelectActive()) {
-                event.preventDefault();
-                event.stopPropagation();
-                togglePhotoSelection(photo);
-                return;
-            }
-
-            if (Date.now() < Number(state.suppressPhotoOpenUntil || 0)) {
-                event.preventDefault();
-                event.stopPropagation();
-                return;
-            }
-            void openPhotoViewer(photo, state.currentAlbum);
-        });
-        dom.photos.appendChild(card);
-    });
-
-    if (state.photosLoadingMore) {
-        const loading = document.createElement("div");
-        loading.className = "status-message";
-        loading.textContent = "Загружаем ещё фотографии...";
-        dom.photos.appendChild(loading);
-    }
+    appendPhotoCards(photosToRender);
+    setPhotoLoadingMoreVisible(state.photosLoadingMore);
 }

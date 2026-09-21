@@ -1,6 +1,6 @@
-import { vkApi } from "./vk-api.js?v=20260921-photoindex25";
-import { getOwnerId } from "./group-context.js?v=20260921-photoindex25";
-import { state } from "./state.js?v=20260921-photoindex25";
+import { vkApi } from "./vk-api.js?v=20260921-scroll26";
+import { getOwnerId } from "./group-context.js?v=20260921-scroll26";
+import { state } from "./state.js?v=20260921-scroll26";
 
 function errorCode(error) {
     return Number(
