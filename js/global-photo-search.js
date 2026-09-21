@@ -1,15 +1,17 @@
-import { state } from "./state.js?v=20260920-albumtools18";
-import { vkApi } from "./vk-api.js?v=20260920-albumtools18";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools18";
-import { getPhotoPreviewUrl, getErrorMessage } from "./helpers.js?v=20260920-albumtools18";
-import { ensureAlbumIndex } from "./albums.js?v=20260920-albumtools18";
-import { openAlbum } from "./photos.js?v=20260920-albumtools18";
-import { openPhotoViewer } from "./photo-viewer.js?v=20260920-albumtools18";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools18";
+import { state } from "./state.js?v=20260921-photoindex20";
+import { vkApi } from "./vk-api.js?v=20260921-photoindex20";
+import { getOwnerId } from "./group-context.js?v=20260921-photoindex20";
+import { getPhotoPreviewUrl, getErrorMessage } from "./helpers.js?v=20260921-photoindex20";
+import { ensureAlbumIndex } from "./albums.js?v=20260921-photoindex20";
+import { openAlbum } from "./photos.js?v=20260921-photoindex20";
+import { openPhotoViewer } from "./photo-viewer.js?v=20260921-photoindex20";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260921-photoindex20";
+import { getPhotoIndexSnapshot } from "./photo-index-db.js?v=20260921-photoindex20";
+import { synchronizePhotoIndex } from "./photo-index-sync.js?v=20260921-photoindex20";
 
-const PAGE_SIZE = 200;
-const MAX_PAGES = 250;
 const MAX_RENDERED_RESULTS = 240;
+const FALLBACK_PAGE_SIZE = 200;
+const FALLBACK_MAX_PAGES = 250;
 
 let overlay = null;
 let input = null;
@@ -24,6 +26,9 @@ let loading = false;
 let loadedAll = false;
 let generation = 0;
 let initialized = false;
+let indexOwnerId = 0;
+let indexHydrated = false;
+let syncMode = "";
 
 function create(tag, className = "", text = "") {
     const element = document.createElement(tag);
@@ -269,7 +274,7 @@ function filteredPhotos() {
     const tokens = q.split(" ").filter(Boolean);
 
     return allPhotos.filter(photo => {
-        const text = normalize(photo?.text || "");
+        const text = String(photo?.search_text || "") || normalize(photo?.text || "");
         return tokens.every(token => text.includes(token));
     });
 }
@@ -283,8 +288,12 @@ function render() {
 
     if (!q) {
         status.textContent = loadedAll
-            ? `Индекс готов: ${allPhotos.length} фото. Введите текст описания.`
-            : (loading ? `Индексируем фотографии… ${allPhotos.length}${totalPhotos ? ` из ${totalPhotos}` : ""}` : "Введите текст из описания фотографии.");
+            ? (loading
+                ? `Индекс готов: ${allPhotos.length} фото · проверяем изменения…`
+                : `Индекс готов: ${allPhotos.length} фото. Введите текст описания.`)
+            : (loading
+                ? `Индексируем фотографии… ${allPhotos.length}${totalPhotos ? ` из ${totalPhotos}` : ""}`
+                : "Введите текст из описания фотографии.");
         results.appendChild(create("div", "global-photo-search-empty", "Поиск выполняется по описаниям фотографий во всех альбомах."));
         return;
     }
@@ -292,8 +301,10 @@ function render() {
     const matches = filteredPhotos();
     const shown = matches.slice(0, MAX_RENDERED_RESULTS);
 
-    if (loading) {
-        status.textContent = `Ищем во всех альбомах… загружено ${allPhotos.length}${totalPhotos ? ` из ${totalPhotos}` : ""}. Найдено: ${matches.length}`;
+    if (loading && loadedAll) {
+        status.textContent = `Найдено: ${matches.length} · локальный индекс обновляется в фоне`;
+    } else if (loading) {
+        status.textContent = `Ищем во всех альбомах… проиндексировано ${allPhotos.length}${totalPhotos ? ` из ${totalPhotos}` : ""}. Найдено: ${matches.length}`;
     } else if (matches.length > shown.length) {
         status.textContent = `Найдено ${matches.length}. Показаны первые ${shown.length}. Уточните запрос.`;
     } else {
@@ -349,74 +360,133 @@ function render() {
     }
 }
 
-function mergePhotos(current, incoming) {
-    const map = new Map(current.map(photo => [`${photo.owner_id || ""}_${photo.id}`, photo]));
-    incoming.forEach(photo => map.set(`${photo.owner_id || ""}_${photo.id}`, photo));
-    return [...map.values()];
-}
+async function hydratePersistentIndex() {
+    const ownerId = Number(getOwnerId());
+    if (!ownerId) return;
+    if (indexHydrated && indexOwnerId === ownerId) return;
 
-async function loadAllPhotos({ force = false } = {}) {
-    if (loading) return;
-    if (loadedAll && !force) return;
+    indexOwnerId = ownerId;
+    indexHydrated = true;
 
-    if (force) {
+    try {
+        const snapshot = await getPhotoIndexSnapshot(ownerId);
+        allPhotos = Array.isArray(snapshot.items) ? snapshot.items : [];
+        totalPhotos = Math.max(Number(snapshot.meta?.total || 0), allPhotos.length);
+        loadedAll = Boolean(snapshot.meta?.complete);
+    } catch (error) {
+        // IndexedDB может быть отключён старым WebView. В этом случае поиск
+        // всё равно сможет построить временный индекс в RAM через synchronize.
+        console.warn("Не удалось прочитать постоянный фотоиндекс:", error);
         allPhotos = [];
         totalPhotos = 0;
         loadedAll = false;
     }
 
+    render();
+}
+
+async function loadMemoryFallbackFromVk(ownerId, currentGeneration) {
+    let itemsAll = [];
+    const seen = new Set();
+    let offset = 0;
+    let total = 0;
+    let pages = 0;
+
+    while (pages < FALLBACK_MAX_PAGES) {
+        const response = await vkApi("photos.getAll", {
+            owner_id: Number(ownerId),
+            extended: 0,
+            photo_sizes: 1,
+            count: FALLBACK_PAGE_SIZE,
+            offset
+        });
+        if (currentGeneration !== generation) return;
+
+        const items = Array.isArray(response?.items) ? response.items : [];
+        const count = Number(response?.count || 0);
+        if (Number.isFinite(count) && count >= 0) total = Math.max(total, count);
+
+        for (const photo of items) {
+            const key = `${Number(photo?.owner_id || ownerId)}:${Number(photo?.id || 0)}`;
+            if (!photo?.id || seen.has(key)) continue;
+            seen.add(key);
+            itemsAll.push(photo);
+        }
+
+        offset += items.length;
+        pages += 1;
+        allPhotos = itemsAll;
+        totalPhotos = Math.max(total, allPhotos.length);
+        render();
+
+        if (!items.length || items.length < FALLBACK_PAGE_SIZE || (total > 0 && offset >= total)) {
+            loadedAll = true;
+            return;
+        }
+    }
+
+    throw new Error("Временная индексация достигла защитного лимита страниц.");
+}
+
+async function loadAllPhotos({ force = false } = {}) {
+    if (loading) return;
+
+    await hydratePersistentIndex();
+
+    const hadCompleteIndex = loadedAll;
     loading = true;
+    syncMode = force ? "full" : "sync";
     const currentGeneration = ++generation;
     render();
 
     try {
-        // Не запускаем две тяжёлые пагинации VK одновременно: основной
-        // индекс альбомов обычно уже строится при старте приложения. Дожидаемся
-        // его и затем последовательно читаем фотографии через photos.getAll.
-        await ensureAlbumIndex();
-        if (currentGeneration !== generation) return;
+        // Названия альбомов нужны только для подписей найденных карточек.
+        // Фотоиндекс живёт отдельно в IndexedDB и не зависит от готовности
+        // краткосрочного localStorage-кэша экранов.
+        void ensureAlbumIndex().then(() => render()).catch(() => {});
 
-        const ownerId = getOwnerId();
-        let offset = allPhotos.length;
-        let pages = 0;
-
-        while (pages < MAX_PAGES) {
-            const response = await vkApi("photos.getAll", {
-                owner_id: ownerId,
-                extended: 1,
-                photo_sizes: 1,
-                count: PAGE_SIZE,
-                offset
-            });
-
-            if (currentGeneration !== generation) return;
-
-            const items = Array.isArray(response?.items) ? response.items : [];
-            const count = Number(response?.count || 0);
-            if (Number.isFinite(count) && count >= 0) totalPhotos = Math.max(totalPhotos, count);
-
-            const before = allPhotos.length;
-            allPhotos = mergePhotos(allPhotos, items);
-            const added = allPhotos.length - before;
-
-            offset += items.length;
-            pages += 1;
-            render();
-
-            if (!items.length || items.length < PAGE_SIZE || added === 0 || (totalPhotos > 0 && offset >= totalPhotos)) {
-                break;
+        const ownerId = Number(getOwnerId());
+        const snapshot = await synchronizePhotoIndex(ownerId, {
+            forceFull: force,
+            onProgress(progress) {
+                if (currentGeneration !== generation) return;
+                syncMode = progress?.mode || syncMode;
+                if (!hadCompleteIndex && progress?.mode === "full" && Array.isArray(progress.photos)) {
+                    // Только при САМОМ ПЕРВОМ построении показываем уже полученные
+                    // страницы. При плановой полной сверке продолжаем искать по
+                    // старому целому индексу до атомарной замены в конце.
+                    allPhotos = progress.photos;
+                    totalPhotos = Math.max(Number(progress.total || 0), allPhotos.length);
+                    loadedAll = false;
+                }
+                render();
             }
-        }
+        });
 
         if (currentGeneration !== generation) return;
-        loadedAll = true;
+        allPhotos = Array.isArray(snapshot?.items) ? snapshot.items : [];
+        totalPhotos = Math.max(Number(snapshot?.meta?.total || 0), allPhotos.length);
+        loadedAll = Boolean(snapshot?.meta?.complete);
     } catch (error) {
         if (currentGeneration !== generation) return;
-        status.textContent = `Не удалось продолжить глобальный поиск: ${getErrorMessage(error)}`;
-        console.warn("Глобальный поиск фотографий:", error);
+
+        const message = getErrorMessage(error);
+        if (/IndexedDB/i.test(message)) {
+            try {
+                await loadMemoryFallbackFromVk(getOwnerId(), currentGeneration);
+                status.textContent = "Постоянный кэш недоступен; используется временный индекс до закрытия приложения.";
+            } catch (fallbackError) {
+                status.textContent = `Не удалось обновить глобальный индекс: ${getErrorMessage(fallbackError)}`;
+                console.warn("Временный глобальный поиск фотографий:", fallbackError);
+            }
+        } else {
+            status.textContent = `Не удалось обновить глобальный индекс: ${message}`;
+            console.warn("Глобальный поиск фотографий:", error);
+        }
     } finally {
         if (currentGeneration === generation) {
             loading = false;
+            syncMode = "";
             render();
         }
     }
@@ -433,7 +503,7 @@ function ensureUi() {
     const title = create("div", "global-photo-search-title", "Поиск фотографий");
     refreshButton = create("button", "global-photo-search-icon-button", "↻");
     refreshButton.type = "button";
-    refreshButton.title = "Перестроить индекс";
+    refreshButton.title = "Полная синхронизация индекса";
     const close = create("button", "global-photo-search-icon-button", "×");
     close.type = "button";
     close.title = "Закрыть";
@@ -463,7 +533,7 @@ function ensureUi() {
     input.addEventListener("input", () => {
         query = input.value;
         render();
-        if (normalize(query) && !loadedAll) void loadAllPhotos();
+        if (normalize(query) && !loadedAll && !loading) void loadAllPhotos();
     });
 
     clearButton.addEventListener("click", () => {
@@ -499,7 +569,9 @@ export async function openGlobalPhotoSearch() {
     // параллельно и не задерживает сам поиск по фотографиям.
     void ensureAlbumIndex().then(() => render()).catch(() => {});
 
-    if (normalize(query) && !loadedAll) void loadAllPhotos();
+    void hydratePersistentIndex().then(() => {
+        if (!loading) void loadAllPhotos();
+    });
     requestAnimationFrame(() => input.focus());
 }
 
@@ -512,4 +584,20 @@ export function initGlobalPhotoSearch() {
     if (initialized) return;
     initialized = true;
     ensureUi();
+
+    window.addEventListener("photo-index-updated", async event => {
+        const ownerId = Number(event?.detail?.ownerId || 0);
+        if (!ownerId || ownerId !== Number(getOwnerId())) return;
+        try {
+            const snapshot = await getPhotoIndexSnapshot(ownerId);
+            allPhotos = Array.isArray(snapshot.items) ? snapshot.items : [];
+            totalPhotos = Math.max(Number(snapshot.meta?.total || 0), allPhotos.length);
+            loadedAll = Boolean(snapshot.meta?.complete);
+            indexOwnerId = ownerId;
+            indexHydrated = true;
+            render();
+        } catch (error) {
+            console.warn("Не удалось перечитать обновлённый фотоиндекс:", error);
+        }
+    });
 }

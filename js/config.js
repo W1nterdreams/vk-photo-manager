@@ -6,7 +6,7 @@ export const VK_API_VERSION = "5.199";
 // поэтому TTL можно держать коротким и не показывать пользователю устаревшее долго.
 export const CACHE_TTL = {
     albums: 2 * 60 * 1000,
-    albumIndex: 5 * 60 * 1000,
+    albumIndex: 30 * 60 * 1000,
     photos: 2 * 60 * 1000,
     comments: 2 * 60 * 1000
 };

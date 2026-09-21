@@ -1,14 +1,15 @@
-import { state } from "./state.js?v=20260920-albumtools18";
-import { dom } from "./dom.js?v=20260920-albumtools18";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools18";
-import { closeMenu } from "./main-menu.js?v=20260920-albumtools18";
-import { openVkTarget } from "./vk-links.js?v=20260920-albumtools18";
-import { loadPhotos } from "./photos.js?v=20260920-albumtools18";
-import { renderAlbums } from "./albums.js?v=20260920-albumtools18";
+import { state } from "./state.js?v=20260921-photoindex20";
+import { dom } from "./dom.js?v=20260921-photoindex20";
+import { getOwnerId } from "./group-context.js?v=20260921-photoindex20";
+import { closeMenu } from "./main-menu.js?v=20260921-photoindex20";
+import { openVkTarget } from "./vk-links.js?v=20260921-photoindex20";
+import { loadPhotos } from "./photos.js?v=20260921-photoindex20";
+import { renderAlbums } from "./albums.js?v=20260921-photoindex20";
 import {
     invalidateAlbumCaches,
     invalidateAlbumPhotosCache
-} from "./cache.js?v=20260920-albumtools18";
+} from "./cache.js?v=20260921-photoindex20";
+import { markPhotoIndexAlbumDirty } from "./photo-index-db.js?v=20260921-photoindex20";
 
 function findAlbum(albumId) {
     const id = String(albumId || "");
@@ -48,6 +49,11 @@ async function openNativeUpload() {
         window.alert("Не удалось открыть альбом в VK.");
         return;
     }
+
+    const ownerId = Number(album.owner_id || getOwnerId());
+    markPhotoIndexAlbumDirty(ownerId, Number(album.id), "album-upload");
+    invalidateAlbumPhotosCache(ownerId, Number(album.id));
+    invalidateAlbumCaches(ownerId);
 
     openVkTarget(target, {
         type: "album-upload",

@@ -1,17 +1,20 @@
-import { state } from "./state.js?v=20260920-albumtools18";
-import { dom } from "./dom.js?v=20260920-albumtools18";
-import { vkApi } from "./vk-api.js?v=20260920-albumtools18";
-import { getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260920-albumtools18";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools18";
+import { state } from "./state.js?v=20260921-photoindex20";
+import { dom } from "./dom.js?v=20260921-photoindex20";
+import { vkApi } from "./vk-api.js?v=20260921-photoindex20";
+import { getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260921-photoindex20";
+import { getOwnerId } from "./group-context.js?v=20260921-photoindex20";
 import {
     invalidateAlbumPhotosCache,
-    invalidateAlbumCaches
-} from "./cache.js?v=20260920-albumtools18";
-import { closeMenu } from "./main-menu.js?v=20260920-albumtools18";
-import { openPhotoTransfer } from "./photo-transfer.js?v=20260920-albumtools18";
-import { openPhotoReorder } from "./photo-reorder.js?v=20260920-albumtools18";
-import { openVkPhoto } from "./vk-links.js?v=20260920-albumtools18";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools18";
+    invalidateAlbumCaches,
+    invalidatePhotoActivityCaches
+} from "./cache.js?v=20260921-photoindex20";
+import { closeMenu } from "./main-menu.js?v=20260921-photoindex20";
+import { openPhotoTransfer } from "./photo-transfer.js?v=20260921-photoindex20";
+import { openPhotoReorder } from "./photo-reorder.js?v=20260921-photoindex20";
+import { openVkPhoto } from "./vk-links.js?v=20260921-photoindex20";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260921-photoindex20";
+import { markPhotoIndexAlbumDirty, clearPhotoIndexAlbumDirty } from "./photo-index-db.js?v=20260921-photoindex20";
+import { applyLocalPhotoUpdate, applyLocalPhotoDelete } from "./photo-index-sync.js?v=20260921-photoindex20";
 
 let editOverlay = null;
 let editInput = null;
@@ -335,6 +338,7 @@ async function refreshAfterNativeDelete(detail) {
     invalidateAlbumCaches(ownerId);
 
     let photoStillExists = true;
+    let freshPhoto = null;
     if (photoId) {
         try {
             const result = await vkApi("photos.getById", {
@@ -343,8 +347,19 @@ async function refreshAfterNativeDelete(detail) {
                 photo_sizes: 1
             });
             photoStillExists = Array.isArray(result) && result.length > 0;
+            freshPhoto = photoStillExists ? result[0] : null;
+
+            // Для удаления не нужно перечитывать весь альбом ради глобального
+            // индекса: точная проверка photo_id уже говорит, что делать.
+            if (photoStillExists && freshPhoto) {
+                await applyLocalPhotoUpdate(freshPhoto);
+            } else {
+                await applyLocalPhotoDelete(ownerId, photoId);
+            }
+            clearPhotoIndexAlbumDirty(ownerId, albumId);
         } catch (error) {
             // Ошибка чтения не означает, что фотография точно удалена.
+            // Dirty-метку НЕ снимаем — позже будет полная сверка альбома.
             console.warn("Не удалось проверить фотографию после возврата из VK:", error);
         }
     }
@@ -357,7 +372,7 @@ async function refreshAfterNativeDelete(detail) {
 
     if (album) {
         try {
-            const { loadPhotos } = await import("./photos.js?v=20260920-albumtools18");
+            const { loadPhotos } = await import("./photos.js?v=20260921-photoindex20");
             await loadPhotos(album, { force: true });
         } catch (error) {
             console.warn("Не удалось обновить альбом после возврата из VK:", error);
@@ -379,6 +394,12 @@ export async function deletePhoto(photo, { returnFromViewer = false } = {}) {
 
     const ownerId = Number(photo.owner_id || getOwnerId());
     const albumId = Number(photo.album_id || state.currentAlbum?.id || 0);
+
+    // Помечаем альбом устаревшим ДО ухода в нативный VK. Метка хранится
+    // синхронно и переживёт даже выгрузку WebView во время удаления.
+    markPhotoIndexAlbumDirty(ownerId, albumId, "photo-native-delete");
+    invalidatePhotoActivityCaches(ownerId, albumId, Number(photo.id));
+    invalidateAlbumCaches(ownerId);
 
     // Прямой photos.delete у Mini App может быть ограничен токеном/правами.
     // Поэтому открываем оригинальную фотографию в штатном интерфейсе VK,

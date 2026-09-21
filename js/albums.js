@@ -1,9 +1,9 @@
-import { state } from "./state.js?v=20260920-albumtools18";
-import { dom } from "./dom.js?v=20260920-albumtools18";
-import { vkApi } from "./vk-api.js?v=20260920-albumtools18";
-import { getAlbumCover, escapeHtml, getErrorMessage } from "./helpers.js?v=20260920-albumtools18";
-import { openAlbum, loadPhotos } from "./photos.js?v=20260920-albumtools18";
-import { CACHE_TTL } from "./config.js?v=20260920-albumtools18";
+import { state } from "./state.js?v=20260921-photoindex20";
+import { dom } from "./dom.js?v=20260921-photoindex20";
+import { vkApi } from "./vk-api.js?v=20260921-photoindex20";
+import { getAlbumCover, escapeHtml, getErrorMessage } from "./helpers.js?v=20260921-photoindex20";
+import { openAlbum, loadPhotos } from "./photos.js?v=20260921-photoindex20";
+import { CACHE_TTL } from "./config.js?v=20260921-photoindex20";
 import {
     cacheGet,
     cacheGetStale,
@@ -11,9 +11,9 @@ import {
     invalidateAlbumCaches,
     albumsKey,
     albumIndexKey
-} from "./cache.js?v=20260920-albumtools18";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools18";
-import { bindAlbumLongPress } from "./album-menu.js?v=20260920-albumtools18";
+} from "./cache.js?v=20260921-photoindex20";
+import { getOwnerId } from "./group-context.js?v=20260921-photoindex20";
+import { bindAlbumLongPress } from "./album-menu.js?v=20260921-photoindex20";
 
 const PAGE_SIZE = 20;
 const INDEX_PAGE_SIZE = 100;

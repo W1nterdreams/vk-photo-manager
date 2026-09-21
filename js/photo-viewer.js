@@ -1,15 +1,15 @@
-import { state } from "./state.js?v=20260920-albumtools18";
-import { dom } from "./dom.js?v=20260920-albumtools18";
-import { vkApi } from "./vk-api.js?v=20260920-albumtools18";
-import { getBestPhotoUrl, escapeHtml } from "./helpers.js?v=20260920-albumtools18";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools18";
+import { state } from "./state.js?v=20260921-photoindex20";
+import { dom } from "./dom.js?v=20260921-photoindex20";
+import { vkApi } from "./vk-api.js?v=20260921-photoindex20";
+import { getBestPhotoUrl, escapeHtml } from "./helpers.js?v=20260921-photoindex20";
+import { getOwnerId } from "./group-context.js?v=20260921-photoindex20";
 import {
     showPhotoViewerScreen,
     pushPhotoHistory
-} from "./navigation.js?v=20260920-albumtools18";
-import { photoCommentOwnerId } from "./photo-comment-api.js?v=20260920-albumtools18";
-import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260920-albumtools18";
-import { invalidatePhotoActivityCaches } from "./cache.js?v=20260920-albumtools18";
+} from "./navigation.js?v=20260921-photoindex20";
+import { photoCommentOwnerId } from "./photo-comment-api.js?v=20260921-photoindex20";
+import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260921-photoindex20";
+import { invalidatePhotoActivityCaches } from "./cache.js?v=20260921-photoindex20";
 
 const COMMENT_PAGE_SIZE = 100;
 const LONG_PRESS_MS = 460;
@@ -457,7 +457,9 @@ function renderPhotoComments() {
         openVk.className = "secondary-button photo-viewer-open-vk-comment";
         openVk.textContent = "Написать первый комментарий в VK";
         openVk.addEventListener("click", () => {
-            openVkPhoto(activePhoto, photoCommentOwnerId(activePhoto));
+            const ownerId = photoCommentOwnerId(activePhoto);
+            invalidatePhotoActivityCaches(ownerId, Number(activePhoto?.album_id || activeAlbum?.id || 0), Number(activePhoto?.id || 0));
+            openVkPhoto(activePhoto, ownerId);
         });
 
         empty.append(message, openVk);
@@ -505,10 +507,15 @@ function renderPhotoComments() {
         reply.className = "comment-reply-link";
         reply.textContent = "Ответить";
         reply.addEventListener("click", () => {
+            // Сбрасываем кэш до нативного перехода: возвратное событие может
+            // не прийти, если WebView выгрузится системой.
+            const ownerId = photoCommentOwnerId(activePhoto);
+            invalidatePhotoActivityCaches(ownerId, Number(activePhoto?.album_id || activeAlbum?.id || 0), Number(activePhoto?.id || 0));
+
             // Ответы через photos.createComment из Mini App запрещены VK
             // для non-standalone приложений. Открываем фотографию в
             // нативном VK и отвечаем штатными средствами VK.
-            openVkPhoto(activePhoto, photoCommentOwnerId(activePhoto));
+            openVkPhoto(activePhoto, ownerId);
         });
         actions.appendChild(reply);
 

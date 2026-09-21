@@ -1,18 +1,18 @@
-import { state } from "./state.js?v=20260920-albumtools18";
+import { state } from "./state.js?v=20260921-photoindex20";
 import {
     downloadPhotoFile,
     openPhotoDescriptionEditor,
     deletePhoto,
     makePhotoAlbumCover
-} from "./photo-menu.js?v=20260920-albumtools18";
-import { openPhotoTransfer } from "./photo-transfer.js?v=20260920-albumtools18";
-import { openPhotoReorder } from "./photo-reorder.js?v=20260920-albumtools18";
-import { getErrorMessage } from "./helpers.js?v=20260920-albumtools18";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools18";
+} from "./photo-menu.js?v=20260921-photoindex20";
+import { openPhotoTransfer } from "./photo-transfer.js?v=20260921-photoindex20";
+import { openPhotoReorder } from "./photo-reorder.js?v=20260921-photoindex20";
+import { getErrorMessage } from "./helpers.js?v=20260921-photoindex20";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260921-photoindex20";
 import {
     isPhotoMultiSelectActive,
     startPhotoMultiSelect
-} from "./photo-multiselect.js?v=20260920-albumtools18";
+} from "./photo-multiselect.js?v=20260921-photoindex20";
 
 const LONG_PRESS_MS = 520;
 const MOVE_CANCEL_PX = 12;

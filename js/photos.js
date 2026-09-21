@@ -1,22 +1,23 @@
-import { state } from "./state.js?v=20260920-albumtools18";
-import { dom } from "./dom.js?v=20260920-albumtools18";
-import { vkApi } from "./vk-api.js?v=20260920-albumtools18";
-import { getPhotoPreviewUrl, escapeHtml, getErrorMessage } from "./helpers.js?v=20260920-albumtools18";
-import { showPhotosScreen, pushAlbumHistory } from "./navigation.js?v=20260920-albumtools18";
-import { CACHE_TTL } from "./config.js?v=20260920-albumtools18";
-import { cacheGet, cacheGetStale, cacheSet, albumPhotosKey } from "./cache.js?v=20260920-albumtools18";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools18";
-import { openPhotoViewer } from "./photo-viewer.js?v=20260920-albumtools18";
-import { bindPhotoContextLongPress } from "./photo-context-menu.js?v=20260920-albumtools18";
+import { state } from "./state.js?v=20260921-photoindex20";
+import { dom } from "./dom.js?v=20260921-photoindex20";
+import { vkApi } from "./vk-api.js?v=20260921-photoindex20";
+import { getPhotoPreviewUrl, escapeHtml, getErrorMessage } from "./helpers.js?v=20260921-photoindex20";
+import { showPhotosScreen, pushAlbumHistory } from "./navigation.js?v=20260921-photoindex20";
+import { CACHE_TTL } from "./config.js?v=20260921-photoindex20";
+import { cacheGet, cacheGetStale, cacheSet, albumPhotosKey } from "./cache.js?v=20260921-photoindex20";
+import { getOwnerId } from "./group-context.js?v=20260921-photoindex20";
+import { openPhotoViewer } from "./photo-viewer.js?v=20260921-photoindex20";
+import { bindPhotoContextLongPress } from "./photo-context-menu.js?v=20260921-photoindex20";
 import {
     isPhotoMultiSelectActive,
     isPhotoSelected,
     togglePhotoSelection,
     cancelPhotoMultiSelect
-} from "./photo-multiselect.js?v=20260920-albumtools18";
+} from "./photo-multiselect.js?v=20260921-photoindex20";
 
 const PAGE_SIZE = 20;
 const SORT_FETCH_SIZE = 100;
+const UI_PHOTO_CACHE_LIMIT = 60;
 
 let sortingAllPhotos = false;
 let photoSortControlsInitialized = false;
@@ -285,8 +286,10 @@ async function fetchPhotoPage(album, offset, count = PAGE_SIZE) {
 
 function savePhotosCache(album) {
     const ownerId = getOwnerId();
+    // localStorage оставляем только как быстрый UI-кэш. Никогда не кладём
+    // туда целый большой альбом: полный поисковый индекс хранится в IndexedDB.
     cacheSet(albumPhotosKey(ownerId, album.id), {
-        items: state.photos,
+        items: state.photos.slice(0, UI_PHOTO_CACHE_LIMIT),
         total: state.photosTotal
     });
 }

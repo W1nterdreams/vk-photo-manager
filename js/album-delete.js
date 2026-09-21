@@ -1,6 +1,8 @@
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools18";
-import { openVkTarget } from "./vk-links.js?v=20260920-albumtools18";
-import { loadAlbums } from "./albums.js?v=20260920-albumtools18";
+import { getOwnerId } from "./group-context.js?v=20260921-photoindex20";
+import { openVkTarget } from "./vk-links.js?v=20260921-photoindex20";
+import { loadAlbums, ensureAlbumIndex } from "./albums.js?v=20260921-photoindex20";
+import { invalidateAlbumCaches, invalidateCommentCaches } from "./cache.js?v=20260921-photoindex20";
+import { markPhotoIndexAlbumDirty } from "./photo-index-db.js?v=20260921-photoindex20";
 
 let waitingForVkReturn = false;
 let refreshingAfterReturn = false;
@@ -23,6 +25,7 @@ async function refreshAfterVkReturn() {
 
     try {
         await loadAlbums({ force: true });
+        void ensureAlbumIndex({ force: true });
     } catch (error) {
         console.warn("Не удалось обновить альбомы после возврата из VK:", error);
     } finally {
@@ -54,8 +57,17 @@ function openAlbumDeleteInVk(album) {
 
     if (!confirmed) return;
 
+    const ownerId = Number(album.owner_id || getOwnerId());
+    markPhotoIndexAlbumDirty(ownerId, albumId, "album-native-delete");
+    invalidateAlbumCaches(ownerId);
+    invalidateCommentCaches(ownerId);
+
     waitingForVkReturn = true;
-    openVkTarget(link);
+    openVkTarget(link, {
+        type: "album-native-delete",
+        ownerId,
+        albumId
+    });
 }
 
 export function initAlbumDelete() {

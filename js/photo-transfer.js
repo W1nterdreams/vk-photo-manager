@@ -1,13 +1,16 @@
-import { state } from "./state.js?v=20260920-albumtools18";
-import { vkApi } from "./vk-api.js?v=20260920-albumtools18";
-import { getAlbumCover, getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260920-albumtools18";
-import { getOwnerId } from "./group-context.js?v=20260920-albumtools18";
+import { state } from "./state.js?v=20260921-photoindex20";
+import { vkApi } from "./vk-api.js?v=20260921-photoindex20";
+import { getAlbumCover, getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260921-photoindex20";
+import { getOwnerId } from "./group-context.js?v=20260921-photoindex20";
 import {
     invalidateAlbumCaches,
-    invalidateAlbumPhotosCache
-} from "./cache.js?v=20260920-albumtools18";
-import { openVkTarget, openVkPhoto } from "./vk-links.js?v=20260920-albumtools18";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260920-albumtools18";
+    invalidateAlbumPhotosCache,
+    invalidateCommentCaches
+} from "./cache.js?v=20260921-photoindex20";
+import { openVkTarget, openVkPhoto } from "./vk-links.js?v=20260921-photoindex20";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260921-photoindex20";
+import { markPhotoIndexAlbumDirty } from "./photo-index-db.js?v=20260921-photoindex20";
+import { applyLocalPhotoMove } from "./photo-index-sync.js?v=20260921-photoindex20";
 
 const ALBUM_PAGE_SIZE = 100;
 const MAX_ALBUM_PAGES = 200;
@@ -593,7 +596,9 @@ async function movePhoto(album) {
     invalidateAlbumPhotosCache(ownerId, sourceAlbumId);
     invalidateAlbumPhotosCache(ownerId, Number(album.id));
     invalidateAlbumCaches(ownerId);
+    invalidateCommentCaches(ownerId, { photoId: Number(photo.id) });
     updateAlbumSizes(sourceAlbumId, Number(album.id));
+    await applyLocalPhotoMove(photo, Number(album.id));
 
     state.photos = state.photos.filter(item => Number(item.id) !== Number(photo.id));
     state.photosTotal = Math.max(0, Number(state.photosTotal || 0) - 1);
@@ -606,7 +611,7 @@ async function movePhoto(album) {
     // устаревшую карточку и сразу синхронизирует счётчик фотографий.
     if (sourceAlbum) {
         try {
-            const { loadPhotos } = await import("./photos.js?v=20260920-albumtools18");
+            const { loadPhotos } = await import("./photos.js?v=20260921-photoindex20");
             await loadPhotos(sourceAlbum, { force: true });
         } catch (error) {
             console.warn("Не удалось обновить альбом после перемещения фотографии:", error);
@@ -626,7 +631,7 @@ async function refreshSourceAlbumAfterMove(sourceAlbum) {
     if (!sourceAlbum) return;
 
     try {
-        const { loadPhotos } = await import("./photos.js?v=20260920-albumtools18");
+        const { loadPhotos } = await import("./photos.js?v=20260921-photoindex20");
         const freshSource = (
             state.currentAlbum && String(state.currentAlbum.id) === String(sourceAlbum.id)
                 ? state.currentAlbum
@@ -683,7 +688,9 @@ async function moveManyPhotos(album, busyLabel, sourceButton) {
         invalidateAlbumPhotosCache(ownerId, sourceAlbumId);
         invalidateAlbumPhotosCache(ownerId, targetAlbumId);
         invalidateAlbumCaches(ownerId);
+        moved.forEach(photo => invalidateCommentCaches(ownerId, { photoId: Number(photo.id) }));
         updateAlbumSizes(sourceAlbumId, targetAlbumId, moved.length);
+        await applyLocalPhotoMove(moved, targetAlbumId);
 
         const movedIds = new Set(moved.map(photo => String(photo.id)));
         state.photos = state.photos.filter(photo => !movedIds.has(String(photo.id)));
@@ -742,6 +749,7 @@ async function copyPhotoNative(album) {
 
     invalidateAlbumPhotosCache(ownerId, Number(album.id));
     invalidateAlbumCaches(ownerId);
+    markPhotoIndexAlbumDirty(ownerId, Number(album.id), "photo-copy-target");
 
     busy = false;
     await closeSwipeOverlay("photo-transfer");
