@@ -1,15 +1,15 @@
-import { state } from "./state.js?v=20260921-photoindex20";
-import { dom } from "./dom.js?v=20260921-photoindex20";
-import { vkApi } from "./vk-api.js?v=20260921-photoindex20";
-import { getBestPhotoUrl, escapeHtml } from "./helpers.js?v=20260921-photoindex20";
-import { getOwnerId } from "./group-context.js?v=20260921-photoindex20";
+import { state } from "./state.js?v=20260921-photoindex23";
+import { dom } from "./dom.js?v=20260921-photoindex23";
+import { vkApi } from "./vk-api.js?v=20260921-photoindex23";
+import { getBestPhotoUrl, getPhotoPreviewUrl, escapeHtml } from "./helpers.js?v=20260921-photoindex23";
+import { getOwnerId } from "./group-context.js?v=20260921-photoindex23";
 import {
     showPhotoViewerScreen,
     pushPhotoHistory
-} from "./navigation.js?v=20260921-photoindex20";
-import { photoCommentOwnerId } from "./photo-comment-api.js?v=20260921-photoindex20";
-import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260921-photoindex20";
-import { invalidatePhotoActivityCaches } from "./cache.js?v=20260921-photoindex20";
+} from "./navigation.js?v=20260921-photoindex23";
+import { photoCommentOwnerId } from "./photo-comment-api.js?v=20260921-photoindex23";
+import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260921-photoindex23";
+import { invalidatePhotoActivityCaches } from "./cache.js?v=20260921-photoindex23";
 
 const COMMENT_PAGE_SIZE = 100;
 const LONG_PRESS_MS = 460;
@@ -23,6 +23,9 @@ let comments = [];
 let contextOverlay = null;
 let viewerSequence = 0;
 let imageLoadSequence = 0;
+let pendingHighResPhotoId = "";
+let pendingHighResUrl = "";
+let lastOpenPerf = null;
 
 function normalizeGroupsResponse(response) {
     if (Array.isArray(response)) return response;
@@ -335,8 +338,23 @@ function installLongPress(element, handler) {
     });
 }
 
+function perfNow() {
+    return typeof performance !== "undefined" && typeof performance.now === "function"
+        ? performance.now()
+        : Date.now();
+}
+
+function markViewerPerf(stage, photoId, url = "") {
+    if (!lastOpenPerf || Number(lastOpenPerf.photoId) !== Number(photoId)) return;
+    const now = perfNow();
+    lastOpenPerf[stage] = Math.max(0, now - lastOpenPerf.startedAt);
+    if (url) lastOpenPerf[`${stage}Url`] = url;
+}
+
 function clearPhotoViewerImage() {
     imageLoadSequence += 1;
+    pendingHighResPhotoId = "";
+    pendingHighResUrl = "";
     dom.photoViewerImage.classList.add("is-loading");
     dom.photoViewerImage.removeAttribute("src");
     dom.photoViewerImage.removeAttribute("data-photo-id");
@@ -345,9 +363,9 @@ function clearPhotoViewerImage() {
 }
 
 function setPhotoViewerImage(photo) {
-    const url = getBestPhotoUrl(photo);
     const photoId = String(photo?.id || "");
-    const token = ++imageLoadSequence;
+    const previewUrl = getPhotoPreviewUrl(photo, 200);
+    const highResUrl = getBestPhotoUrl(photo);
     const samePhotoAlreadyVisible = Boolean(
         photoId &&
         dom.photoViewerImage.dataset.photoId === photoId &&
@@ -356,43 +374,71 @@ function setPhotoViewerImage(photo) {
 
     dom.photoViewerImage.alt = photo?.text || "Фотография";
 
-    // При открытии ДРУГОЙ фотографии старый bitmap уже очищен. Если же
-    // photos.getById вернул более качественный URL той же самой фотографии,
-    // оставляем текущее изображение видимым и незаметно подменяем его после
-    // загрузки — без второго мигания.
+    // Самое важное для скорости открытия: при клике не ждём самый большой
+    // файл фотографии. Сразу показываем тот же небольшой URL, который уже
+    // использовался карточкой в сетке и обычно находится в HTTP-кэше WebView.
+    // Затем незаметно подменяем его на максимальное качество.
     if (!samePhotoAlreadyVisible) {
-        dom.photoViewerImage.classList.add("is-loading");
-        dom.photoViewerImage.removeAttribute("src");
+        if (previewUrl) {
+            dom.photoViewerImage.src = previewUrl;
+            dom.photoViewerImage.dataset.photoId = photoId;
+            dom.photoViewerImage.dataset.photoUrl = previewUrl;
+            dom.photoViewerImage.classList.remove("is-loading");
+            markViewerPerf("previewMs", photoId, previewUrl);
+        } else if (highResUrl) {
+            // Нет отдельного preview — браузер начинает загружать доступный URL
+            // сразу. Не прячем <img> до onload: пользователь увидит его в первый
+            // возможный момент, а не после дополнительного JS-preload.
+            dom.photoViewerImage.src = highResUrl;
+            dom.photoViewerImage.dataset.photoId = photoId;
+            dom.photoViewerImage.dataset.photoUrl = highResUrl;
+            dom.photoViewerImage.classList.remove("is-loading");
+            markViewerPerf("previewMs", photoId, highResUrl);
+            return;
+        } else {
+            return;
+        }
     }
 
-    if (!url) return;
-
-    if (
-        samePhotoAlreadyVisible &&
-        dom.photoViewerImage.dataset.photoUrl === url
-    ) {
+    if (!highResUrl) return;
+    if (dom.photoViewerImage.dataset.photoUrl === highResUrl) {
         dom.photoViewerImage.classList.remove("is-loading");
         return;
     }
 
+    // Повторный renderPhotoHeader после photos.getById часто приносит тот же
+    // URL. Не запускаем второй Image() для одной и той же фотографии.
+    if (pendingHighResPhotoId === photoId && pendingHighResUrl === highResUrl) {
+        return;
+    }
+
+    const token = ++imageLoadSequence;
+    pendingHighResPhotoId = photoId;
+    pendingHighResUrl = highResUrl;
+
     const loader = new Image();
+    loader.decoding = "async";
     loader.onload = () => {
         if (token !== imageLoadSequence) return;
         if (state.currentScreen !== "photo") return;
         if (!activePhoto || Number(activePhoto.id) !== Number(photo?.id)) return;
 
-        dom.photoViewerImage.src = url;
+        dom.photoViewerImage.src = highResUrl;
         dom.photoViewerImage.dataset.photoId = photoId;
-        dom.photoViewerImage.dataset.photoUrl = url;
+        dom.photoViewerImage.dataset.photoUrl = highResUrl;
         dom.photoViewerImage.classList.remove("is-loading");
+        pendingHighResPhotoId = "";
+        pendingHighResUrl = "";
+        markViewerPerf("highResMs", photoId, highResUrl);
     };
     loader.onerror = () => {
         if (token !== imageLoadSequence) return;
-        if (!samePhotoAlreadyVisible) {
-            dom.photoViewerImage.classList.add("is-loading");
-        }
+        pendingHighResPhotoId = "";
+        pendingHighResUrl = "";
+        // Preview уже остаётся видимым. Ошибка большого файла не должна делать
+        // фотографию визуально "не открывшейся".
     };
-    loader.src = url;
+    loader.src = highResUrl;
 }
 
 function renderPhotoHeader(photo) {
@@ -570,6 +616,12 @@ export async function openPhotoViewer(photo, album, {
 
     const seq = ++viewerSequence;
     const requestedPhotoId = Number(photo.id);
+    lastOpenPerf = {
+        photoId: requestedPhotoId,
+        startedAt: perfNow(),
+        previewMs: null,
+        highResMs: null
+    };
 
     activeAlbum = album || state.currentAlbum || state.albums.find(a => String(a.id) === String(photo.album_id));
     activePhoto = photo;
@@ -619,6 +671,10 @@ export async function openPhotoViewer(photo, album, {
 export function initPhotoViewer() {
     if (initialized) return;
     initialized = true;
+
+    window.photoViewerDebug = {
+        last: () => lastOpenPerf ? { ...lastOpenPerf } : null
+    };
 
     window.addEventListener("vk-native-return", event => {
         void refreshAfterNativePhotoReturn(event?.detail);

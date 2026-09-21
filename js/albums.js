@@ -1,9 +1,9 @@
-import { state } from "./state.js?v=20260921-photoindex20";
-import { dom } from "./dom.js?v=20260921-photoindex20";
-import { vkApi } from "./vk-api.js?v=20260921-photoindex20";
-import { getAlbumCover, escapeHtml, getErrorMessage } from "./helpers.js?v=20260921-photoindex20";
-import { openAlbum, loadPhotos } from "./photos.js?v=20260921-photoindex20";
-import { CACHE_TTL } from "./config.js?v=20260921-photoindex20";
+import { state } from "./state.js?v=20260921-photoindex23";
+import { dom } from "./dom.js?v=20260921-photoindex23";
+import { vkApi } from "./vk-api.js?v=20260921-photoindex23";
+import { getAlbumCover, escapeHtml, getErrorMessage } from "./helpers.js?v=20260921-photoindex23";
+import { openAlbum, loadPhotos } from "./photos.js?v=20260921-photoindex23";
+import { CACHE_TTL } from "./config.js?v=20260921-photoindex23";
 import {
     cacheGet,
     cacheGetStale,
@@ -11,9 +11,9 @@ import {
     invalidateAlbumCaches,
     albumsKey,
     albumIndexKey
-} from "./cache.js?v=20260921-photoindex20";
-import { getOwnerId } from "./group-context.js?v=20260921-photoindex20";
-import { bindAlbumLongPress } from "./album-menu.js?v=20260921-photoindex20";
+} from "./cache.js?v=20260921-photoindex23";
+import { getOwnerId } from "./group-context.js?v=20260921-photoindex23";
+import { bindAlbumLongPress } from "./album-menu.js?v=20260921-photoindex23";
 
 const PAGE_SIZE = 20;
 const INDEX_PAGE_SIZE = 100;
@@ -431,8 +431,10 @@ function createAlbumCard(album) {
         const img = document.createElement("img");
         img.className = "album-cover";
         img.src = cover;
+
         img.alt = displayAlbum.title || "";
         img.loading = "lazy";
+        img.decoding = "async";
         card.appendChild(img);
     } else {
         const placeholder = document.createElement("div");
