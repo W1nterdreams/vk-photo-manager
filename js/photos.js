@@ -1,19 +1,21 @@
-import { state } from "./state.js?v=20260921-scroll26";
-import { dom } from "./dom.js?v=20260921-scroll26";
-import { vkApi } from "./vk-api.js?v=20260921-scroll26";
-import { getPhotoPreviewUrl, escapeHtml, getErrorMessage } from "./helpers.js?v=20260921-scroll26";
-import { showPhotosScreen, pushAlbumHistory } from "./navigation.js?v=20260921-scroll26";
-import { CACHE_TTL } from "./config.js?v=20260921-scroll26";
-import { cacheGet, cacheGetStale, cacheSet, albumPhotosKey } from "./cache.js?v=20260921-scroll26";
-import { getOwnerId } from "./group-context.js?v=20260921-scroll26";
-import { openPhotoViewer } from "./photo-viewer.js?v=20260921-scroll26";
-import { bindPhotoContextLongPress } from "./photo-context-menu.js?v=20260921-scroll26";
+import { state } from "./state.js?v=20260922-adminonly28";
+import { dom } from "./dom.js?v=20260922-adminonly28";
+import { vkApi } from "./vk-api.js?v=20260922-adminonly28";
+import { getPhotoPreviewUrl, escapeHtml, getErrorMessage } from "./helpers.js?v=20260922-adminonly28";
+import { showPhotosScreen, pushAlbumHistory } from "./navigation.js?v=20260922-adminonly28";
+import { CACHE_TTL } from "./config.js?v=20260922-adminonly28";
+import { cacheGet, cacheGetStale, cacheSet, albumPhotosKey } from "./cache.js?v=20260922-adminonly28";
+import { getOwnerId } from "./group-context.js?v=20260922-adminonly28";
+import { openPhotoViewer } from "./photo-viewer.js?v=20260922-adminonly28";
+import { bindPhotoContextLongPress } from "./photo-context-menu.js?v=20260922-adminonly28";
+import { syncPhotoIndexAlbumIfDirty } from "./photo-index-sync.js?v=20260922-adminonly28";
+import { getDirtyPhotoIndexAlbums } from "./photo-index-db.js?v=20260922-adminonly28";
 import {
     isPhotoMultiSelectActive,
     isPhotoSelected,
     togglePhotoSelection,
     cancelPhotoMultiSelect
-} from "./photo-multiselect.js?v=20260921-scroll26";
+} from "./photo-multiselect.js?v=20260922-adminonly28";
 
 const PAGE_SIZE = 20;
 const SORT_FETCH_SIZE = 100;
@@ -434,7 +436,20 @@ export async function openAlbum(album, { fromHistory = false, restoreScroll = 0 
     updatePhotoSearchUi();
 
     try {
-        await loadPhotos(album);
+        const ownerId = getOwnerId();
+        const fingerprintDirty = getDirtyPhotoIndexAlbums(ownerId)
+            .some(entry => Number(entry?.albumId) === Number(album.id));
+
+        // Dirty означает, что отпечаток VK изменился с прошлого снимка. Не
+        // показываем в этом случае сохранённый хвост из 60 карточек как свежий:
+        // первая страница сразу берётся с сервера, а дальше пагинация обычная.
+        await loadPhotos(album, { force: fingerprintDirty });
+
+        // Если полный глобальный фотоиндекс уже существует, в фоне точечно
+        // обновляем и его. Для чистого альбома/непостроенного индекса запросов нет.
+        if (fingerprintDirty) {
+            void syncPhotoIndexAlbumIfDirty(ownerId, album.id);
+        }
     } catch (error) {
         dom.photos.innerHTML =
             `<div class="error">Не удалось загрузить фотографии.<br><br>${escapeHtml(getErrorMessage(error))}</div>`;

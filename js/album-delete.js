@@ -1,8 +1,8 @@
-import { getOwnerId } from "./group-context.js?v=20260921-scroll26";
-import { openVkTarget } from "./vk-links.js?v=20260921-scroll26";
-import { loadAlbums, ensureAlbumIndex } from "./albums.js?v=20260921-scroll26";
-import { invalidateAlbumCaches, invalidateCommentCaches } from "./cache.js?v=20260921-scroll26";
-import { markPhotoIndexAlbumDirty } from "./photo-index-db.js?v=20260921-scroll26";
+import { getOwnerId } from "./group-context.js?v=20260922-adminonly28";
+import { openVkTarget } from "./vk-links.js?v=20260922-adminonly28";
+import { loadAlbums, ensureAlbumIndex } from "./albums.js?v=20260922-adminonly28";
+import { invalidateAlbumCaches, invalidateCommentCaches } from "./cache.js?v=20260922-adminonly28";
+import { markPhotoIndexAlbumDirty } from "./photo-index-db.js?v=20260922-adminonly28";
 
 let waitingForVkReturn = false;
 let refreshingAfterReturn = false;

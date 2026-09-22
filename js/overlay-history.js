@@ -1,4 +1,4 @@
-import { state } from "./state.js?v=20260921-scroll26";
+import { state } from "./state.js?v=20260922-adminonly28";
 
 let activeOverlay = null;
 let closingPromise = null;

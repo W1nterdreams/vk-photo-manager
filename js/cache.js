@@ -1,7 +1,10 @@
 const PREFIX = "vk-photo-manager:v5:";
 const LEGACY_ROOT_PREFIX = "vk-photo-manager:";
 const MAX_STALE_CACHE_AGE = 7 * 24 * 60 * 60 * 1000;
-const PERSISTENT_AUX_PREFIXES = ["vk-photo-manager:photo-index-dirty:v1:"];
+const PERSISTENT_AUX_PREFIXES = [
+    "vk-photo-manager:photo-index-dirty:v1:",
+    "vk-photo-manager:album-fingerprints:v1:"
+];
 let lastPruneAt = 0;
 
 function fullKey(key) {

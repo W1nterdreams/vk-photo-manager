@@ -1,69 +1,147 @@
-import { dom } from "./dom.js?v=20260921-scroll26";
-import { vkInit, loadUser, getAccessToken } from "./vk-api.js?v=20260921-scroll26";
-import { initGroupContext } from "./group-context.js?v=20260921-scroll26";
-import { initAlbums, loadAlbums } from "./albums.js?v=20260921-scroll26";
-import { openAlbum } from "./photos.js?v=20260921-scroll26";
-import { initMainMenu } from "./main-menu.js?v=20260921-scroll26";
-import { initAlbumCreate } from "./album-create.js?v=20260921-scroll26";
-import { initAlbumEdit } from "./album-edit.js?v=20260921-scroll26";
-import { initAlbumDelete } from "./album-delete.js?v=20260921-scroll26";
-import { initAlbumReorder } from "./album-reorder.js?v=20260921-scroll26";
-import { initComments } from "./comments.js?v=20260921-scroll26";
-import { initAlbumComments } from "./album-comments.js?v=20260921-scroll26";
-import { initPhotoViewer, openPhotoViewer } from "./photo-viewer.js?v=20260921-scroll26";
-import { initPhotoUpload } from "./photo-upload.js?v=20260921-scroll26";
-import { initPhotoMenu } from "./photo-menu.js?v=20260921-scroll26";
-import { initPhotoTransfer } from "./photo-transfer.js?v=20260921-scroll26";
-import { initPhotoReorder } from "./photo-reorder.js?v=20260921-scroll26";
-import { initNavigation, showAlbumsScreen } from "./navigation.js?v=20260921-scroll26";
-import { escapeHtml, getErrorMessage, logError } from "./helpers.js?v=20260921-scroll26";
-import { cleanupLegacyCache } from "./cache.js?v=20260921-scroll26";
-import { initGlobalPhotoSearch } from "./global-photo-search.js?v=20260921-scroll26";
-import { initPhotoIndexSync } from "./photo-index-sync.js?v=20260921-scroll26";
+import { dom } from "./dom.js?v=20260922-adminonly28";
+import { vkInit, loadUser, getAccessToken } from "./vk-api.js?v=20260922-adminonly28";
+import {
+    GroupAccessDeniedError,
+    precheckLaunchGroupAccess,
+    initGroupContext
+} from "./group-context.js?v=20260922-adminonly28";
+import { initAlbums, loadAlbums } from "./albums.js?v=20260922-adminonly28";
+import { openAlbum } from "./photos.js?v=20260922-adminonly28";
+import { initMainMenu } from "./main-menu.js?v=20260922-adminonly28";
+import { initAlbumCreate } from "./album-create.js?v=20260922-adminonly28";
+import { initAlbumEdit } from "./album-edit.js?v=20260922-adminonly28";
+import { initAlbumDelete } from "./album-delete.js?v=20260922-adminonly28";
+import { initAlbumReorder } from "./album-reorder.js?v=20260922-adminonly28";
+import { initComments } from "./comments.js?v=20260922-adminonly28";
+import { initAlbumComments } from "./album-comments.js?v=20260922-adminonly28";
+import { initPhotoViewer, openPhotoViewer } from "./photo-viewer.js?v=20260922-adminonly28";
+import { initPhotoUpload } from "./photo-upload.js?v=20260922-adminonly28";
+import { initPhotoMenu } from "./photo-menu.js?v=20260922-adminonly28";
+import { initPhotoTransfer } from "./photo-transfer.js?v=20260922-adminonly28";
+import { initPhotoReorder } from "./photo-reorder.js?v=20260922-adminonly28";
+import { initNavigation, showAlbumsScreen } from "./navigation.js?v=20260922-adminonly28";
+import { escapeHtml, getErrorMessage, logError } from "./helpers.js?v=20260922-adminonly28";
+import { cleanupLegacyCache } from "./cache.js?v=20260922-adminonly28";
+import { initGlobalPhotoSearch } from "./global-photo-search.js?v=20260922-adminonly28";
+import { initPhotoIndexSync } from "./photo-index-sync.js?v=20260922-adminonly28";
+
+function setAppInteractive(enabled) {
+    const app = document.getElementById("app");
+    if (app) {
+        app.inert = !enabled;
+    }
+}
+
+function hideWorkingControls() {
+    dom.menuContainer?.classList.add("hidden");
+    dom.backButton?.classList.add("hidden");
+    dom.albumSortControls?.classList.add("hidden");
+    dom.refreshAlbums?.classList.add("hidden");
+
+    const searchContainer = dom.albumSearch?.closest(".search-container");
+    searchContainer?.classList.add("hidden");
+
+    dom.photosScreen?.classList.add("hidden");
+    dom.commentsScreen?.classList.add("hidden");
+    dom.photoViewerScreen?.classList.add("hidden");
+    dom.albumsScreen?.classList.remove("hidden");
+}
+
+function showAccessBlocked(error) {
+    setAppInteractive(false);
+    hideWorkingControls();
+
+    if (dom.pageTitle) {
+        dom.pageTitle.textContent =
+            error?.code === "GROUP_ACCESS_CHECK_FAILED"
+                ? "Проверка доступа"
+                : "Доступ закрыт";
+    }
+
+    if (dom.user) {
+        dom.user.textContent = "";
+    }
+
+    const message = escapeHtml(getErrorMessage(error));
+
+    dom.albums.innerHTML = `
+        <div class="error">
+            <b>${error?.code === "GROUP_ACCESS_CHECK_FAILED"
+                ? "Не удалось подтвердить права"
+                : "Недостаточно прав"}</b>
+            <br><br>
+            ${message}
+        </div>
+    `;
+}
+
+function initWorkingUi() {
+    initMainMenu();
+    initNavigation({
+        onOpenAlbumFromHistory: openAlbum,
+        onOpenPhotoFromHistory: openPhotoViewer
+    });
+    initAlbums();
+    initAlbumCreate();
+    initAlbumEdit();
+    initAlbumDelete();
+    initAlbumReorder();
+    initComments();
+    initAlbumComments();
+    initPhotoViewer();
+    initPhotoUpload();
+    initPhotoTransfer();
+    initPhotoReorder();
+    initPhotoMenu();
+    initPhotoIndexSync();
+    initGlobalPhotoSearch();
+}
 
 async function startApp() {
-    console.log("Starting VK Photo Manager in GROUP ADMIN mode...");
+    console.log("Starting VK Photo Manager in ADMIN-ONLY mode...");
 
-    // Новая схема кэша: удаляем старые частичные индексы и устаревшие
-    // данные прошлых сборок до первого чтения localStorage.
+    // Пока права не подтверждены, интерфейс полностью неактивен.
+    setAppInteractive(false);
+
+    // Удаляем старые частичные индексы и устаревшие данные прошлых сборок.
     cleanupLegacyCache();
 
     try {
-        initMainMenu();
-        initNavigation({
-            onOpenAlbumFromHistory: openAlbum,
-            onOpenPhotoFromHistory: openPhotoViewer
-        });
-        initAlbums();
-        initAlbumCreate();
-        initAlbumEdit();
-        initAlbumDelete();
-        initAlbumReorder();
-        initComments();
-        initAlbumComments();
-        initPhotoViewer();
-        initPhotoUpload();
-        initPhotoTransfer();
-        initPhotoReorder();
-        initPhotoMenu();
-        initPhotoIndexSync();
-        initGlobalPhotoSearch();
-
         await vkInit();
+
+        // Если VK уже явно передал неадминскую роль, останавливаемся здесь:
+        // до получения photos access token и до любых рабочих API-запросов.
+        precheckLaunchGroupAccess();
+
         await loadUser();
         await getAccessToken();
 
+        // Обязательная серверная проверка: is_admin=true и admin_level=3.
         await initGroupContext();
+
+        // Рабочие обработчики вообще не подключаем до подтверждения доступа.
+        initWorkingUi();
+
         await loadAlbums();
         showAlbumsScreen();
+        setAppInteractive(true);
 
-        // Глобальный фотоиндекс обслуживается лениво: запуск приложения не делает
-        // никаких API-запросов ради глобального поиска. Persistent dirty-метки
-        // будут обработаны только когда пользователь реально откроет поиск.
-
-        console.log("VK Photo Manager started in group mode.");
+        // Глобальный фотоиндекс обслуживается лениво.
+        console.log("VK Photo Manager started with administrator access.");
     } catch (error) {
         logError("Application startup error:", error);
+
+        if (error instanceof GroupAccessDeniedError) {
+            showAccessBlocked(error);
+            return;
+        }
+
+        setAppInteractive(false);
+        hideWorkingControls();
+
+        if (dom.pageTitle) {
+            dom.pageTitle.textContent = "Ошибка запуска";
+        }
 
         dom.albums.innerHTML = `
             <div class="error">

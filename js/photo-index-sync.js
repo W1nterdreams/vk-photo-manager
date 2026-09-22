@@ -1,5 +1,5 @@
-import { vkApi } from "./vk-api.js?v=20260921-scroll26";
-import { getOwnerId } from "./group-context.js?v=20260921-scroll26";
+import { vkApi } from "./vk-api.js?v=20260922-adminonly28";
+import { getOwnerId } from "./group-context.js?v=20260922-adminonly28";
 import {
     compactPhotoForIndex,
     getPhotoIndexMeta,
@@ -11,9 +11,11 @@ import {
     updatePhotoIndexMeta,
     getDirtyPhotoIndexAlbums,
     clearPhotoIndexAlbumDirty,
+    clearPhotoIndexDirtyThrough,
     getPhotoIndexDiagnostics
-} from "./photo-index-db.js?v=20260921-scroll26";
-import { getPhotoIndexSyncPlan } from "./photo-index-policy.js?v=20260921-scroll26";
+} from "./photo-index-db.js?v=20260922-adminonly28";
+import { getPhotoIndexSyncPlan } from "./photo-index-policy.js?v=20260922-adminonly28";
+import { getAlbumFingerprintDiagnostics } from "./album-fingerprint.js?v=20260922-adminonly28";
 
 const GLOBAL_PAGE_SIZE = 200;
 const ALBUM_PAGE_SIZE = 1000;
@@ -26,6 +28,7 @@ let syncOwnerId = 0;
 let initialized = false;
 let dirtySyncPromise = null;
 let dirtySyncOwnerId = 0;
+const albumSyncPromises = new Map();
 let mutationSeq = 0;
 let mutationJournal = [];
 
@@ -265,7 +268,7 @@ async function syncAlbumPhotoIndex(ownerId, dirtyEntry) {
     if (!albumId) return false;
 
     const reasons = new Set(Array.isArray(dirtyEntry?.reasons) ? dirtyEntry.reasons : []);
-    if (reasons.has("album-native-delete")) {
+    if (reasons.has("album-native-delete") || reasons.has("album-fingerprint-removed")) {
         const exists = await albumExists(numericOwnerId, albumId);
         if (exists === false) {
             await replaceIndexedAlbum(numericOwnerId, albumId, []);
@@ -322,6 +325,48 @@ async function syncAlbumPhotoIndex(ownerId, dirtyEntry) {
     return true;
 }
 
+export async function syncPhotoIndexAlbumIfDirty(ownerId, albumId) {
+    const numericOwnerId = Number(ownerId);
+    const numericAlbumId = Number(albumId);
+    if (!numericOwnerId || !numericAlbumId) return { synced: false, skipped: true };
+
+    const syncKey = `${numericOwnerId}:${numericAlbumId}`;
+    if (albumSyncPromises.has(syncKey)) return albumSyncPromises.get(syncKey);
+
+    const promise = (async () => {
+        // Не пишем один и тот же IndexedDB параллельно с полной/dirty-сверкой.
+        if (syncPromise && syncOwnerId === numericOwnerId) {
+            try { await syncPromise; } catch {}
+        }
+        if (dirtySyncPromise && dirtySyncOwnerId === numericOwnerId) {
+            try { await dirtySyncPromise; } catch {}
+        }
+
+        const dirtyEntry = getDirtyPhotoIndexAlbums(numericOwnerId)
+            .find(entry => Number(entry?.albumId) === numericAlbumId);
+        if (!dirtyEntry) return { synced: false, skipped: true, reason: "clean" };
+
+        // Пока полного глобального индекса нет, синхронизировать отдельный альбом
+        // в IndexedDB бессмысленно: первая полная индексация всё равно возьмёт
+        // актуальные данные целиком. Dirty остаётся до этой полной сверки.
+        const meta = await getPhotoIndexMeta(numericOwnerId);
+        if (!meta.complete) return { synced: false, skipped: true, reason: "index-incomplete" };
+
+        try {
+            const synced = await syncAlbumPhotoIndex(numericOwnerId, dirtyEntry);
+            return { synced: Boolean(synced), skipped: false };
+        } catch (error) {
+            console.warn("Не удалось синхронизировать открытый dirty-альбом:", dirtyEntry, error);
+            return { synced: false, skipped: false, error };
+        }
+    })().finally(() => {
+        albumSyncPromises.delete(syncKey);
+    });
+
+    albumSyncPromises.set(syncKey, promise);
+    return promise;
+}
+
 export async function syncDirtyPhotoIndex(ownerId) {
     const numericOwnerId = Number(ownerId);
     if (dirtySyncPromise && dirtySyncOwnerId === numericOwnerId) return dirtySyncPromise;
@@ -371,11 +416,12 @@ export async function synchronizePhotoIndex(ownerId, {
         const plan = getPhotoIndexSyncPlan(initialMeta, { forceFull, forceQuick });
 
         if (plan.mode === "full") {
-            // Не тратим запросы на dirty-альбомы перед полной сверкой: сначала
-            // получаем единый снимок photos.getAll. После него обрабатываем
-            // dirty-метки, чтобы не потерять нативное изменение, случившееся
-            // прямо во время долгой полной синхронизации.
+            // Старые dirty-метки уже покрываются новым полным снимком. Сохраняем
+            // только те, что появились ПОСЛЕ старта синхронизации: они могли
+            // случиться после чтения соответствующей страницы photos.getAll.
+            const fullStartedAt = Date.now();
             await fullSyncPhotoIndex(numericOwnerId, { onProgress });
+            clearPhotoIndexDirtyThrough(numericOwnerId, fullStartedAt);
             await syncDirtyPhotoIndex(numericOwnerId);
             return getPhotoIndexSnapshot(numericOwnerId);
         }
@@ -397,7 +443,9 @@ export async function synchronizePhotoIndex(ownerId, {
         // count VK разошёлся с локальным индексом, безопаснее один раз выполнить
         // полную сверку, чем оставлять заведомо неполный индекс.
         if (quick.needsFullSync) {
+            const fullStartedAt = Date.now();
             const result = await fullSyncPhotoIndex(numericOwnerId, { onProgress });
+            clearPhotoIndexDirtyThrough(numericOwnerId, fullStartedAt);
             await syncDirtyPhotoIndex(numericOwnerId);
             return result;
         }
@@ -427,6 +475,7 @@ export function initPhotoIndexSync() {
     // Диагностика для последующей проверки без отдельного UI.
     window.vkPhotoIndexDebug = {
         status: () => getPhotoIndexDiagnostics(getOwnerId()),
+        fingerprints: () => getAlbumFingerprintDiagnostics(getOwnerId()),
         plan: async () => getPhotoIndexSyncPlan(await getPhotoIndexMeta(getOwnerId())),
         sync: () => synchronizePhotoIndex(getOwnerId(), { forceQuick: true }),
         fullSync: () => synchronizePhotoIndex(getOwnerId(), { forceFull: true }),

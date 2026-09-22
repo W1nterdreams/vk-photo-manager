@@ -375,6 +375,30 @@ export function clearPhotoIndexAlbumDirty(ownerId, albumId) {
     } catch {}
 }
 
+export function clearPhotoIndexDirtyThrough(ownerId, markedAtInclusive) {
+    const cutoff = Number(markedAtInclusive || 0);
+    if (!cutoff) return 0;
+
+    try {
+        const key = dirtyStorageKey(ownerId);
+        const parsed = JSON.parse(localStorage.getItem(key) || "{}") || {};
+        let removed = 0;
+
+        for (const [albumId, entry] of Object.entries(parsed)) {
+            if (Number(entry?.markedAt || 0) <= cutoff) {
+                delete parsed[albumId];
+                removed += 1;
+            }
+        }
+
+        if (Object.keys(parsed).length) localStorage.setItem(key, JSON.stringify(parsed));
+        else localStorage.removeItem(key);
+        return removed;
+    } catch {
+        return 0;
+    }
+}
+
 export async function getPhotoIndexDiagnostics(ownerId) {
     const snapshot = await getPhotoIndexSnapshot(ownerId);
     const dirty = getDirtyPhotoIndexAlbums(ownerId);

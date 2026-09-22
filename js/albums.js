@@ -1,9 +1,9 @@
-import { state } from "./state.js?v=20260921-scroll26";
-import { dom } from "./dom.js?v=20260921-scroll26";
-import { vkApi } from "./vk-api.js?v=20260921-scroll26";
-import { getAlbumCover, escapeHtml, getErrorMessage } from "./helpers.js?v=20260921-scroll26";
-import { openAlbum, loadPhotos } from "./photos.js?v=20260921-scroll26";
-import { CACHE_TTL } from "./config.js?v=20260921-scroll26";
+import { state } from "./state.js?v=20260922-adminonly28";
+import { dom } from "./dom.js?v=20260922-adminonly28";
+import { vkApi } from "./vk-api.js?v=20260922-adminonly28";
+import { getAlbumCover, escapeHtml, getErrorMessage } from "./helpers.js?v=20260922-adminonly28";
+import { openAlbum, loadPhotos } from "./photos.js?v=20260922-adminonly28";
+import { CACHE_TTL } from "./config.js?v=20260922-adminonly28";
 import {
     cacheGet,
     cacheGetStale,
@@ -11,9 +11,10 @@ import {
     invalidateAlbumCaches,
     albumsKey,
     albumIndexKey
-} from "./cache.js?v=20260921-scroll26";
-import { getOwnerId } from "./group-context.js?v=20260921-scroll26";
-import { bindAlbumLongPress } from "./album-menu.js?v=20260921-scroll26";
+} from "./cache.js?v=20260922-adminonly28";
+import { getOwnerId } from "./group-context.js?v=20260922-adminonly28";
+import { bindAlbumLongPress } from "./album-menu.js?v=20260922-adminonly28";
+import { observeAlbumFingerprints, reconcileAlbumFingerprints } from "./album-fingerprint.js?v=20260922-adminonly28";
 
 const PAGE_SIZE = 20;
 const INDEX_PAGE_SIZE = 100;
@@ -95,7 +96,7 @@ function persistCompleteIndex(items, total = items.length) {
 
 async function fetchAlbumPage(offset, count = PAGE_SIZE) {
     const ownerId = getOwnerId();
-    return vkApi("photos.getAlbums", {
+    const result = await vkApi("photos.getAlbums", {
         owner_id: ownerId,
         need_system: 1,
         need_covers: 1,
@@ -103,6 +104,12 @@ async function fetchAlbumPage(offset, count = PAGE_SIZE) {
         count,
         offset
     });
+
+    // Этот ответ всё равно нужен экрану альбомов. Заодно бесплатно сравниваем
+    // size / updated / thumb_id с прошлым запуском и только ставим dirty.
+    // Никаких дополнительных запросов из-за отпечатков здесь не выполняется.
+    observeAlbumFingerprints(ownerId, result?.items);
+    return result;
 }
 
 async function fetchFirstPageFromVK() {
@@ -269,6 +276,8 @@ export async function loadMoreAlbums() {
 }
 
 async function buildAlbumIndex(generation) {
+    const ownerId = getOwnerId();
+
     // Строим индекс НЕ по result.count, а до первой реально пустой страницы.
     // На больших сообществах photos.getAlbums может вернуть count, который
     // нельзя безопасно использовать как условие остановки. Из-за этого старый
@@ -277,6 +286,7 @@ async function buildAlbumIndex(generation) {
     let offset = 0;
     let pages = 0;
     let reportedTotal = 0;
+    let reachedEnd = false;
     const MAX_INDEX_PAGES = 200;
 
     state.albumIndexBuilding = true;
@@ -296,7 +306,10 @@ async function buildAlbumIndex(generation) {
 
             // Только пустая страница означает, что сервер действительно
             // больше ничего не отдал. Короткая страница сама по себе не конец.
-            if (!items.length) break;
+            if (!items.length) {
+                reachedEnd = true;
+                break;
+            }
 
             const before = index.length;
             index = mergeIndex(index, items);
@@ -347,6 +360,13 @@ async function buildAlbumIndex(generation) {
         state.albumsTotal = Math.max(finalTotal, state.albums.length);
         state.albumsHasMore = state.albums.length < state.albumsTotal;
         persistCompleteIndex(index, state.albumsTotal);
+
+        // Удалённый целиком альбом уже не попадёт ни в одну страницу. Поэтому
+        // сравнивать отсутствие безопасно только после подтверждённого конца
+        // полного списка (пустая страница), а не после ошибки/зацикливания API.
+        if (reachedEnd) {
+            reconcileAlbumFingerprints(ownerId, index.map(album => album.id));
+        }
 
         renderAlbums();
         setTimeout(handleAlbumScroll, 0);

@@ -1,13 +1,13 @@
-import { state } from "./state.js?v=20260921-scroll26";
-import { vkApi } from "./vk-api.js?v=20260921-scroll26";
-import { getPhotoPreviewUrl, getErrorMessage } from "./helpers.js?v=20260921-scroll26";
-import { getOwnerId } from "./group-context.js?v=20260921-scroll26";
+import { state } from "./state.js?v=20260922-adminonly28";
+import { vkApi } from "./vk-api.js?v=20260922-adminonly28";
+import { getPhotoPreviewUrl, getErrorMessage } from "./helpers.js?v=20260922-adminonly28";
+import { getOwnerId } from "./group-context.js?v=20260922-adminonly28";
 import {
     cacheSet,
     albumPhotosKey,
     invalidateAlbumPhotosCache
-} from "./cache.js?v=20260921-scroll26";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260921-scroll26";
+} from "./cache.js?v=20260922-adminonly28";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260922-adminonly28";
 
 const PAGE_SIZE = 1000;
 
@@ -340,7 +340,7 @@ function hideModalDirect() {
         window.setTimeout(async () => {
             try {
                 if (!state.currentAlbum || Number(state.currentAlbum.id) !== Number(albumToRefresh.id)) return;
-                const { loadPhotos } = await import("./photos.js?v=20260921-scroll26");
+                const { loadPhotos } = await import("./photos.js?v=20260922-adminonly28");
                 await loadPhotos(albumToRefresh, { force: true });
             } catch (error) {
                 console.warn("Не удалось обновить альбом после режима порядка:", error);
@@ -588,7 +588,7 @@ async function redrawCurrentAlbum(albumId) {
     if (!state.currentAlbum || Number(state.currentAlbum.id) !== Number(albumId)) return;
 
     try {
-        const { setPhotoDateSort } = await import("./photos.js?v=20260921-scroll26");
+        const { setPhotoDateSort } = await import("./photos.js?v=20260922-adminonly28");
         setPhotoDateSort("vk");
     } catch (error) {
         console.warn("Не удалось перерисовать альбом после перестановки:", error);
