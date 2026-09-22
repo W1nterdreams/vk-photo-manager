@@ -1,13 +1,13 @@
-import { state } from "./state.js?v=20260922-access31";
-import { vkApi } from "./vk-api.js?v=20260922-access31";
-import { getOwnerId } from "./group-context.js?v=20260922-access31";
-import { getPhotoPreviewUrl, getErrorMessage } from "./helpers.js?v=20260922-access31";
-import { ensureAlbumIndex } from "./albums.js?v=20260922-access31";
-import { openAlbum } from "./photos.js?v=20260922-access31";
-import { openPhotoViewer } from "./photo-viewer.js?v=20260922-access31";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260922-access31";
-import { getPhotoIndexSnapshot } from "./photo-index-db.js?v=20260922-access31";
-import { synchronizePhotoIndex } from "./photo-index-sync.js?v=20260922-access31";
+import { state } from "./state.js?v=20260922-access32";
+import { vkApi } from "./vk-api.js?v=20260922-access32";
+import { getOwnerId } from "./group-context.js?v=20260922-access32";
+import { getPhotoPreviewUrl, getErrorMessage } from "./helpers.js?v=20260922-access32";
+import { ensureAlbumIndex } from "./albums.js?v=20260922-access32";
+import { openAlbum } from "./photos.js?v=20260922-access32";
+import { openPhotoViewer } from "./photo-viewer.js?v=20260922-access32";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260922-access32";
+import { getPhotoIndexSnapshot } from "./photo-index-db.js?v=20260922-access32";
+import { synchronizePhotoIndex } from "./photo-index-sync.js?v=20260922-access32";
 
 const SEARCH_RESULTS_PAGE_SIZE = 100;
 const FALLBACK_PAGE_SIZE = 200;

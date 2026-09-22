@@ -1,7 +1,9 @@
-import { state } from "./state.js?v=20260922-access31";
-import { vkApi } from "./vk-api.js?v=20260922-access31";
+import { state } from "./state.js?v=20260922-access32";
 
 let lastAccessDiagnostic = null;
+
+const ALLOWED_GROUP_ROLES = new Set(["admin", "editor", "moder"]);
+const BLOCKED_GROUP_ROLES = new Set(["member", "none"]);
 
 export class GroupAccessDeniedError extends Error {
     constructor(message, code = "GROUP_ACCESS_DENIED") {
@@ -23,9 +25,10 @@ function readGroupIdFromLaunchParams() {
 }
 
 /**
- * Роль из launch params сохраняем только для диагностики.
- * Она НЕ используется как источник авторизации: контекст запуска может
- * отличаться от фактических прав пользователя в сообществе.
+ * VK передаёт роль пользователя в текущем сообществе прямо в launch params.
+ * Для нашего режима управления разрешаем руководителей сообщества:
+ * admin / editor / moder. Обычный участник и пользователь без членства
+ * (member / none) не допускаются.
  */
 function readViewerGroupRoleFromLaunchParams() {
     const params = new URLSearchParams(window.location.search);
@@ -43,141 +46,117 @@ function getLaunchContext() {
     };
 }
 
+function roleLabel(role) {
+    switch (role) {
+        case "admin": return "admin";
+        case "editor": return "editor";
+        case "moder": return "moderator";
+        case "member": return "member";
+        case "none": return "none";
+        default: return role || "missing";
+    }
+}
+
+/**
+ * Единственная проверка доступа к приложению.
+ *
+ * Не используем:
+ * - дополнительный scope для сообществ;
+ * - запросы Groups API для проверки роли;
+ * - community token.
+ *
+ * Это исключает лишние разрешения и ложные отказы реальным руководителям.
+ */
 export function precheckLaunchGroupAccess() {
     const { groupId, viewerGroupRole } = getLaunchContext();
 
     if (!groupId) {
+        lastAccessDiagnostic = {
+            checkedAt: Date.now(),
+            ok: false,
+            groupId: null,
+            viewerGroupRole,
+            reason: "missing-group-id"
+        };
+
         throw new Error(
             "Не найден vk_group_id. " +
             "Откройте Mini App из сообщества VK, которым нужно управлять."
         );
     }
 
-    return { groupId, viewerGroupRole };
-}
-
-function normalizeGroupsResponse(response) {
-    if (Array.isArray(response)) return response;
-    if (Array.isArray(response?.groups)) return response.groups;
-    if (Array.isArray(response?.items)) return response.items;
-    return [];
-}
-
-/**
- * Проверяем права пользователя только для ТЕКУЩЕГО vk_group_id.
- *
- * Важное отличие от v29/v30:
- * - НЕ запрашиваем scope=groups;
- * - НЕ читаем список сообществ пользователя;
- * - НЕ используем community token как обязательную проверку;
- * - используем обычный user token приложения и groups.getById.
- *
- * groups.getById возвращает is_admin и admin_level для текущего пользователя.
- * Разрешаем только уровень 3 (administrator). Владельцы сообщества в этом
- * контексте также представлены с максимальным административным уровнем.
- */
-async function verifyCurrentCommunityAdministrator(groupId) {
-    let response;
-
-    try {
-        response = await vkApi("groups.getById", {
-            group_id: Number(groupId),
-            fields: "is_admin,admin_level"
-        });
-    } catch (error) {
+    if (ALLOWED_GROUP_ROLES.has(viewerGroupRole)) {
         lastAccessDiagnostic = {
             checkedAt: Date.now(),
-            groupId: Number(groupId),
+            ok: true,
+            groupId,
+            viewerGroupRole,
+            accessSource: "vk_viewer_group_role"
+        };
+
+        return { groupId, viewerGroupRole };
+    }
+
+    if (BLOCKED_GROUP_ROLES.has(viewerGroupRole)) {
+        lastAccessDiagnostic = {
+            checkedAt: Date.now(),
             ok: false,
-            stage: "groups.getById",
-            error: String(error?.message || error?.error_msg || error || "unknown")
+            groupId,
+            viewerGroupRole,
+            reason: "role-not-allowed",
+            accessSource: "vk_viewer_group_role"
         };
 
         throw new GroupAccessDeniedError(
-            "Не удалось проверить права в текущем сообществе через VK API. " +
-            "Повторите запуск приложения.",
-            "GROUP_ACCESS_CHECK_FAILED"
+            "Доступ к приложению разрешён только руководителям сообщества " +
+            "(администратор, редактор или модератор)."
         );
     }
 
-    const groups = normalizeGroupsResponse(response);
-    const group = groups.find(item => Number(item?.id) === Number(groupId)) || groups[0] || null;
-
-    const isAdmin = group?.is_admin === true || Number(group?.is_admin) === 1;
-    const adminLevel = Number(group?.admin_level || 0);
-    const allowed = Boolean(group && isAdmin && adminLevel === 3);
-
+    // Неизвестную или отсутствующую роль не считаем безопасным основанием
+    // для доступа. Это также помогает заметить изменение launch params VK.
     lastAccessDiagnostic = {
         checkedAt: Date.now(),
-        groupId: Number(groupId),
-        ok: allowed,
-        launchRole: readViewerGroupRoleFromLaunchParams(),
-        responseShape: Array.isArray(response)
-            ? "array"
-            : Array.isArray(response?.groups)
-                ? "object.groups"
-                : Array.isArray(response?.items)
-                    ? "object.items"
-                    : typeof response,
-        group: group
-            ? {
-                id: Number(group.id || 0),
-                name: String(group.name || ""),
-                is_admin: group.is_admin,
-                admin_level: group.admin_level
-            }
-            : null
+        ok: false,
+        groupId,
+        viewerGroupRole,
+        reason: "unknown-or-missing-role",
+        accessSource: "vk_viewer_group_role"
     };
 
-    if (!group) {
-        throw new GroupAccessDeniedError(
-            "VK не вернул данные текущего сообщества.",
-            "GROUP_ACCESS_CHECK_FAILED"
-        );
-    }
-
-    if (!allowed) {
-        throw new GroupAccessDeniedError(
-            "Доступ к приложению разрешён только владельцу и администраторам сообщества."
-        );
-    }
-
-    return group;
+    throw new GroupAccessDeniedError(
+        "VK не передал распознаваемую роль пользователя в сообществе. " +
+        "Откройте приложение из страницы этого сообщества и повторите попытку.",
+        "GROUP_ACCESS_CHECK_FAILED"
+    );
 }
 
 /**
- * Инициализация контекста сообщества и обязательная проверка доступа.
- * Требует уже полученный user access token (scope=photos достаточно).
+ * Инициализация контекста сообщества после успешной проверки launch role.
+ * Дополнительных запросов к Groups API здесь нет.
  */
-export async function initGroupContext() {
+export function initGroupContext() {
     const { groupId, viewerGroupRole } = precheckLaunchGroupAccess();
 
     console.log("FULL URL:", window.location.href);
     console.log("VK GROUP ID:", groupId);
-    console.log("VK VIEWER GROUP ROLE (diagnostic only):", viewerGroupRole);
+    console.log("VK VIEWER GROUP ROLE:", viewerGroupRole);
 
     state.group = {
         id: groupId,
         ownerId: -Math.abs(groupId),
         name: "",
-        isAdmin: false,
-        adminLevel: 0,
+        isAdmin: viewerGroupRole === "admin",
+        adminLevel: viewerGroupRole === "admin" ? 3 : viewerGroupRole === "editor" ? 2 : 1,
         viewerGroupRole,
-        accessGranted: false,
-        accessSource: "groups.getById"
+        accessGranted: true,
+        accessSource: "vk_viewer_group_role"
     };
-
-    const group = await verifyCurrentCommunityAdministrator(groupId);
-
-    state.group.name = String(group?.name || "");
-    state.group.isAdmin = true;
-    state.group.adminLevel = 3;
-    state.group.accessGranted = true;
 
     console.log("GROUP CONTEXT:", state.group);
     console.log("GROUP ID:", state.group.id);
     console.log("PHOTO OWNER ID:", state.group.ownerId);
-    console.log("GROUP ACCESS: owner/administrator confirmed by groups.getById");
+    console.log(`GROUP ACCESS: ${roleLabel(viewerGroupRole)} allowed by vk_viewer_group_role`);
 
     return state.group;
 }
@@ -218,6 +197,8 @@ export function getGroupContext() {
 
 if (typeof window !== "undefined") {
     window.groupAccessDebug = {
-        status: () => lastAccessDiagnostic ? JSON.parse(JSON.stringify(lastAccessDiagnostic)) : null
+        status: () => lastAccessDiagnostic
+            ? JSON.parse(JSON.stringify(lastAccessDiagnostic))
+            : null
     };
 }

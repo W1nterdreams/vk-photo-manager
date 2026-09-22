@@ -1,21 +1,21 @@
-import { state } from "./state.js?v=20260922-access31";
-import { dom } from "./dom.js?v=20260922-access31";
-import { vkApi } from "./vk-api.js?v=20260922-access31";
-import { getPhotoPreviewUrl, escapeHtml, getErrorMessage } from "./helpers.js?v=20260922-access31";
-import { showPhotosScreen, pushAlbumHistory } from "./navigation.js?v=20260922-access31";
-import { CACHE_TTL } from "./config.js?v=20260922-access31";
-import { cacheGet, cacheGetStale, cacheSet, albumPhotosKey } from "./cache.js?v=20260922-access31";
-import { getOwnerId } from "./group-context.js?v=20260922-access31";
-import { openPhotoViewer } from "./photo-viewer.js?v=20260922-access31";
-import { bindPhotoContextLongPress } from "./photo-context-menu.js?v=20260922-access31";
-import { syncPhotoIndexAlbumIfDirty } from "./photo-index-sync.js?v=20260922-access31";
-import { getDirtyPhotoIndexAlbums } from "./photo-index-db.js?v=20260922-access31";
+import { state } from "./state.js?v=20260922-access32";
+import { dom } from "./dom.js?v=20260922-access32";
+import { vkApi } from "./vk-api.js?v=20260922-access32";
+import { getPhotoPreviewUrl, escapeHtml, getErrorMessage } from "./helpers.js?v=20260922-access32";
+import { showPhotosScreen, pushAlbumHistory } from "./navigation.js?v=20260922-access32";
+import { CACHE_TTL } from "./config.js?v=20260922-access32";
+import { cacheGet, cacheGetStale, cacheSet, albumPhotosKey } from "./cache.js?v=20260922-access32";
+import { getOwnerId } from "./group-context.js?v=20260922-access32";
+import { openPhotoViewer } from "./photo-viewer.js?v=20260922-access32";
+import { bindPhotoContextLongPress } from "./photo-context-menu.js?v=20260922-access32";
+import { syncPhotoIndexAlbumIfDirty } from "./photo-index-sync.js?v=20260922-access32";
+import { getDirtyPhotoIndexAlbums } from "./photo-index-db.js?v=20260922-access32";
 import {
     isPhotoMultiSelectActive,
     isPhotoSelected,
     togglePhotoSelection,
     cancelPhotoMultiSelect
-} from "./photo-multiselect.js?v=20260922-access31";
+} from "./photo-multiselect.js?v=20260922-access32";
 
 const PAGE_SIZE = 20;
 const SORT_FETCH_SIZE = 100;

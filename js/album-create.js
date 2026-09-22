@@ -1,12 +1,12 @@
-import { state } from "./state.js?v=20260922-access31";
-import { dom } from "./dom.js?v=20260922-access31";
-import { vkApi } from "./vk-api.js?v=20260922-access31";
-import { getErrorMessage } from "./helpers.js?v=20260922-access31";
-import { loadAlbums } from "./albums.js?v=20260922-access31";
-import { closeMenu } from "./main-menu.js?v=20260922-access31";
-import { getGroupId, getOwnerId } from "./group-context.js?v=20260922-access31";
-import { invalidateAlbumCaches } from "./cache.js?v=20260922-access31";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260922-access31";
+import { state } from "./state.js?v=20260922-access32";
+import { dom } from "./dom.js?v=20260922-access32";
+import { vkApi } from "./vk-api.js?v=20260922-access32";
+import { getErrorMessage } from "./helpers.js?v=20260922-access32";
+import { loadAlbums } from "./albums.js?v=20260922-access32";
+import { closeMenu } from "./main-menu.js?v=20260922-access32";
+import { getGroupId, getOwnerId } from "./group-context.js?v=20260922-access32";
+import { invalidateAlbumCaches } from "./cache.js?v=20260922-access32";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260922-access32";
 
 async function openModal() {
     await closeMenu();

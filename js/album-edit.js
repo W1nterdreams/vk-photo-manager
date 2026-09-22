@@ -1,11 +1,11 @@
-import { state } from "./state.js?v=20260922-access31";
-import { dom } from "./dom.js?v=20260922-access31";
-import { vkApi } from "./vk-api.js?v=20260922-access31";
-import { getErrorMessage } from "./helpers.js?v=20260922-access31";
-import { getOwnerId } from "./group-context.js?v=20260922-access31";
-import { cacheSet, cacheRemove, albumsKey, albumIndexKey } from "./cache.js?v=20260922-access31";
-import { renderAlbums, ensureAlbumIndex } from "./albums.js?v=20260922-access31";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260922-access31";
+import { state } from "./state.js?v=20260922-access32";
+import { dom } from "./dom.js?v=20260922-access32";
+import { vkApi } from "./vk-api.js?v=20260922-access32";
+import { getErrorMessage } from "./helpers.js?v=20260922-access32";
+import { getOwnerId } from "./group-context.js?v=20260922-access32";
+import { cacheSet, cacheRemove, albumsKey, albumIndexKey } from "./cache.js?v=20260922-access32";
+import { renderAlbums, ensureAlbumIndex } from "./albums.js?v=20260922-access32";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260922-access32";
 
 let activeAlbum = null;
 let opening = false;
