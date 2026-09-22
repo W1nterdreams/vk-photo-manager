@@ -1,21 +1,21 @@
-import { state } from "./state.js?v=20260922-adminonly28";
-import { dom } from "./dom.js?v=20260922-adminonly28";
-import { vkApi } from "./vk-api.js?v=20260922-adminonly28";
-import { getPhotoPreviewUrl, escapeHtml, getErrorMessage } from "./helpers.js?v=20260922-adminonly28";
-import { showPhotosScreen, pushAlbumHistory } from "./navigation.js?v=20260922-adminonly28";
-import { CACHE_TTL } from "./config.js?v=20260922-adminonly28";
-import { cacheGet, cacheGetStale, cacheSet, albumPhotosKey } from "./cache.js?v=20260922-adminonly28";
-import { getOwnerId } from "./group-context.js?v=20260922-adminonly28";
-import { openPhotoViewer } from "./photo-viewer.js?v=20260922-adminonly28";
-import { bindPhotoContextLongPress } from "./photo-context-menu.js?v=20260922-adminonly28";
-import { syncPhotoIndexAlbumIfDirty } from "./photo-index-sync.js?v=20260922-adminonly28";
-import { getDirtyPhotoIndexAlbums } from "./photo-index-db.js?v=20260922-adminonly28";
+import { state } from "./state.js?v=20260922-adminfix29";
+import { dom } from "./dom.js?v=20260922-adminfix29";
+import { vkApi } from "./vk-api.js?v=20260922-adminfix29";
+import { getPhotoPreviewUrl, escapeHtml, getErrorMessage } from "./helpers.js?v=20260922-adminfix29";
+import { showPhotosScreen, pushAlbumHistory } from "./navigation.js?v=20260922-adminfix29";
+import { CACHE_TTL } from "./config.js?v=20260922-adminfix29";
+import { cacheGet, cacheGetStale, cacheSet, albumPhotosKey } from "./cache.js?v=20260922-adminfix29";
+import { getOwnerId } from "./group-context.js?v=20260922-adminfix29";
+import { openPhotoViewer } from "./photo-viewer.js?v=20260922-adminfix29";
+import { bindPhotoContextLongPress } from "./photo-context-menu.js?v=20260922-adminfix29";
+import { syncPhotoIndexAlbumIfDirty } from "./photo-index-sync.js?v=20260922-adminfix29";
+import { getDirtyPhotoIndexAlbums } from "./photo-index-db.js?v=20260922-adminfix29";
 import {
     isPhotoMultiSelectActive,
     isPhotoSelected,
     togglePhotoSelection,
     cancelPhotoMultiSelect
-} from "./photo-multiselect.js?v=20260922-adminonly28";
+} from "./photo-multiselect.js?v=20260922-adminfix29";
 
 const PAGE_SIZE = 20;
 const SORT_FETCH_SIZE = 100;

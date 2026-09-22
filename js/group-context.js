@@ -1,8 +1,7 @@
-import { state } from "./state.js?v=20260922-adminonly28";
-import { vkApi } from "./vk-api.js?v=20260922-adminonly28";
+import { state } from "./state.js?v=20260922-adminfix29";
+import { vkApi } from "./vk-api.js?v=20260922-adminfix29";
 
-const ADMIN_ROLE = "admin";
-const ADMIN_LEVEL = 3;
+const ADMIN_GROUPS_PAGE_SIZE = 1000;
 
 export class GroupAccessDeniedError extends Error {
     constructor(message, code = "GROUP_ACCESS_DENIED") {
@@ -13,28 +12,19 @@ export class GroupAccessDeniedError extends Error {
 }
 
 /**
- * Получает ID сообщества из параметров запуска VK Mini Apps.
+ * ID сообщества берём из launch params VK Mini Apps.
  */
 function readGroupIdFromLaunchParams() {
     const params = new URLSearchParams(window.location.search);
-
-    const raw =
-        params.get("vk_group_id") ||
-        params.get("group_id");
-
+    const raw = params.get("vk_group_id") || params.get("group_id");
     const id = Number(raw);
 
-    return Number.isInteger(id) && id > 0
-        ? id
-        : null;
+    return Number.isInteger(id) && id > 0 ? id : null;
 }
 
 /**
- * Роль пользователя в сообществе, которую VK передал при запуске Mini App.
- * Возможные штатные значения: admin / editor / moder / member / none.
- *
- * Этот параметр используем только как ранний фильтр. Окончательное решение
- * всегда подтверждаем через groups.getById.
+ * vk_viewer_group_role сохраняем только для диагностики.
+ * ВАЖНО: это параметр контекста запуска, а не источник авторизации.
  */
 function readViewerGroupRoleFromLaunchParams() {
     const params = new URLSearchParams(window.location.search);
@@ -53,11 +43,8 @@ function getLaunchContext() {
 }
 
 /**
- * Ранняя проверка до получения access token и загрузки данных приложения.
- *
- * Если VK уже явно сообщил, что пользователь editor/moder/member/none,
- * дальше приложение не запускаем и лишние рабочие запросы не делаем.
- * Если роль отсутствует, продолжаем до обязательной проверки groups.getById.
+ * Ранняя проверка выполняет только проверку наличия group_id.
+ * vk_viewer_group_role намеренно НЕ используем для допуска/запрета.
  */
 export function precheckLaunchGroupAccess() {
     const { groupId, viewerGroupRole } = getLaunchContext();
@@ -69,89 +56,104 @@ export function precheckLaunchGroupAccess() {
         );
     }
 
-    if (viewerGroupRole && viewerGroupRole !== ADMIN_ROLE) {
-        throw new GroupAccessDeniedError(
-            "Доступ к приложению разрешён только владельцу и администраторам сообщества."
-        );
-    }
+    return { groupId, viewerGroupRole };
+}
 
-    return {
-        groupId,
-        viewerGroupRole
-    };
+function extractGroup(response) {
+    if (Array.isArray(response)) return response[0] || null;
+    return response?.groups?.[0] || response?.items?.[0] || response || null;
+}
+
+function extractGroupIds(response) {
+    const items = Array.isArray(response?.items) ? response.items : [];
+
+    return items
+        .map(item => {
+            if (typeof item === "number" || typeof item === "string") {
+                return Number(item);
+            }
+            return Number(item?.id);
+        })
+        .filter(id => Number.isInteger(id) && id > 0);
 }
 
 /**
- * Инициализация контекста сообщества и обязательная проверка прав.
+ * Надёжная серверная проверка: groups.get(filter=admin) возвращает только
+ * сообщества, которыми текущий пользователь управляет как владелец/администратор.
+ * Фильтры editor/moder мы намеренно НЕ используем.
+ */
+async function userAdministersGroup(groupId) {
+    let offset = 0;
+
+    while (true) {
+        const response = await vkApi("groups.get", {
+            filter: ["admin"],
+            extended: 0,
+            offset,
+            count: ADMIN_GROUPS_PAGE_SIZE
+        });
+
+        const ids = extractGroupIds(response);
+        if (ids.includes(groupId)) return true;
+
+        const total = Number(response?.count || 0);
+        if (ids.length === 0 || offset + ids.length >= total) {
+            return false;
+        }
+
+        offset += ids.length;
+    }
+}
+
+/**
+ * Инициализация контекста сообщества и обязательная проверка доступа.
  *
- * Для работы приложения разрешаем только уровень administrator (3).
- * Редакторы (2), модераторы (1), участники и остальные пользователи
- * не получают доступ к рабочему интерфейсу.
+ * Источник истины для прав — groups.get(filter=admin).
+ * launch-параметр vk_viewer_group_role используется только для диагностики.
  */
 export async function initGroupContext() {
     const { groupId, viewerGroupRole } = precheckLaunchGroupAccess();
 
     console.log("FULL URL:", window.location.href);
     console.log("VK GROUP ID:", groupId);
-    console.log("VK VIEWER GROUP ROLE:", viewerGroupRole);
+    console.log("VK VIEWER GROUP ROLE (diagnostic only):", viewerGroupRole);
 
     state.group = {
         id: groupId,
-
-        // Для photos.getAlbums, photos.get и других photos.*
         ownerId: -Math.abs(groupId),
-
         name: "",
         isAdmin: false,
         adminLevel: 0,
         viewerGroupRole,
-        accessGranted: false
+        accessGranted: false,
+        accessSource: "groups.get:admin"
     };
 
-    let response;
+    // Имя сообщества получаем отдельно. Оно не участвует в решении о доступе.
+    try {
+        const infoResponse = await vkApi("groups.getById", {
+            group_id: groupId,
+            fields: "name"
+        });
+        const group = extractGroup(infoResponse);
+        state.group.name = group?.name || "";
+    } catch (error) {
+        console.warn("Не удалось получить название сообщества:", error);
+    }
+
+    let hasAdministratorAccess = false;
 
     try {
-        response = await vkApi("groups.getById", {
-            group_id: groupId,
-            fields: "name,is_admin,admin_level"
-        });
+        hasAdministratorAccess = await userAdministersGroup(groupId);
     } catch (error) {
-        console.warn("Не удалось подтвердить права администратора:", error);
+        console.warn("Не удалось проверить groups.get(filter=admin):", error);
 
         throw new GroupAccessDeniedError(
-            "Не удалось подтвердить права администратора сообщества. " +
-            "Работа приложения временно заблокирована. Попробуйте открыть его позже.",
+            "Не удалось подтвердить права владельца/администратора сообщества. " +
+            "Убедитесь, что приложению разрешён доступ к сообществам, и повторите запуск.",
             "GROUP_ACCESS_CHECK_FAILED"
         );
     }
-
-    console.log("groups.getById response:", response);
-
-    const group =
-        Array.isArray(response)
-            ? response[0]
-            : (
-                response?.groups?.[0] ||
-                response?.items?.[0] ||
-                response
-            );
-
-    if (!group) {
-        throw new GroupAccessDeniedError(
-            "VK не вернул данные сообщества для проверки прав.",
-            "GROUP_ACCESS_CHECK_FAILED"
-        );
-    }
-
-    state.group.name = group.name || "";
-    state.group.isAdmin =
-        group.is_admin === 1 ||
-        group.is_admin === true;
-    state.group.adminLevel = Number(group.admin_level || 0);
-
-    const hasAdministratorAccess =
-        state.group.isAdmin === true &&
-        state.group.adminLevel === ADMIN_LEVEL;
 
     if (!hasAdministratorAccess) {
         throw new GroupAccessDeniedError(
@@ -159,20 +161,18 @@ export async function initGroupContext() {
         );
     }
 
+    state.group.isAdmin = true;
+    state.group.adminLevel = 3;
     state.group.accessGranted = true;
 
     console.log("GROUP CONTEXT:", state.group);
     console.log("GROUP ID:", state.group.id);
     console.log("PHOTO OWNER ID:", state.group.ownerId);
-    console.log("GROUP ACCESS: administrator");
+    console.log("GROUP ACCESS: owner/administrator confirmed by groups.get(filter=admin)");
 
     return state.group;
 }
 
-/**
- * Положительный ID сообщества.
- * Используется, например, там, где VK API требует group_id.
- */
 export function getGroupId() {
     const groupId = Number(state.group?.id);
 
@@ -185,9 +185,6 @@ export function getGroupId() {
     return groupId;
 }
 
-/**
- * Отрицательный ID владельца фотографий сообщества.
- */
 export function getOwnerId() {
     const ownerId = Number(state.group?.ownerId);
 
@@ -200,9 +197,6 @@ export function getOwnerId() {
     return ownerId;
 }
 
-/**
- * Возвращает текущий контекст сообщества.
- */
 export function getGroupContext() {
     if (!state.group?.id || state.group?.accessGranted !== true) {
         throw new Error(

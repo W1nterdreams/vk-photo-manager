@@ -1,29 +1,29 @@
-import { dom } from "./dom.js?v=20260922-adminonly28";
-import { vkInit, loadUser, getAccessToken } from "./vk-api.js?v=20260922-adminonly28";
+import { dom } from "./dom.js?v=20260922-adminfix29";
+import { vkInit, loadUser, getAccessToken } from "./vk-api.js?v=20260922-adminfix29";
 import {
     GroupAccessDeniedError,
     precheckLaunchGroupAccess,
     initGroupContext
-} from "./group-context.js?v=20260922-adminonly28";
-import { initAlbums, loadAlbums } from "./albums.js?v=20260922-adminonly28";
-import { openAlbum } from "./photos.js?v=20260922-adminonly28";
-import { initMainMenu } from "./main-menu.js?v=20260922-adminonly28";
-import { initAlbumCreate } from "./album-create.js?v=20260922-adminonly28";
-import { initAlbumEdit } from "./album-edit.js?v=20260922-adminonly28";
-import { initAlbumDelete } from "./album-delete.js?v=20260922-adminonly28";
-import { initAlbumReorder } from "./album-reorder.js?v=20260922-adminonly28";
-import { initComments } from "./comments.js?v=20260922-adminonly28";
-import { initAlbumComments } from "./album-comments.js?v=20260922-adminonly28";
-import { initPhotoViewer, openPhotoViewer } from "./photo-viewer.js?v=20260922-adminonly28";
-import { initPhotoUpload } from "./photo-upload.js?v=20260922-adminonly28";
-import { initPhotoMenu } from "./photo-menu.js?v=20260922-adminonly28";
-import { initPhotoTransfer } from "./photo-transfer.js?v=20260922-adminonly28";
-import { initPhotoReorder } from "./photo-reorder.js?v=20260922-adminonly28";
-import { initNavigation, showAlbumsScreen } from "./navigation.js?v=20260922-adminonly28";
-import { escapeHtml, getErrorMessage, logError } from "./helpers.js?v=20260922-adminonly28";
-import { cleanupLegacyCache } from "./cache.js?v=20260922-adminonly28";
-import { initGlobalPhotoSearch } from "./global-photo-search.js?v=20260922-adminonly28";
-import { initPhotoIndexSync } from "./photo-index-sync.js?v=20260922-adminonly28";
+} from "./group-context.js?v=20260922-adminfix29";
+import { initAlbums, loadAlbums } from "./albums.js?v=20260922-adminfix29";
+import { openAlbum } from "./photos.js?v=20260922-adminfix29";
+import { initMainMenu } from "./main-menu.js?v=20260922-adminfix29";
+import { initAlbumCreate } from "./album-create.js?v=20260922-adminfix29";
+import { initAlbumEdit } from "./album-edit.js?v=20260922-adminfix29";
+import { initAlbumDelete } from "./album-delete.js?v=20260922-adminfix29";
+import { initAlbumReorder } from "./album-reorder.js?v=20260922-adminfix29";
+import { initComments } from "./comments.js?v=20260922-adminfix29";
+import { initAlbumComments } from "./album-comments.js?v=20260922-adminfix29";
+import { initPhotoViewer, openPhotoViewer } from "./photo-viewer.js?v=20260922-adminfix29";
+import { initPhotoUpload } from "./photo-upload.js?v=20260922-adminfix29";
+import { initPhotoMenu } from "./photo-menu.js?v=20260922-adminfix29";
+import { initPhotoTransfer } from "./photo-transfer.js?v=20260922-adminfix29";
+import { initPhotoReorder } from "./photo-reorder.js?v=20260922-adminfix29";
+import { initNavigation, showAlbumsScreen } from "./navigation.js?v=20260922-adminfix29";
+import { escapeHtml, getErrorMessage, logError } from "./helpers.js?v=20260922-adminfix29";
+import { cleanupLegacyCache } from "./cache.js?v=20260922-adminfix29";
+import { initGlobalPhotoSearch } from "./global-photo-search.js?v=20260922-adminfix29";
+import { initPhotoIndexSync } from "./photo-index-sync.js?v=20260922-adminfix29";
 
 function setAppInteractive(enabled) {
     const app = document.getElementById("app");
@@ -98,7 +98,7 @@ function initWorkingUi() {
 }
 
 async function startApp() {
-    console.log("Starting VK Photo Manager in ADMIN-ONLY mode...");
+    console.log("Starting VK Photo Manager in OWNER/ADMIN mode...");
 
     // Пока права не подтверждены, интерфейс полностью неактивен.
     setAppInteractive(false);
@@ -109,14 +109,15 @@ async function startApp() {
     try {
         await vkInit();
 
-        // Если VK уже явно передал неадминскую роль, останавливаемся здесь:
-        // до получения photos access token и до любых рабочих API-запросов.
+        // Проверяем только наличие контекста сообщества.
+        // vk_viewer_group_role больше НЕ используется как источник прав.
         precheckLaunchGroupAccess();
 
         await loadUser();
         await getAccessToken();
 
-        // Обязательная серверная проверка: is_admin=true и admin_level=3.
+        // Обязательная серверная проверка через groups.get(filter=admin).
+        // Она допускает владельца/администратора и исключает editor/moder/member.
         await initGroupContext();
 
         // Рабочие обработчики вообще не подключаем до подтверждения доступа.
@@ -127,7 +128,7 @@ async function startApp() {
         setAppInteractive(true);
 
         // Глобальный фотоиндекс обслуживается лениво.
-        console.log("VK Photo Manager started with administrator access.");
+        console.log("VK Photo Manager started with owner/administrator access.");
     } catch (error) {
         logError("Application startup error:", error);
 
