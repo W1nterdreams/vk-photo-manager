@@ -1,29 +1,29 @@
-import { dom } from "./dom.js?v=20260922-adminfix29";
-import { vkInit, loadUser, getAccessToken } from "./vk-api.js?v=20260922-adminfix29";
+import { dom } from "./dom.js?v=20260922-search30";
+import { vkInit, loadUser, getAccessToken } from "./vk-api.js?v=20260922-search30";
 import {
     GroupAccessDeniedError,
     precheckLaunchGroupAccess,
     initGroupContext
-} from "./group-context.js?v=20260922-adminfix29";
-import { initAlbums, loadAlbums } from "./albums.js?v=20260922-adminfix29";
-import { openAlbum } from "./photos.js?v=20260922-adminfix29";
-import { initMainMenu } from "./main-menu.js?v=20260922-adminfix29";
-import { initAlbumCreate } from "./album-create.js?v=20260922-adminfix29";
-import { initAlbumEdit } from "./album-edit.js?v=20260922-adminfix29";
-import { initAlbumDelete } from "./album-delete.js?v=20260922-adminfix29";
-import { initAlbumReorder } from "./album-reorder.js?v=20260922-adminfix29";
-import { initComments } from "./comments.js?v=20260922-adminfix29";
-import { initAlbumComments } from "./album-comments.js?v=20260922-adminfix29";
-import { initPhotoViewer, openPhotoViewer } from "./photo-viewer.js?v=20260922-adminfix29";
-import { initPhotoUpload } from "./photo-upload.js?v=20260922-adminfix29";
-import { initPhotoMenu } from "./photo-menu.js?v=20260922-adminfix29";
-import { initPhotoTransfer } from "./photo-transfer.js?v=20260922-adminfix29";
-import { initPhotoReorder } from "./photo-reorder.js?v=20260922-adminfix29";
-import { initNavigation, showAlbumsScreen } from "./navigation.js?v=20260922-adminfix29";
-import { escapeHtml, getErrorMessage, logError } from "./helpers.js?v=20260922-adminfix29";
-import { cleanupLegacyCache } from "./cache.js?v=20260922-adminfix29";
-import { initGlobalPhotoSearch } from "./global-photo-search.js?v=20260922-adminfix29";
-import { initPhotoIndexSync } from "./photo-index-sync.js?v=20260922-adminfix29";
+} from "./group-context.js?v=20260922-search30";
+import { initAlbums, loadAlbums } from "./albums.js?v=20260922-search30";
+import { openAlbum } from "./photos.js?v=20260922-search30";
+import { initMainMenu } from "./main-menu.js?v=20260922-search30";
+import { initAlbumCreate } from "./album-create.js?v=20260922-search30";
+import { initAlbumEdit } from "./album-edit.js?v=20260922-search30";
+import { initAlbumDelete } from "./album-delete.js?v=20260922-search30";
+import { initAlbumReorder } from "./album-reorder.js?v=20260922-search30";
+import { initComments } from "./comments.js?v=20260922-search30";
+import { initAlbumComments } from "./album-comments.js?v=20260922-search30";
+import { initPhotoViewer, openPhotoViewer } from "./photo-viewer.js?v=20260922-search30";
+import { initPhotoUpload } from "./photo-upload.js?v=20260922-search30";
+import { initPhotoMenu } from "./photo-menu.js?v=20260922-search30";
+import { initPhotoTransfer } from "./photo-transfer.js?v=20260922-search30";
+import { initPhotoReorder } from "./photo-reorder.js?v=20260922-search30";
+import { initNavigation, showAlbumsScreen } from "./navigation.js?v=20260922-search30";
+import { escapeHtml, getErrorMessage, logError } from "./helpers.js?v=20260922-search30";
+import { cleanupLegacyCache } from "./cache.js?v=20260922-search30";
+import { initGlobalPhotoSearch } from "./global-photo-search.js?v=20260922-search30";
+import { initPhotoIndexSync } from "./photo-index-sync.js?v=20260922-search30";
 
 function setAppInteractive(enabled) {
     const app = document.getElementById("app");
@@ -114,11 +114,13 @@ async function startApp() {
         precheckLaunchGroupAccess();
 
         await loadUser();
-        await getAccessToken();
 
-        // Обязательная серверная проверка через groups.get(filter=admin).
-        // Она допускает владельца/администратора и исключает editor/moder/member.
+        // Проверяем права только для текущего vk_group_id через community token.
+        // Список сообществ пользователя и scope=groups больше не запрашиваются.
         await initGroupContext();
+
+        // photos-токен запрашиваем только ПОСЛЕ подтверждения прав.
+        await getAccessToken();
 
         // Рабочие обработчики вообще не подключаем до подтверждения доступа.
         initWorkingUi();

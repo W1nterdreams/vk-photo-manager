@@ -1,15 +1,15 @@
-import { state } from "./state.js?v=20260922-adminfix29";
-import { vkApi } from "./vk-api.js?v=20260922-adminfix29";
-import { getOwnerId } from "./group-context.js?v=20260922-adminfix29";
-import { getPhotoPreviewUrl, getErrorMessage } from "./helpers.js?v=20260922-adminfix29";
-import { ensureAlbumIndex } from "./albums.js?v=20260922-adminfix29";
-import { openAlbum } from "./photos.js?v=20260922-adminfix29";
-import { openPhotoViewer } from "./photo-viewer.js?v=20260922-adminfix29";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260922-adminfix29";
-import { getPhotoIndexSnapshot } from "./photo-index-db.js?v=20260922-adminfix29";
-import { synchronizePhotoIndex } from "./photo-index-sync.js?v=20260922-adminfix29";
+import { state } from "./state.js?v=20260922-search30";
+import { vkApi } from "./vk-api.js?v=20260922-search30";
+import { getOwnerId } from "./group-context.js?v=20260922-search30";
+import { getPhotoPreviewUrl, getErrorMessage } from "./helpers.js?v=20260922-search30";
+import { ensureAlbumIndex } from "./albums.js?v=20260922-search30";
+import { openAlbum } from "./photos.js?v=20260922-search30";
+import { openPhotoViewer } from "./photo-viewer.js?v=20260922-search30";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260922-search30";
+import { getPhotoIndexSnapshot } from "./photo-index-db.js?v=20260922-search30";
+import { synchronizePhotoIndex } from "./photo-index-sync.js?v=20260922-search30";
 
-const MAX_RENDERED_RESULTS = 240;
+const SEARCH_RESULTS_PAGE_SIZE = 100;
 const FALLBACK_PAGE_SIZE = 200;
 const FALLBACK_MAX_PAGES = 250;
 
@@ -29,6 +29,9 @@ let initialized = false;
 let indexOwnerId = 0;
 let indexHydrated = false;
 let syncMode = "";
+let currentMatches = [];
+let renderedMatchCount = 0;
+let renderedQuery = "";
 
 function create(tag, className = "", text = "") {
     const element = document.createElement(tag);
@@ -273,20 +276,106 @@ function filteredPhotos() {
     if (!q) return [];
     const tokens = q.split(" ").filter(Boolean);
 
-    return allPhotos.filter(photo => {
-        const text = String(photo?.search_text || "") || normalize(photo?.text || "");
-        return tokens.every(token => text.includes(token));
+    return allPhotos
+        .filter(photo => {
+            const text = String(photo?.search_text || "") || normalize(photo?.text || "");
+            return tokens.every(token => text.includes(token));
+        })
+        .sort((a, b) => {
+            const dateDiff = Number(b?.date || 0) - Number(a?.date || 0);
+            if (dateDiff) return dateDiff;
+            return Number(b?.id || 0) - Number(a?.id || 0);
+        });
+}
+
+function updateSearchStatus() {
+    if (!status) return;
+
+    const q = normalize(query);
+    if (!q) return;
+
+    const shown = Math.min(renderedMatchCount, currentMatches.length);
+
+    if (loading && loadedAll) {
+        status.textContent = `Найдено: ${currentMatches.length}. Показано: ${shown} · локальный индекс обновляется в фоне`;
+    } else if (loading) {
+        status.textContent = `Ищем во всех альбомах… проиндексировано ${allPhotos.length}${totalPhotos ? ` из ${totalPhotos}` : ""}. Найдено: ${currentMatches.length}. Показано: ${shown}`;
+    } else if (currentMatches.length > shown) {
+        status.textContent = `Найдено ${currentMatches.length}. Показаны последние ${shown}. Прокрутите вниз, чтобы показать ещё.`;
+    } else {
+        status.textContent = `Найдено: ${currentMatches.length}${currentMatches.length ? ` · показано: ${shown}` : ""}${loadedAll ? "" : " · индекс ещё строится"}`;
+    }
+}
+
+function createResultCard(photo) {
+    const card = create("button", "global-photo-search-card");
+    card.type = "button";
+    card.title = photo.text || albumTitle(photo);
+
+    const url = getPhotoPreviewUrl(photo, 200);
+    if (url) {
+        const image = create("img");
+        image.src = url;
+        image.alt = photo.text || "Фотография";
+        image.loading = "lazy";
+        image.decoding = "async";
+        card.appendChild(image);
+    }
+
+    const date = formatDate(photo.date);
+    if (date) card.appendChild(create("span", "global-photo-search-date", date));
+    card.appendChild(create("span", "global-photo-search-album", albumTitle(photo)));
+
+    card.addEventListener("click", async () => {
+        const album = albumForPhoto(photo) || {
+            id: Number(photo.album_id),
+            owner_id: Number(photo.owner_id || getOwnerId()),
+            title: albumTitle(photo),
+            size: 0,
+            description: ""
+        };
+
+        await closeGlobalPhotoSearch();
+        try {
+            await openAlbum(album);
+            await openPhotoViewer(photo, album);
+        } catch (error) {
+            console.warn("Не удалось открыть найденную фотографию:", error);
+        }
     });
+
+    return card;
+}
+
+function appendNextSearchPage() {
+    if (!results || !normalize(query)) return false;
+    if (renderedMatchCount >= currentMatches.length) return false;
+
+    const start = renderedMatchCount;
+    const end = Math.min(start + SEARCH_RESULTS_PAGE_SIZE, currentMatches.length);
+    const fragment = document.createDocumentFragment();
+
+    for (let i = start; i < end; i += 1) {
+        fragment.appendChild(createResultCard(currentMatches[i]));
+    }
+
+    results.appendChild(fragment);
+    renderedMatchCount = end;
+    updateSearchStatus();
+    return true;
 }
 
 function render() {
     if (!results || !status) return;
-    results.innerHTML = "";
 
     const q = normalize(query);
     clearButton?.classList.toggle("hidden", !q);
 
     if (!q) {
+        results.innerHTML = "";
+        currentMatches = [];
+        renderedMatchCount = 0;
+        renderedQuery = "";
         status.textContent = loadedAll
             ? (loading
                 ? `Индекс готов: ${allPhotos.length} фото · проверяем изменения…`
@@ -299,65 +388,48 @@ function render() {
     }
 
     const matches = filteredPhotos();
-    const shown = matches.slice(0, MAX_RENDERED_RESULTS);
+    const queryChanged = renderedQuery !== q;
+    const matchesChanged = matches.length !== currentMatches.length
+        || matches.some((photo, index) => Number(photo?.id || 0) !== Number(currentMatches[index]?.id || 0)
+            || Number(photo?.owner_id || 0) !== Number(currentMatches[index]?.owner_id || 0));
 
-    if (loading && loadedAll) {
-        status.textContent = `Найдено: ${matches.length} · локальный индекс обновляется в фоне`;
-    } else if (loading) {
-        status.textContent = `Ищем во всех альбомах… проиндексировано ${allPhotos.length}${totalPhotos ? ` из ${totalPhotos}` : ""}. Найдено: ${matches.length}`;
-    } else if (matches.length > shown.length) {
-        status.textContent = `Найдено ${matches.length}. Показаны первые ${shown.length}. Уточните запрос.`;
-    } else {
-        status.textContent = `Найдено: ${matches.length}${loadedAll ? "" : " · индекс ещё строится"}`;
+    if (queryChanged || matchesChanged) {
+        const previousRenderedCount = queryChanged ? 0 : renderedMatchCount;
+        const previousScrollTop = results.scrollTop;
+        results.innerHTML = "";
+        currentMatches = matches;
+        renderedQuery = q;
+        renderedMatchCount = 0;
+
+        const targetCount = queryChanged
+            ? Math.min(SEARCH_RESULTS_PAGE_SIZE, currentMatches.length)
+            : Math.min(Math.max(previousRenderedCount, SEARCH_RESULTS_PAGE_SIZE), currentMatches.length);
+
+        while (renderedMatchCount < targetCount) {
+            const start = renderedMatchCount;
+            const end = Math.min(start + SEARCH_RESULTS_PAGE_SIZE, targetCount);
+            const fragment = document.createDocumentFragment();
+            for (let i = start; i < end; i += 1) {
+                fragment.appendChild(createResultCard(currentMatches[i]));
+            }
+            results.appendChild(fragment);
+            renderedMatchCount = end;
+        }
+
+        results.scrollTop = queryChanged ? 0 : previousScrollTop;
     }
 
-    if (!shown.length) {
+    if (!currentMatches.length) {
+        results.innerHTML = "";
         results.appendChild(create(
             "div",
             "global-photo-search-empty",
             loading ? "Поиск продолжается…" : "Фотографии с таким описанием не найдены."
         ));
-        return;
+        renderedMatchCount = 0;
     }
 
-    for (const photo of shown) {
-        const card = create("button", "global-photo-search-card");
-        card.type = "button";
-        card.title = photo.text || albumTitle(photo);
-
-        const url = getPhotoPreviewUrl(photo, 200);
-        if (url) {
-            const image = create("img");
-            image.src = url;
-            image.alt = photo.text || "Фотография";
-            image.loading = "lazy";
-            card.appendChild(image);
-        }
-
-        const date = formatDate(photo.date);
-        if (date) card.appendChild(create("span", "global-photo-search-date", date));
-        card.appendChild(create("span", "global-photo-search-album", albumTitle(photo)));
-
-        card.addEventListener("click", async () => {
-            const album = albumForPhoto(photo) || {
-                id: Number(photo.album_id),
-                owner_id: Number(photo.owner_id || getOwnerId()),
-                title: albumTitle(photo),
-                size: 0,
-                description: ""
-            };
-
-            await closeGlobalPhotoSearch();
-            try {
-                await openAlbum(album);
-                await openPhotoViewer(photo, album);
-            } catch (error) {
-                console.warn("Не удалось открыть найденную фотографию:", error);
-            }
-        });
-
-        results.appendChild(card);
-    }
+    updateSearchStatus();
 }
 
 async function hydratePersistentIndex() {
@@ -543,6 +615,16 @@ function ensureUi() {
         input.focus();
     });
 
+    results.addEventListener("scroll", () => {
+        if (!normalize(query)) return;
+        if (renderedMatchCount >= currentMatches.length) return;
+
+        const remaining = results.scrollHeight - results.scrollTop - results.clientHeight;
+        if (remaining <= 500) {
+            appendNextSearchPage();
+        }
+    }, { passive: true });
+
     refreshButton.addEventListener("click", () => void loadAllPhotos({ force: true }));
     close.addEventListener("click", () => void closeGlobalPhotoSearch());
 
@@ -584,6 +666,20 @@ export function initGlobalPhotoSearch() {
     if (initialized) return;
     initialized = true;
     ensureUi();
+
+    if (typeof window !== "undefined") {
+        window.globalPhotoSearchDebug = {
+            state: () => ({
+                query,
+                matches: currentMatches.length,
+                rendered: renderedMatchCount,
+                pageSize: SEARCH_RESULTS_PAGE_SIZE,
+                loadedAll,
+                loading
+            }),
+            loadMore: () => appendNextSearchPage()
+        };
+    }
 
     window.addEventListener("photo-index-updated", async event => {
         const ownerId = Number(event?.detail?.ownerId || 0);

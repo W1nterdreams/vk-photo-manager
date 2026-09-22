@@ -1,7 +1,12 @@
-import { state } from "./state.js?v=20260922-adminfix29";
-import { vkApi } from "./vk-api.js?v=20260922-adminfix29";
+import { state } from "./state.js?v=20260922-search30";
+import { VK_APP_ID } from "./config.js?v=20260922-search30";
 
-const ADMIN_GROUPS_PAGE_SIZE = 1000;
+const COMMUNITY_TOKEN_METHODS = [
+    "VKWebAppGetCommunityToken",
+    "VKWebAppGetCommunityAuthToken",
+    "VKWebAppCommunityAccessToken",
+    "VKWebAppCommunityToken"
+];
 
 export class GroupAccessDeniedError extends Error {
     constructor(message, code = "GROUP_ACCESS_DENIED") {
@@ -23,8 +28,8 @@ function readGroupIdFromLaunchParams() {
 }
 
 /**
- * vk_viewer_group_role сохраняем только для диагностики.
- * ВАЖНО: это параметр контекста запуска, а не источник авторизации.
+ * Роль из launch params сохраняем только для диагностики.
+ * Она НЕ используется как источник авторизации.
  */
 function readViewerGroupRoleFromLaunchParams() {
     const params = new URLSearchParams(window.location.search);
@@ -42,10 +47,6 @@ function getLaunchContext() {
     };
 }
 
-/**
- * Ранняя проверка выполняет только проверку наличия group_id.
- * vk_viewer_group_role намеренно НЕ используем для допуска/запрета.
- */
 export function precheckLaunchGroupAccess() {
     const { groupId, viewerGroupRole } = getLaunchContext();
 
@@ -59,57 +60,104 @@ export function precheckLaunchGroupAccess() {
     return { groupId, viewerGroupRole };
 }
 
-function extractGroup(response) {
-    if (Array.isArray(response)) return response[0] || null;
-    return response?.groups?.[0] || response?.items?.[0] || response || null;
+async function bridgeSupports(method) {
+    try {
+        if (typeof vkBridge?.supportsAsync === "function") {
+            return Boolean(await vkBridge.supportsAsync(method));
+        }
+    } catch (error) {
+        console.warn(`Не удалось проверить поддержку ${method} через supportsAsync:`, error);
+    }
+
+    try {
+        if (typeof vkBridge?.supports === "function") {
+            return Boolean(vkBridge.supports(method));
+        }
+    } catch (error) {
+        console.warn(`Не удалось проверить поддержку ${method} через supports:`, error);
+    }
+
+    return method === "VKWebAppGetCommunityToken";
 }
 
-function extractGroupIds(response) {
-    const items = Array.isArray(response?.items) ? response.items : [];
-
-    return items
-        .map(item => {
-            if (typeof item === "number" || typeof item === "string") {
-                return Number(item);
-            }
-            return Number(item?.id);
-        })
-        .filter(id => Number.isInteger(id) && id > 0);
+async function chooseCommunityTokenMethod() {
+    for (const method of COMMUNITY_TOKEN_METHODS) {
+        if (await bridgeSupports(method)) return method;
+    }
+    return null;
 }
 
 /**
- * Надёжная серверная проверка: groups.get(filter=admin) возвращает только
- * сообщества, которыми текущий пользователь управляет как владелец/администратор.
- * Фильтры editor/moder мы намеренно НЕ используем.
+ * Проверяем права только относительно ТЕКУЩЕГО сообщества.
+ * VK разрешает получить community token только администратору сообщества.
+ * Список сообществ пользователя и scope=groups для этого больше не нужны.
+ *
+ * Сам токен нам не нужен для дальнейших API-вызовов и нигде не сохраняется:
+ * успешный ответ используется только как подтверждение прав.
  */
-async function userAdministersGroup(groupId) {
-    let offset = 0;
+async function verifyCurrentCommunityAdministrator(groupId) {
+    const method = await chooseCommunityTokenMethod();
+    if (!method) {
+        throw new GroupAccessDeniedError(
+            "Текущая версия VK не поддерживает проверку прав администратора сообщества.",
+            "GROUP_ACCESS_CHECK_FAILED"
+        );
+    }
 
-    while (true) {
-        const response = await vkApi("groups.get", {
-            filter: ["admin"],
-            extended: 0,
-            offset,
-            count: ADMIN_GROUPS_PAGE_SIZE
+    let response;
+    try {
+        response = await vkBridge.send(method, {
+            app_id: VK_APP_ID,
+            group_id: Number(groupId),
+            scope: ""
         });
+    } catch (error) {
+        console.warn(`Не удалось получить community token через ${method}:`, error);
 
-        const ids = extractGroupIds(response);
-        if (ids.includes(groupId)) return true;
+        const { viewerGroupRole } = getLaunchContext();
+        const clearlyNotAdmin = ["editor", "moder", "member", "none"].includes(viewerGroupRole);
 
-        const total = Number(response?.count || 0);
-        if (ids.length === 0 || offset + ids.length >= total) {
-            return false;
+        if (clearlyNotAdmin) {
+            throw new GroupAccessDeniedError(
+                "Доступ к приложению разрешён только владельцу и администраторам сообщества."
+            );
         }
 
-        offset += ids.length;
+        throw new GroupAccessDeniedError(
+            "Не удалось подтвердить права владельца/администратора текущего сообщества. " +
+            "Повторите запуск приложения.",
+            "GROUP_ACCESS_CHECK_FAILED"
+        );
+    }
+
+    if (!response?.access_token) {
+        throw new GroupAccessDeniedError(
+            "VK не подтвердил права владельца/администратора текущего сообщества.",
+            "GROUP_ACCESS_CHECK_FAILED"
+        );
+    }
+
+    return method;
+}
+
+async function loadCurrentGroupInfo(groupId) {
+    try {
+        const response = await vkBridge.send("VKWebAppGetGroupInfo", {
+            group_id: Number(groupId)
+        });
+        return response || null;
+    } catch (error) {
+        console.warn("Не удалось получить информацию о текущем сообществе:", error);
+        return null;
     }
 }
 
 /**
  * Инициализация контекста сообщества и обязательная проверка доступа.
  *
- * Источник истины для прав — groups.get(filter=admin).
- * launch-параметр vk_viewer_group_role используется только для диагностики.
+ * В v30 приложение больше НЕ запрашивает scope=groups и НЕ читает список
+ * сообществ пользователя. Проверка выполняется только для vk_group_id,
+ * из которого запущено Mini App.
  */
 export async function initGroupContext() {
     const { groupId, viewerGroupRole } = precheckLaunchGroupAccess();
@@ -126,49 +174,22 @@ export async function initGroupContext() {
         adminLevel: 0,
         viewerGroupRole,
         accessGranted: false,
-        accessSource: "groups.get:admin"
+        accessSource: "community-token"
     };
 
-    // Имя сообщества получаем отдельно. Оно не участвует в решении о доступе.
-    try {
-        const infoResponse = await vkApi("groups.getById", {
-            group_id: groupId,
-            fields: "name"
-        });
-        const group = extractGroup(infoResponse);
-        state.group.name = group?.name || "";
-    } catch (error) {
-        console.warn("Не удалось получить название сообщества:", error);
-    }
+    const accessMethod = await verifyCurrentCommunityAdministrator(groupId);
 
-    let hasAdministratorAccess = false;
-
-    try {
-        hasAdministratorAccess = await userAdministersGroup(groupId);
-    } catch (error) {
-        console.warn("Не удалось проверить groups.get(filter=admin):", error);
-
-        throw new GroupAccessDeniedError(
-            "Не удалось подтвердить права владельца/администратора сообщества. " +
-            "Убедитесь, что приложению разрешён доступ к сообществам, и повторите запуск.",
-            "GROUP_ACCESS_CHECK_FAILED"
-        );
-    }
-
-    if (!hasAdministratorAccess) {
-        throw new GroupAccessDeniedError(
-            "Доступ к приложению разрешён только владельцу и администраторам сообщества."
-        );
-    }
-
+    const groupInfo = await loadCurrentGroupInfo(groupId);
+    state.group.name = groupInfo?.name || "";
     state.group.isAdmin = true;
     state.group.adminLevel = 3;
     state.group.accessGranted = true;
+    state.group.accessSource = accessMethod;
 
     console.log("GROUP CONTEXT:", state.group);
     console.log("GROUP ID:", state.group.id);
     console.log("PHOTO OWNER ID:", state.group.ownerId);
-    console.log("GROUP ACCESS: owner/administrator confirmed by groups.get(filter=admin)");
+    console.log(`GROUP ACCESS: owner/administrator confirmed by ${accessMethod}`);
 
     return state.group;
 }

@@ -1,7 +1,7 @@
-import { VK_APP_ID, VK_API_VERSION } from "./config.js?v=20260922-adminfix29";
-import { state } from "./state.js?v=20260922-adminfix29";
-import { dom } from "./dom.js?v=20260922-adminfix29";
-import { logError } from "./helpers.js?v=20260922-adminfix29";
+import { VK_APP_ID, VK_API_VERSION } from "./config.js?v=20260922-search30";
+import { state } from "./state.js?v=20260922-search30";
+import { dom } from "./dom.js?v=20260922-search30";
+import { logError } from "./helpers.js?v=20260922-search30";
 
 let apiStats = createEmptyStats();
 
@@ -41,13 +41,13 @@ export async function loadUser() {
 export async function getAccessToken() {
     const result = await vkBridge.send("VKWebAppGetAuthToken", {
         app_id: VK_APP_ID,
-        scope: "photos,groups"
+        scope: "photos"
     });
 
     state.accessToken = result.access_token;
     state.accessScope = Array.isArray(result.scope)
         ? result.scope.join(",")
-        : String(result.scope || "photos,groups");
+        : String(result.scope || "photos");
 
     if (!state.accessToken) throw new Error("VK не вернул access token.");
 }

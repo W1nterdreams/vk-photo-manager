@@ -1,16 +1,16 @@
-import { state } from "./state.js?v=20260922-adminfix29";
-import { vkApi } from "./vk-api.js?v=20260922-adminfix29";
-import { getAlbumCover, getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260922-adminfix29";
-import { getOwnerId } from "./group-context.js?v=20260922-adminfix29";
+import { state } from "./state.js?v=20260922-search30";
+import { vkApi } from "./vk-api.js?v=20260922-search30";
+import { getAlbumCover, getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260922-search30";
+import { getOwnerId } from "./group-context.js?v=20260922-search30";
 import {
     invalidateAlbumCaches,
     invalidateAlbumPhotosCache,
     invalidateCommentCaches
-} from "./cache.js?v=20260922-adminfix29";
-import { openVkTarget, openVkPhoto } from "./vk-links.js?v=20260922-adminfix29";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260922-adminfix29";
-import { markPhotoIndexAlbumDirty } from "./photo-index-db.js?v=20260922-adminfix29";
-import { applyLocalPhotoMove } from "./photo-index-sync.js?v=20260922-adminfix29";
+} from "./cache.js?v=20260922-search30";
+import { openVkTarget, openVkPhoto } from "./vk-links.js?v=20260922-search30";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260922-search30";
+import { markPhotoIndexAlbumDirty } from "./photo-index-db.js?v=20260922-search30";
+import { applyLocalPhotoMove } from "./photo-index-sync.js?v=20260922-search30";
 
 const ALBUM_PAGE_SIZE = 100;
 const MAX_ALBUM_PAGES = 200;
@@ -611,7 +611,7 @@ async function movePhoto(album) {
     // устаревшую карточку и сразу синхронизирует счётчик фотографий.
     if (sourceAlbum) {
         try {
-            const { loadPhotos } = await import("./photos.js?v=20260922-adminfix29");
+            const { loadPhotos } = await import("./photos.js?v=20260922-search30");
             await loadPhotos(sourceAlbum, { force: true });
         } catch (error) {
             console.warn("Не удалось обновить альбом после перемещения фотографии:", error);
@@ -631,7 +631,7 @@ async function refreshSourceAlbumAfterMove(sourceAlbum) {
     if (!sourceAlbum) return;
 
     try {
-        const { loadPhotos } = await import("./photos.js?v=20260922-adminfix29");
+        const { loadPhotos } = await import("./photos.js?v=20260922-search30");
         const freshSource = (
             state.currentAlbum && String(state.currentAlbum.id) === String(sourceAlbum.id)
                 ? state.currentAlbum

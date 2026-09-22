@@ -1,4 +1,4 @@
-import { state } from "./state.js?v=20260922-adminfix29";
+import { state } from "./state.js?v=20260922-search30";
 
 let activeOverlay = null;
 let closingPromise = null;
