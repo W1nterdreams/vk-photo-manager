@@ -305,3 +305,15 @@ await vkPhotoIndexDebug.status() // dirty-альбомы и состояние �
 Проверка владельца/администратора больше не использует community token и не запрашивает scope=groups.
 После получения обычного user token с scope=photos приложение вызывает groups.getById только для текущего vk_group_id и проверяет is_admin=1 и admin_level=3.
 Для диагностики доступна команда groupAccessDebug.status().
+
+## v32: проверка доступа по launch-role
+
+Для входа в Mini App используются launch params текущего сообщества:
+`vk_viewer_group_role=admin|editor|moder|member|none`.
+
+Разрешены: `admin`, `editor`, `moder`.
+Заблокированы: `member`, `none`.
+
+Для проверки доступа больше не используются `groups.get`, `groups.getById`,
+`scope=groups` или community token. Рабочий пользовательский токен запрашивает
+только `photos`.
