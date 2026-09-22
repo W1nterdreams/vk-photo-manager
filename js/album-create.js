@@ -1,12 +1,12 @@
-import { state } from "./state.js?v=20260922-access32";
-import { dom } from "./dom.js?v=20260922-access32";
-import { vkApi } from "./vk-api.js?v=20260922-access32";
-import { getErrorMessage } from "./helpers.js?v=20260922-access32";
-import { loadAlbums } from "./albums.js?v=20260922-access32";
-import { closeMenu } from "./main-menu.js?v=20260922-access32";
-import { getGroupId, getOwnerId } from "./group-context.js?v=20260922-access32";
-import { invalidateAlbumCaches } from "./cache.js?v=20260922-access32";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260922-access32";
+import { state } from "./state.js?v=20260922-searchcards33";
+import { dom } from "./dom.js?v=20260922-searchcards33";
+import { vkApi } from "./vk-api.js?v=20260922-searchcards33";
+import { getErrorMessage } from "./helpers.js?v=20260922-searchcards33";
+import { loadAlbums } from "./albums.js?v=20260922-searchcards33";
+import { closeMenu } from "./main-menu.js?v=20260922-searchcards33";
+import { getGroupId, getOwnerId } from "./group-context.js?v=20260922-searchcards33";
+import { invalidateAlbumCaches } from "./cache.js?v=20260922-searchcards33";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260922-searchcards33";
 
 async function openModal() {
     await closeMenu();

@@ -1,13 +1,13 @@
-import { state } from "./state.js?v=20260922-access32";
-import { vkApi } from "./vk-api.js?v=20260922-access32";
-import { getOwnerId } from "./group-context.js?v=20260922-access32";
-import { getPhotoPreviewUrl, getErrorMessage } from "./helpers.js?v=20260922-access32";
-import { ensureAlbumIndex } from "./albums.js?v=20260922-access32";
-import { openAlbum } from "./photos.js?v=20260922-access32";
-import { openPhotoViewer } from "./photo-viewer.js?v=20260922-access32";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260922-access32";
-import { getPhotoIndexSnapshot } from "./photo-index-db.js?v=20260922-access32";
-import { synchronizePhotoIndex } from "./photo-index-sync.js?v=20260922-access32";
+import { state } from "./state.js?v=20260922-searchcards33";
+import { vkApi } from "./vk-api.js?v=20260922-searchcards33";
+import { getOwnerId } from "./group-context.js?v=20260922-searchcards33";
+import { getPhotoPreviewUrl, getErrorMessage } from "./helpers.js?v=20260922-searchcards33";
+import { ensureAlbumIndex } from "./albums.js?v=20260922-searchcards33";
+import { openAlbum } from "./photos.js?v=20260922-searchcards33";
+import { openPhotoViewer } from "./photo-viewer.js?v=20260922-searchcards33";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260922-searchcards33";
+import { getPhotoIndexSnapshot } from "./photo-index-db.js?v=20260922-searchcards33";
+import { synchronizePhotoIndex } from "./photo-index-sync.js?v=20260922-searchcards33";
 
 const SEARCH_RESULTS_PAGE_SIZE = 100;
 const FALLBACK_PAGE_SIZE = 200;
@@ -170,7 +170,7 @@ function installStyles() {
             min-height: 0;
             overflow-y: auto;
             display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
+            grid-template-columns: repeat(2, minmax(0, 1fr));
             align-content: start;
             gap: 2px;
             padding: 2px;
@@ -236,7 +236,7 @@ function installStyles() {
 
         @media (min-width: 700px) {
             .global-photo-search-results {
-                grid-template-columns: repeat(5, minmax(0, 1fr));
+                grid-template-columns: repeat(3, minmax(0, 1fr));
                 gap: 4px;
                 padding: 4px;
             }
@@ -312,7 +312,7 @@ function createResultCard(photo) {
     card.type = "button";
     card.title = photo.text || albumTitle(photo);
 
-    const url = getPhotoPreviewUrl(photo, 200);
+    const url = getPhotoPreviewUrl(photo, 320);
     if (url) {
         const image = create("img");
         image.src = url;
