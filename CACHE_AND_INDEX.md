@@ -299,3 +299,9 @@ await vkPhotoIndexDebug.status() // dirty-альбомы и состояние �
 - `scope=groups` удалён. Приложение больше не вызывает `groups.get(filter=admin)` и не запрашивает список сообществ пользователя.
 - Права проверяются только для текущего `vk_group_id` через community-token VK Bridge; сам community token после проверки не сохраняется и для фото-API не используется.
 - User access token снова запрашивается только со scope `photos`, причём уже после подтверждения прав на текущее сообщество.
+
+## v31 — проверка доступа без community token
+
+Проверка владельца/администратора больше не использует community token и не запрашивает scope=groups.
+После получения обычного user token с scope=photos приложение вызывает groups.getById только для текущего vk_group_id и проверяет is_admin=1 и admin_level=3.
+Для диагностики доступна команда groupAccessDebug.status().
