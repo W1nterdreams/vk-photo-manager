@@ -1,29 +1,29 @@
-import { dom } from "./dom.js?v=20260922-search30";
-import { vkInit, loadUser, getAccessToken } from "./vk-api.js?v=20260922-search30";
+import { dom } from "./dom.js?v=20260922-access31";
+import { vkInit, loadUser, getAccessToken } from "./vk-api.js?v=20260922-access31";
 import {
     GroupAccessDeniedError,
     precheckLaunchGroupAccess,
     initGroupContext
-} from "./group-context.js?v=20260922-search30";
-import { initAlbums, loadAlbums } from "./albums.js?v=20260922-search30";
-import { openAlbum } from "./photos.js?v=20260922-search30";
-import { initMainMenu } from "./main-menu.js?v=20260922-search30";
-import { initAlbumCreate } from "./album-create.js?v=20260922-search30";
-import { initAlbumEdit } from "./album-edit.js?v=20260922-search30";
-import { initAlbumDelete } from "./album-delete.js?v=20260922-search30";
-import { initAlbumReorder } from "./album-reorder.js?v=20260922-search30";
-import { initComments } from "./comments.js?v=20260922-search30";
-import { initAlbumComments } from "./album-comments.js?v=20260922-search30";
-import { initPhotoViewer, openPhotoViewer } from "./photo-viewer.js?v=20260922-search30";
-import { initPhotoUpload } from "./photo-upload.js?v=20260922-search30";
-import { initPhotoMenu } from "./photo-menu.js?v=20260922-search30";
-import { initPhotoTransfer } from "./photo-transfer.js?v=20260922-search30";
-import { initPhotoReorder } from "./photo-reorder.js?v=20260922-search30";
-import { initNavigation, showAlbumsScreen } from "./navigation.js?v=20260922-search30";
-import { escapeHtml, getErrorMessage, logError } from "./helpers.js?v=20260922-search30";
-import { cleanupLegacyCache } from "./cache.js?v=20260922-search30";
-import { initGlobalPhotoSearch } from "./global-photo-search.js?v=20260922-search30";
-import { initPhotoIndexSync } from "./photo-index-sync.js?v=20260922-search30";
+} from "./group-context.js?v=20260922-access31";
+import { initAlbums, loadAlbums } from "./albums.js?v=20260922-access31";
+import { openAlbum } from "./photos.js?v=20260922-access31";
+import { initMainMenu } from "./main-menu.js?v=20260922-access31";
+import { initAlbumCreate } from "./album-create.js?v=20260922-access31";
+import { initAlbumEdit } from "./album-edit.js?v=20260922-access31";
+import { initAlbumDelete } from "./album-delete.js?v=20260922-access31";
+import { initAlbumReorder } from "./album-reorder.js?v=20260922-access31";
+import { initComments } from "./comments.js?v=20260922-access31";
+import { initAlbumComments } from "./album-comments.js?v=20260922-access31";
+import { initPhotoViewer, openPhotoViewer } from "./photo-viewer.js?v=20260922-access31";
+import { initPhotoUpload } from "./photo-upload.js?v=20260922-access31";
+import { initPhotoMenu } from "./photo-menu.js?v=20260922-access31";
+import { initPhotoTransfer } from "./photo-transfer.js?v=20260922-access31";
+import { initPhotoReorder } from "./photo-reorder.js?v=20260922-access31";
+import { initNavigation, showAlbumsScreen } from "./navigation.js?v=20260922-access31";
+import { escapeHtml, getErrorMessage, logError } from "./helpers.js?v=20260922-access31";
+import { cleanupLegacyCache } from "./cache.js?v=20260922-access31";
+import { initGlobalPhotoSearch } from "./global-photo-search.js?v=20260922-access31";
+import { initPhotoIndexSync } from "./photo-index-sync.js?v=20260922-access31";
 
 function setAppInteractive(enabled) {
     const app = document.getElementById("app");
@@ -115,12 +115,13 @@ async function startApp() {
 
         await loadUser();
 
-        // Проверяем права только для текущего vk_group_id через community token.
-        // Список сообществ пользователя и scope=groups больше не запрашиваются.
-        await initGroupContext();
-
-        // photos-токен запрашиваем только ПОСЛЕ подтверждения прав.
+        // Получаем только photos-токен. Он же является обычным user token и
+        // позволяет запросить groups.getById для текущего сообщества без
+        // scope=groups и без чтения списка групп пользователя.
         await getAccessToken();
+
+        // Проверяем is_admin/admin_level только у текущего vk_group_id.
+        await initGroupContext();
 
         // Рабочие обработчики вообще не подключаем до подтверждения доступа.
         initWorkingUi();
