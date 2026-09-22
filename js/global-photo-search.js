@@ -1,13 +1,13 @@
-import { state } from "./state.js?v=20260922-searchcards33";
-import { vkApi } from "./vk-api.js?v=20260922-searchcards33";
-import { getOwnerId } from "./group-context.js?v=20260922-searchcards33";
-import { getPhotoPreviewUrl, getErrorMessage } from "./helpers.js?v=20260922-searchcards33";
-import { ensureAlbumIndex } from "./albums.js?v=20260922-searchcards33";
-import { openAlbum } from "./photos.js?v=20260922-searchcards33";
-import { openPhotoViewer } from "./photo-viewer.js?v=20260922-searchcards33";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260922-searchcards33";
-import { getPhotoIndexSnapshot } from "./photo-index-db.js?v=20260922-searchcards33";
-import { synchronizePhotoIndex } from "./photo-index-sync.js?v=20260922-searchcards33";
+import { state } from "./state.js?v=20260922-searchcards34";
+import { vkApi } from "./vk-api.js?v=20260922-searchcards34";
+import { getOwnerId } from "./group-context.js?v=20260922-searchcards34";
+import { getPhotoPreviewUrl, getErrorMessage } from "./helpers.js?v=20260922-searchcards34";
+import { ensureAlbumIndex } from "./albums.js?v=20260922-searchcards34";
+import { openAlbum } from "./photos.js?v=20260922-searchcards34";
+import { openPhotoViewer } from "./photo-viewer.js?v=20260922-searchcards34";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260922-searchcards34";
+import { getPhotoIndexSnapshot } from "./photo-index-db.js?v=20260922-searchcards34";
+import { synchronizePhotoIndex } from "./photo-index-sync.js?v=20260922-searchcards34";
 
 const SEARCH_RESULTS_PAGE_SIZE = 100;
 const FALLBACK_PAGE_SIZE = 200;
@@ -32,6 +32,7 @@ let syncMode = "";
 let currentMatches = [];
 let renderedMatchCount = 0;
 let renderedQuery = "";
+let resultGridResizeObserver = null;
 
 function create(tag, className = "", text = "") {
     const element = document.createElement(tag);
@@ -171,6 +172,7 @@ function installStyles() {
             overflow-y: auto;
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
+            grid-auto-rows: var(--global-photo-card-size, 180px);
             align-content: start;
             gap: 2px;
             padding: 2px;
@@ -180,7 +182,8 @@ function installStyles() {
         .global-photo-search-card {
             position: relative;
             width: 100%;
-            aspect-ratio: 1 / 1;
+            height: 100%;
+            min-height: 0;
             overflow: hidden;
             padding: 0;
             border: 0;
@@ -251,6 +254,25 @@ function formatDate(timestamp) {
     const d = new Date(value * 1000);
     if (Number.isNaN(d.getTime())) return "";
     return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${d.getFullYear()}`;
+}
+
+function updateResultCardSize() {
+    if (!results || results.clientWidth <= 0) return;
+
+    const styles = window.getComputedStyle(results);
+    const columns = String(styles.gridTemplateColumns || "")
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean)
+        .length || (window.innerWidth >= 700 ? 3 : 2);
+
+    const gap = Number.parseFloat(styles.columnGap || styles.gap || "0") || 0;
+    const paddingLeft = Number.parseFloat(styles.paddingLeft || "0") || 0;
+    const paddingRight = Number.parseFloat(styles.paddingRight || "0") || 0;
+    const innerWidth = Math.max(0, results.clientWidth - paddingLeft - paddingRight);
+    const size = Math.max(120, Math.floor((innerWidth - gap * Math.max(0, columns - 1)) / columns));
+
+    results.style.setProperty("--global-photo-card-size", `${size}px`);
 }
 
 function albumForPhoto(photo) {
@@ -602,6 +624,13 @@ function ensureUi() {
     overlay.appendChild(screen);
     document.body.appendChild(overlay);
 
+    if (typeof ResizeObserver === "function") {
+        resultGridResizeObserver = new ResizeObserver(() => updateResultCardSize());
+        resultGridResizeObserver.observe(results);
+    } else {
+        window.addEventListener("resize", updateResultCardSize, { passive: true });
+    }
+
     input.addEventListener("input", () => {
         query = input.value;
         render();
@@ -645,7 +674,9 @@ export async function openGlobalPhotoSearch() {
     overlay.classList.remove("hidden");
     openSwipeOverlay("global-photo-search", hideDirect);
     query = input.value || "";
+    updateResultCardSize();
     render();
+    requestAnimationFrame(updateResultCardSize);
 
     // Названия альбомов нужны для подписей результатов. Индекс строится
     // параллельно и не задерживает сам поиск по фотографиям.
@@ -674,6 +705,7 @@ export function initGlobalPhotoSearch() {
                 matches: currentMatches.length,
                 rendered: renderedMatchCount,
                 pageSize: SEARCH_RESULTS_PAGE_SIZE,
+                cardSize: results ? getComputedStyle(results).getPropertyValue("--global-photo-card-size").trim() : "",
                 loadedAll,
                 loading
             }),
