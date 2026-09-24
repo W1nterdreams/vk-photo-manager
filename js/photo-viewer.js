@@ -1,17 +1,18 @@
-import { armLongPressReleaseGuard, consumeLongPressSyntheticClick } from "./long-press-guard.js?v=20260924-searcharrows36";
-import { state } from "./state.js?v=20260924-searcharrows36";
-import { dom } from "./dom.js?v=20260924-searcharrows36";
-import { vkApi } from "./vk-api.js?v=20260924-searcharrows36";
-import { getBestPhotoUrl, getPhotoPreviewUrl, escapeHtml } from "./helpers.js?v=20260924-searcharrows36";
-import { getOwnerId } from "./group-context.js?v=20260924-searcharrows36";
+import { armLongPressReleaseGuard, consumeLongPressSyntheticClick } from "./long-press-guard.js?v=20260924-centermenu37";
+import { state } from "./state.js?v=20260924-centermenu37";
+import { dom } from "./dom.js?v=20260924-centermenu37";
+import { vkApi } from "./vk-api.js?v=20260924-centermenu37";
+import { getBestPhotoUrl, getPhotoPreviewUrl, escapeHtml } from "./helpers.js?v=20260924-centermenu37";
+import { getOwnerId } from "./group-context.js?v=20260924-centermenu37";
 import {
     showPhotoViewerScreen,
     pushPhotoHistory,
     replacePhotoHistory
-} from "./navigation.js?v=20260924-searcharrows36";
-import { photoCommentOwnerId } from "./photo-comment-api.js?v=20260924-searcharrows36";
-import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260924-searcharrows36";
-import { invalidatePhotoActivityCaches } from "./cache.js?v=20260924-searcharrows36";
+} from "./navigation.js?v=20260924-centermenu37";
+import { photoCommentOwnerId } from "./photo-comment-api.js?v=20260924-centermenu37";
+import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260924-centermenu37";
+import { invalidatePhotoActivityCaches } from "./cache.js?v=20260924-centermenu37";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260924-centermenu37";
 
 const COMMENT_PAGE_SIZE = 100;
 const LONG_PRESS_MS = 900;
@@ -23,6 +24,8 @@ let activeAlbum = null;
 let authors = new Map();
 let comments = [];
 let contextOverlay = null;
+let contextOverlayKind = "";
+const VIEWER_ALBUM_MENU_OVERLAY_ID = "photo-viewer-album-menu";
 let viewerSequence = 0;
 let imageLoadSequence = 0;
 let pendingHighResPhotoId = "";
@@ -253,9 +256,19 @@ function userCanEdit(comment) {
     return Number(comment?.from_id || 0) === Number(state.currentUser?.id || 0);
 }
 
-function closeContextMenu() {
+function closeContextMenuDirect() {
     if (contextOverlay?.remove) contextOverlay.remove();
     contextOverlay = null;
+    contextOverlayKind = "";
+}
+
+async function closeContextMenu() {
+    if (contextOverlayKind === "viewer-album") {
+        const closedThroughHistory = await closeSwipeOverlay(VIEWER_ALBUM_MENU_OVERLAY_ID);
+        if (closedThroughHistory) return;
+    }
+
+    closeContextMenuDirect();
 }
 
 function makeMenuButton(text, action, danger = false) {
@@ -264,7 +277,7 @@ function makeMenuButton(text, action, danger = false) {
     button.className = `context-menu-button${danger ? " context-menu-button-danger" : ""}`;
     button.textContent = text;
     button.addEventListener("click", async () => {
-        closeContextMenu();
+        await closeContextMenu();
         await action();
     });
     return button;
@@ -303,10 +316,11 @@ function openCommentContext(comment) {
     overlay.appendChild(sheet);
     overlay.addEventListener("click", event => {
         if (consumeLongPressSyntheticClick(event)) return;
-        if (event.target === overlay) closeContextMenu();
+        if (event.target === overlay) void closeContextMenu();
     }, true);
     document.body.appendChild(overlay);
     contextOverlay = overlay;
+    contextOverlayKind = "comment";
 }
 
 function installLongPress(element, handler) {
@@ -689,12 +703,16 @@ function moveViewerByStep(step) {
 
 function openViewerPhotoContext() {
     if (!activePhoto?.id) return;
-    closeContextMenu();
+
+    // Меню открывается поверх фотографии как отдельный history-overlay.
+    // Поэтому системный свайп «Назад» сначала закрывает меню и только
+    // следующий жест может покинуть просмотрщик фотографии.
+    closeContextMenuDirect();
 
     const overlay = document.createElement("div");
-    overlay.className = "context-menu-overlay";
+    overlay.className = "context-menu-overlay photo-viewer-album-context-overlay";
     const sheet = document.createElement("div");
-    sheet.className = "context-menu-sheet";
+    sheet.className = "context-menu-sheet photo-viewer-album-context-sheet";
 
     sheet.appendChild(makeMenuButton("Перейти в альбом", async () => {
         const photo = activePhoto;
@@ -702,7 +720,7 @@ function openViewerPhotoContext() {
         if (!album?.id) return;
 
         try {
-            const { openAlbum } = await import("./photos.js?v=20260924-searcharrows36");
+            const { openAlbum } = await import("./photos.js?v=20260924-centermenu37");
             await openAlbum(album);
         } catch (error) {
             console.warn("Не удалось перейти в альбом фотографии:", error);
@@ -714,10 +732,14 @@ function openViewerPhotoContext() {
     overlay.appendChild(sheet);
     overlay.addEventListener("click", event => {
         if (consumeLongPressSyntheticClick(event)) return;
-        if (event.target === overlay) closeContextMenu();
+        if (event.target === overlay) void closeContextMenu();
     }, true);
+
     document.body.appendChild(overlay);
     contextOverlay = overlay;
+    contextOverlayKind = "viewer-album";
+
+    openSwipeOverlay(VIEWER_ALBUM_MENU_OVERLAY_ID, closeContextMenuDirect);
 }
 
 export async function openPhotoViewer(photo, album, {
