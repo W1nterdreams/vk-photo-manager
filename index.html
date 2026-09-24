@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <!-- CACHE_VERSION: 20260924-viewerswipe35 -->
+    <!-- CACHE_VERSION: 20260924-searcharrows36 -->
     <meta charset="UTF-8">
 
     <meta
@@ -11,7 +11,7 @@
 
     <title>Фотоальбомы VK</title>
 
-    <link rel="stylesheet" href="./style.css?v=20260924-viewerswipe35">
+    <link rel="stylesheet" href="./style.css?v=20260924-searcharrows36">
 
     <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
 </head>
@@ -430,11 +430,31 @@
     >
 
         <section class="photo-viewer-media">
+            <button
+                id="photoViewerPrev"
+                class="photo-viewer-nav photo-viewer-nav-prev hidden"
+                type="button"
+                aria-label="Предыдущая фотография"
+                title="Предыдущая фотография"
+            >
+                ‹
+            </button>
+
             <img
                 id="photoViewerImage"
                 class="photo-viewer-image"
                 alt="Фотография"
             >
+
+            <button
+                id="photoViewerNext"
+                class="photo-viewer-nav photo-viewer-nav-next hidden"
+                type="button"
+                aria-label="Следующая фотография"
+                title="Следующая фотография"
+            >
+                ›
+            </button>
         </section>
 
         <div
@@ -766,7 +786,7 @@
 </div>
 
 
-<script type="module" src="./js/app.js?v=20260924-viewerswipe35"></script>
+<script type="module" src="./js/app.js?v=20260924-searcharrows36"></script>
     
 </body>
 </html>
