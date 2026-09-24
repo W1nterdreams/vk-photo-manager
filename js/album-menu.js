@@ -1,9 +1,9 @@
-import { getOwnerId } from "./group-context.js?v=20260924-centermenu37";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260924-centermenu37";
+import { getOwnerId } from "./group-context.js?v=20260924-menufix38";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260924-menufix38";
 import {
     armLongPressReleaseGuard,
     consumeLongPressSyntheticClick
-} from "./long-press-guard.js?v=20260924-centermenu37";
+} from "./long-press-guard.js?v=20260924-menufix38";
 
 const LONG_PRESS_MS = 900;
 const MOVE_CANCEL_PX = 15;

@@ -1,5 +1,5 @@
-import { state } from "./state.js?v=20260924-centermenu37";
-import { openPhotoTransferMany } from "./photo-transfer.js?v=20260924-centermenu37";
+import { state } from "./state.js?v=20260924-menufix38";
+import { openPhotoTransferMany } from "./photo-transfer.js?v=20260924-menufix38";
 
 let active = false;
 let selectedIds = new Set();

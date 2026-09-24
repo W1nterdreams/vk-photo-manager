@@ -1,12 +1,12 @@
-import { state } from "./state.js?v=20260924-centermenu37";
-import { dom } from "./dom.js?v=20260924-centermenu37";
-import { vkApi } from "./vk-api.js?v=20260924-centermenu37";
-import { getErrorMessage } from "./helpers.js?v=20260924-centermenu37";
-import { loadAlbums } from "./albums.js?v=20260924-centermenu37";
-import { closeMenu } from "./main-menu.js?v=20260924-centermenu37";
-import { getGroupId, getOwnerId } from "./group-context.js?v=20260924-centermenu37";
-import { invalidateAlbumCaches } from "./cache.js?v=20260924-centermenu37";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260924-centermenu37";
+import { state } from "./state.js?v=20260924-menufix38";
+import { dom } from "./dom.js?v=20260924-menufix38";
+import { vkApi } from "./vk-api.js?v=20260924-menufix38";
+import { getErrorMessage } from "./helpers.js?v=20260924-menufix38";
+import { loadAlbums } from "./albums.js?v=20260924-menufix38";
+import { closeMenu } from "./main-menu.js?v=20260924-menufix38";
+import { getGroupId, getOwnerId } from "./group-context.js?v=20260924-menufix38";
+import { invalidateAlbumCaches } from "./cache.js?v=20260924-menufix38";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260924-menufix38";
 
 async function openModal() {
     await closeMenu();

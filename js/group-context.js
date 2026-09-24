@@ -1,4 +1,4 @@
-import { state } from "./state.js?v=20260924-centermenu37";
+import { state } from "./state.js?v=20260924-menufix38";
 
 let lastAccessDiagnostic = null;
 

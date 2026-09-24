@@ -1,9 +1,9 @@
-import { state } from "./state.js?v=20260924-centermenu37";
-import { dom } from "./dom.js?v=20260924-centermenu37";
-import { vkApi } from "./vk-api.js?v=20260924-centermenu37";
-import { getAlbumCover, escapeHtml, getErrorMessage } from "./helpers.js?v=20260924-centermenu37";
-import { openAlbum, loadPhotos } from "./photos.js?v=20260924-centermenu37";
-import { CACHE_TTL } from "./config.js?v=20260924-centermenu37";
+import { state } from "./state.js?v=20260924-menufix38";
+import { dom } from "./dom.js?v=20260924-menufix38";
+import { vkApi } from "./vk-api.js?v=20260924-menufix38";
+import { getAlbumCover, escapeHtml, getErrorMessage } from "./helpers.js?v=20260924-menufix38";
+import { openAlbum, loadPhotos } from "./photos.js?v=20260924-menufix38";
+import { CACHE_TTL } from "./config.js?v=20260924-menufix38";
 import {
     cacheGet,
     cacheGetStale,
@@ -11,10 +11,10 @@ import {
     invalidateAlbumCaches,
     albumsKey,
     albumIndexKey
-} from "./cache.js?v=20260924-centermenu37";
-import { getOwnerId } from "./group-context.js?v=20260924-centermenu37";
-import { bindAlbumLongPress } from "./album-menu.js?v=20260924-centermenu37";
-import { observeAlbumFingerprints, reconcileAlbumFingerprints } from "./album-fingerprint.js?v=20260924-centermenu37";
+} from "./cache.js?v=20260924-menufix38";
+import { getOwnerId } from "./group-context.js?v=20260924-menufix38";
+import { bindAlbumLongPress } from "./album-menu.js?v=20260924-menufix38";
+import { observeAlbumFingerprints, reconcileAlbumFingerprints } from "./album-fingerprint.js?v=20260924-menufix38";
 
 const PAGE_SIZE = 20;
 const INDEX_PAGE_SIZE = 100;
