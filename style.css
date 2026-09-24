@@ -2470,3 +2470,18 @@ img {
         padding: 20px;
     }
 }
+
+/* =========================================================
+   МЕНЮ ДОЛГОГО НАЖАТИЯ В ПРОСМОТРЩИКЕ ФОТО
+   ========================================================= */
+
+.photo-viewer-album-context-overlay {
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.photo-viewer-album-context-sheet {
+    width: min(360px, calc(100vw - 40px));
+    border-radius: 16px;
+}
