@@ -1,5 +1,5 @@
-import { state } from "./state.js?v=20260924-viewerswipe35";
-import { openPhotoTransferMany } from "./photo-transfer.js?v=20260924-viewerswipe35";
+import { state } from "./state.js?v=20260924-searcharrows36";
+import { openPhotoTransferMany } from "./photo-transfer.js?v=20260924-searcharrows36";
 
 let active = false;
 let selectedIds = new Set();

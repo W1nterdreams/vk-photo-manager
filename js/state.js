@@ -16,6 +16,7 @@ export const state = {
     albumIndexBuilding: false,
     currentAlbum: null,
     currentPhoto: null,
+    photoViewerSource: "",
     photos: [],
     photosTotal: 0,
     photosOffset: 0,

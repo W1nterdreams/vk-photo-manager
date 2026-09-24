@@ -1,12 +1,12 @@
-import { state } from "./state.js?v=20260924-viewerswipe35";
-import { dom } from "./dom.js?v=20260924-viewerswipe35";
-import { vkApi } from "./vk-api.js?v=20260924-viewerswipe35";
-import { getErrorMessage } from "./helpers.js?v=20260924-viewerswipe35";
-import { loadAlbums } from "./albums.js?v=20260924-viewerswipe35";
-import { closeMenu } from "./main-menu.js?v=20260924-viewerswipe35";
-import { getGroupId, getOwnerId } from "./group-context.js?v=20260924-viewerswipe35";
-import { invalidateAlbumCaches } from "./cache.js?v=20260924-viewerswipe35";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260924-viewerswipe35";
+import { state } from "./state.js?v=20260924-searcharrows36";
+import { dom } from "./dom.js?v=20260924-searcharrows36";
+import { vkApi } from "./vk-api.js?v=20260924-searcharrows36";
+import { getErrorMessage } from "./helpers.js?v=20260924-searcharrows36";
+import { loadAlbums } from "./albums.js?v=20260924-searcharrows36";
+import { closeMenu } from "./main-menu.js?v=20260924-searcharrows36";
+import { getGroupId, getOwnerId } from "./group-context.js?v=20260924-searcharrows36";
+import { invalidateAlbumCaches } from "./cache.js?v=20260924-searcharrows36";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260924-searcharrows36";
 
 async function openModal() {
     await closeMenu();

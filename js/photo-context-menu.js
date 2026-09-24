@@ -1,22 +1,22 @@
-import { state } from "./state.js?v=20260924-viewerswipe35";
+import { state } from "./state.js?v=20260924-searcharrows36";
 import {
     downloadPhotoFile,
     openPhotoDescriptionEditor,
     deletePhoto,
     makePhotoAlbumCover
-} from "./photo-menu.js?v=20260924-viewerswipe35";
-import { openPhotoTransfer } from "./photo-transfer.js?v=20260924-viewerswipe35";
-import { openPhotoReorder } from "./photo-reorder.js?v=20260924-viewerswipe35";
-import { getErrorMessage } from "./helpers.js?v=20260924-viewerswipe35";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260924-viewerswipe35";
+} from "./photo-menu.js?v=20260924-searcharrows36";
+import { openPhotoTransfer } from "./photo-transfer.js?v=20260924-searcharrows36";
+import { openPhotoReorder } from "./photo-reorder.js?v=20260924-searcharrows36";
+import { getErrorMessage } from "./helpers.js?v=20260924-searcharrows36";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260924-searcharrows36";
 import {
     armLongPressReleaseGuard,
     consumeLongPressSyntheticClick
-} from "./long-press-guard.js?v=20260924-viewerswipe35";
+} from "./long-press-guard.js?v=20260924-searcharrows36";
 import {
     isPhotoMultiSelectActive,
     startPhotoMultiSelect
-} from "./photo-multiselect.js?v=20260924-viewerswipe35";
+} from "./photo-multiselect.js?v=20260924-searcharrows36";
 
 const LONG_PRESS_MS = 900;
 const MOVE_CANCEL_PX = 15;

@@ -1,4 +1,4 @@
-import { state } from "./state.js?v=20260924-viewerswipe35";
+import { state } from "./state.js?v=20260924-searcharrows36";
 
 let lastAccessDiagnostic = null;
 

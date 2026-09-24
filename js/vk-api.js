@@ -1,7 +1,7 @@
-import { VK_APP_ID, VK_API_VERSION } from "./config.js?v=20260924-viewerswipe35";
-import { state } from "./state.js?v=20260924-viewerswipe35";
-import { dom } from "./dom.js?v=20260924-viewerswipe35";
-import { logError } from "./helpers.js?v=20260924-viewerswipe35";
+import { VK_APP_ID, VK_API_VERSION } from "./config.js?v=20260924-searcharrows36";
+import { state } from "./state.js?v=20260924-searcharrows36";
+import { dom } from "./dom.js?v=20260924-searcharrows36";
+import { logError } from "./helpers.js?v=20260924-searcharrows36";
 
 let apiStats = createEmptyStats();
 

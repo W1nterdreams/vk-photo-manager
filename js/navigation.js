@@ -1,7 +1,7 @@
-import { state } from "./state.js?v=20260924-viewerswipe35";
-import { dom } from "./dom.js?v=20260924-viewerswipe35";
-import { cancelPhotoMultiSelect } from "./photo-multiselect.js?v=20260924-viewerswipe35";
-import { handleOverlayPopState } from "./overlay-history.js?v=20260924-viewerswipe35";
+import { state } from "./state.js?v=20260924-searcharrows36";
+import { dom } from "./dom.js?v=20260924-searcharrows36";
+import { cancelPhotoMultiSelect } from "./photo-multiselect.js?v=20260924-searcharrows36";
+import { handleOverlayPopState } from "./overlay-history.js?v=20260924-searcharrows36";
 
 let openAlbumFromHistory = null;
 let openPhotoFromHistory = null;
@@ -158,7 +158,7 @@ export function pushCommentsHistory() {
     );
 }
 
-export function pushPhotoHistory(photo, album, { fromComments = false } = {}) {
+export function pushPhotoHistory(photo, album, { fromComments = false, viewerSource = "" } = {}) {
     const albumId = String(album?.id ?? photo?.album_id ?? "");
     const photoId = String(photo?.id || "");
     if (!albumId || !photoId) return;
@@ -175,6 +175,7 @@ export function pushPhotoHistory(photo, album, { fromComments = false } = {}) {
             albumId,
             photoId,
             fromComments: Boolean(fromComments),
+            viewerSource: String(viewerSource || ""),
             scrollY: 0
         },
         "",
@@ -182,14 +183,14 @@ export function pushPhotoHistory(photo, album, { fromComments = false } = {}) {
     );
 }
 
-export function replacePhotoHistory(photo, album, { fromComments = false } = {}) {
+export function replacePhotoHistory(photo, album, { fromComments = false, viewerSource = "" } = {}) {
     const albumId = String(album?.id ?? photo?.album_id ?? "");
     const photoId = String(photo?.id || "");
     if (!albumId || !photoId) return;
 
     const current = history.state || {};
 
-    // Свайп между фотографиями не должен добавлять десятки записей в history.
+    // Перелистывание стрелками не должно добавлять десятки записей в history.
     // Меняем только текущую запись просмотрщика, а предыдущая запись альбома
     // (с её scrollY) остаётся нетронутой. Поэтому «Назад» всегда возвращает
     // пользователя ровно туда, откуда он открыл просмотрщик.
@@ -200,6 +201,7 @@ export function replacePhotoHistory(photo, album, { fromComments = false } = {})
             albumId,
             photoId,
             fromComments: Boolean(current.fromComments || fromComments),
+            viewerSource: String(viewerSource || current.viewerSource || ""),
             scrollY: 0
         },
         "",
@@ -214,15 +216,32 @@ function findAlbum(albumId) {
         (state.currentAlbum && String(state.currentAlbum.id) === id ? state.currentAlbum : null);
 }
 
+function scheduleGlobalSearchRestore(shouldRestore) {
+    if (!shouldRestore) return;
+    window.setTimeout(() => {
+        window.dispatchEvent(new CustomEvent("restore-global-photo-search"));
+    }, 0);
+}
+
 async function handlePopState(event) {
     // Если поверх экрана открыто наше меню/модальное окно, системный
     // свайп «Назад» сначала закрывает его и не меняет экран Mini App.
     if (handleOverlayPopState()) return;
 
+    // При выходе из фото, открытого из глобального поиска, сначала
+    // восстанавливаем обычный экран под оверлеем, а затем снова показываем
+    // сам поисковик. Его DOM не уничтожается, поэтому запрос и scrollTop
+    // остаются ровно такими, какими были до открытия фотографии.
+    const restoreGlobalSearch =
+        state.currentScreen === "photo" &&
+        state.photoViewerSource === "global-search";
+    if (restoreGlobalSearch) state.photoViewerSource = "";
+
     const navState = event.state;
 
     if (!navState || navState.screen === "albums") {
         showAlbumsScreen({ restoreScroll: navState?.scrollY || 0 });
+        scheduleGlobalSearchRestore(restoreGlobalSearch);
         return;
     }
 
@@ -234,10 +253,12 @@ async function handlePopState(event) {
                 fromHistory: true,
                 restoreScroll: navState.scrollY || 0
             });
+            scheduleGlobalSearchRestore(restoreGlobalSearch);
             return;
         }
 
         showAlbumsScreen();
+        scheduleGlobalSearchRestore(restoreGlobalSearch);
         return;
     }
 
@@ -250,20 +271,27 @@ async function handlePopState(event) {
                     ? state.currentPhoto
                     : { id: photoId, album_id: Number(album.id) });
 
-            await openPhotoFromHistory(photo, album, { fromHistory: true });
+            await openPhotoFromHistory(photo, album, {
+                fromHistory: true,
+                viewerSource: String(navState.viewerSource || "")
+            });
+            scheduleGlobalSearchRestore(restoreGlobalSearch);
             return;
         }
 
         showAlbumsScreen();
+        scheduleGlobalSearchRestore(restoreGlobalSearch);
         return;
     }
 
     if (navState.screen === "comments") {
         showCommentsScreen({ restoreScroll: navState.scrollY || 0 });
+        scheduleGlobalSearchRestore(restoreGlobalSearch);
         return;
     }
 
     showAlbumsScreen();
+    scheduleGlobalSearchRestore(restoreGlobalSearch);
 }
 
 export function initNavigation({

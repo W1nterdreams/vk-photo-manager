@@ -1,9 +1,9 @@
-import { getOwnerId } from "./group-context.js?v=20260924-viewerswipe35";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260924-viewerswipe35";
+import { getOwnerId } from "./group-context.js?v=20260924-searcharrows36";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260924-searcharrows36";
 import {
     armLongPressReleaseGuard,
     consumeLongPressSyntheticClick
-} from "./long-press-guard.js?v=20260924-viewerswipe35";
+} from "./long-press-guard.js?v=20260924-searcharrows36";
 
 const LONG_PRESS_MS = 900;
 const MOVE_CANCEL_PX = 15;

@@ -1,17 +1,17 @@
-import { armLongPressReleaseGuard, consumeLongPressSyntheticClick } from "./long-press-guard.js?v=20260924-viewerswipe35";
-import { state } from "./state.js?v=20260924-viewerswipe35";
-import { dom } from "./dom.js?v=20260924-viewerswipe35";
-import { vkApi } from "./vk-api.js?v=20260924-viewerswipe35";
-import { getBestPhotoUrl, getPhotoPreviewUrl, escapeHtml } from "./helpers.js?v=20260924-viewerswipe35";
-import { getOwnerId } from "./group-context.js?v=20260924-viewerswipe35";
+import { armLongPressReleaseGuard, consumeLongPressSyntheticClick } from "./long-press-guard.js?v=20260924-searcharrows36";
+import { state } from "./state.js?v=20260924-searcharrows36";
+import { dom } from "./dom.js?v=20260924-searcharrows36";
+import { vkApi } from "./vk-api.js?v=20260924-searcharrows36";
+import { getBestPhotoUrl, getPhotoPreviewUrl, escapeHtml } from "./helpers.js?v=20260924-searcharrows36";
+import { getOwnerId } from "./group-context.js?v=20260924-searcharrows36";
 import {
     showPhotoViewerScreen,
     pushPhotoHistory,
     replacePhotoHistory
-} from "./navigation.js?v=20260924-viewerswipe35";
-import { photoCommentOwnerId } from "./photo-comment-api.js?v=20260924-viewerswipe35";
-import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260924-viewerswipe35";
-import { invalidatePhotoActivityCaches } from "./cache.js?v=20260924-viewerswipe35";
+} from "./navigation.js?v=20260924-searcharrows36";
+import { photoCommentOwnerId } from "./photo-comment-api.js?v=20260924-searcharrows36";
+import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260924-searcharrows36";
+import { invalidatePhotoActivityCaches } from "./cache.js?v=20260924-searcharrows36";
 
 const COMMENT_PAGE_SIZE = 100;
 const LONG_PRESS_MS = 900;
@@ -29,15 +29,6 @@ let pendingHighResPhotoId = "";
 let pendingHighResUrl = "";
 let lastOpenPerf = null;
 let viewerPhotoSequence = [];
-let swipePointerId = null;
-let swipeStartX = 0;
-let swipeStartY = 0;
-let swipeStartAt = 0;
-let swipeCooldownUntil = 0;
-
-const PHOTO_SWIPE_MIN_X = 55;
-const PHOTO_SWIPE_MAX_MS = 900;
-const PHOTO_SWIPE_AXIS_RATIO = 1.15;
 
 function normalizeGroupsResponse(response) {
     if (Array.isArray(response)) return response;
@@ -617,6 +608,7 @@ async function refreshAfterNativePhotoReturn(detail) {
         const fullPhoto = await fetchPhoto(activePhoto);
         activePhoto = fullPhoto;
         state.currentPhoto = fullPhoto;
+        updateViewerArrows();
         renderPhotoHeader(fullPhoto);
         await refreshPhotoComments();
     } catch (error) {
@@ -653,72 +645,87 @@ function albumForViewerPhoto(photo) {
     const albumId = String(photo?.album_id ?? activeAlbum?.id ?? "");
     if (!albumId) return activeAlbum;
 
-    return state.albums.find(item => String(item.id) === albumId) ||
+    const known = state.albums.find(item => String(item.id) === albumId) ||
         state.albumIndex.find(item => String(item.id) === albumId) ||
-        (activeAlbum && String(activeAlbum.id) === albumId ? activeAlbum : activeAlbum);
+        (activeAlbum && String(activeAlbum.id) === albumId ? activeAlbum : null);
+
+    if (known) return known;
+
+    return {
+        id: Number(albumId),
+        owner_id: Number(photo?.owner_id || activeAlbum?.owner_id || getOwnerId()),
+        title: "Альбом",
+        size: 0,
+        description: ""
+    };
 }
 
-function moveViewerBySwipe(step) {
-    if (Date.now() < swipeCooldownUntil) return;
+function updateViewerArrows() {
+    const index = activeViewerPhotoIndex();
+    const hasPrevious = index > 0;
+    const hasNext = index >= 0 && index < viewerPhotoSequence.length - 1;
 
+    dom.photoViewerPrev?.classList.toggle("hidden", !hasPrevious);
+    dom.photoViewerNext?.classList.toggle("hidden", !hasNext);
+}
+
+function moveViewerByStep(step) {
     const index = activeViewerPhotoIndex();
     if (index < 0) return;
 
     const next = viewerPhotoSequence[index + step];
     if (!next?.id) return;
 
-    swipeCooldownUntil = Date.now() + 250;
     const album = albumForViewerPhoto(next);
 
-    // Свайп меняет фотографию внутри одной записи history. Поэтому после
-    // любого количества свайпов кнопка «Назад» вернёт прямо в исходный список,
-    // а не будет прокручивать все просмотренные фотографии назад по одной.
+    // Стрелки меняют фотографию внутри одной записи history. Поэтому после
+    // любого количества перелистываний «Назад» возвращает в исходный список.
     void openPhotoViewer(next, album, {
         replaceHistory: true,
-        sequence: viewerPhotoSequence
+        sequence: viewerPhotoSequence,
+        viewerSource: state.photoViewerSource
     });
 }
 
-function initPhotoSwipe() {
-    const target = dom.photoViewerImage;
-    if (!target) return;
+function openViewerPhotoContext() {
+    if (!activePhoto?.id) return;
+    closeContextMenu();
 
-    target.draggable = false;
+    const overlay = document.createElement("div");
+    overlay.className = "context-menu-overlay";
+    const sheet = document.createElement("div");
+    sheet.className = "context-menu-sheet";
 
-    target.addEventListener("pointerdown", event => {
-        if (event.pointerType === "mouse") return;
-        swipePointerId = event.pointerId;
-        swipeStartX = event.clientX;
-        swipeStartY = event.clientY;
-        swipeStartAt = Date.now();
-    }, { passive: true });
+    sheet.appendChild(makeMenuButton("Перейти в альбом", async () => {
+        const photo = activePhoto;
+        const album = albumForViewerPhoto(photo);
+        if (!album?.id) return;
 
-    target.addEventListener("pointerup", event => {
-        if (event.pointerId !== swipePointerId) return;
+        try {
+            const { openAlbum } = await import("./photos.js?v=20260924-searcharrows36");
+            await openAlbum(album);
+        } catch (error) {
+            console.warn("Не удалось перейти в альбом фотографии:", error);
+            alert("Не удалось открыть альбом этой фотографии.");
+        }
+    }));
 
-        const dx = event.clientX - swipeStartX;
-        const dy = event.clientY - swipeStartY;
-        const elapsed = Date.now() - swipeStartAt;
-        swipePointerId = null;
-
-        if (elapsed > PHOTO_SWIPE_MAX_MS) return;
-        if (Math.abs(dx) < PHOTO_SWIPE_MIN_X) return;
-        if (Math.abs(dx) < Math.abs(dy) * PHOTO_SWIPE_AXIS_RATIO) return;
-
-        // Палец влево -> следующая фотография, вправо -> предыдущая.
-        moveViewerBySwipe(dx < 0 ? 1 : -1);
-    }, { passive: true });
-
-    target.addEventListener("pointercancel", event => {
-        if (event.pointerId === swipePointerId) swipePointerId = null;
-    }, { passive: true });
+    sheet.appendChild(makeMenuButton("Отмена", async () => {}, false));
+    overlay.appendChild(sheet);
+    overlay.addEventListener("click", event => {
+        if (consumeLongPressSyntheticClick(event)) return;
+        if (event.target === overlay) closeContextMenu();
+    }, true);
+    document.body.appendChild(overlay);
+    contextOverlay = overlay;
 }
 
 export async function openPhotoViewer(photo, album, {
     fromHistory = false,
     fromComments = false,
     replaceHistory = false,
-    sequence = null
+    sequence = null,
+    viewerSource = null
 } = {}) {
     if (!photo?.id) return;
 
@@ -733,8 +740,13 @@ export async function openPhotoViewer(photo, album, {
 
     activeAlbum = album || state.currentAlbum || state.albums.find(a => String(a.id) === String(photo.album_id));
     activePhoto = photo;
-    state.currentAlbum = activeAlbum || state.currentAlbum;
     state.currentPhoto = photo;
+
+    if (viewerSource !== null && viewerSource !== undefined) {
+        state.photoViewerSource = String(viewerSource || "");
+    } else if (!replaceHistory && !fromHistory) {
+        state.photoViewerSource = "";
+    }
 
     if (Array.isArray(sequence) && sequence.length) {
         viewerPhotoSequence = normalizeViewerSequence(sequence, photo);
@@ -744,13 +756,26 @@ export async function openPhotoViewer(photo, album, {
         viewerPhotoSequence = normalizeViewerSequence(state.photos, photo);
     }
 
+    updateViewerArrows();
+
     if (!fromHistory) {
         if (replaceHistory) {
-            replacePhotoHistory(photo, activeAlbum, { fromComments });
+            replacePhotoHistory(photo, activeAlbum, {
+                fromComments,
+                viewerSource: state.photoViewerSource
+            });
         } else {
-            pushPhotoHistory(photo, activeAlbum, { fromComments });
+            // Важно: источник сохраняется в history ДО смены currentAlbum.
+            // Для глобального поиска открытая фотография может принадлежать
+            // другому альбому, чем экран, поверх которого был открыт поиск.
+            pushPhotoHistory(photo, activeAlbum, {
+                fromComments,
+                viewerSource: state.photoViewerSource
+            });
         }
     }
+
+    state.currentAlbum = activeAlbum || state.currentAlbum;
 
     // Очищаем изображение ДО показа экрана. Поэтому bitmap предыдущей
     // фотографии физически не может мелькнуть при открытии следующей.
@@ -772,6 +797,7 @@ export async function openPhotoViewer(photo, album, {
 
         activePhoto = fullPhoto;
         state.currentPhoto = fullPhoto;
+        updateViewerArrows();
         renderPhotoHeader(fullPhoto);
         await refreshPhotoComments();
     } catch (error) {
@@ -792,7 +818,22 @@ export function initPhotoViewer() {
     if (initialized) return;
     initialized = true;
 
-    initPhotoSwipe();
+    dom.photoViewerPrev?.addEventListener("click", event => {
+        event.preventDefault();
+        event.stopPropagation();
+        moveViewerByStep(-1);
+    });
+
+    dom.photoViewerNext?.addEventListener("click", event => {
+        event.preventDefault();
+        event.stopPropagation();
+        moveViewerByStep(1);
+    });
+
+    if (dom.photoViewerImage) {
+        dom.photoViewerImage.draggable = false;
+        installLongPress(dom.photoViewerImage, openViewerPhotoContext);
+    }
 
     window.photoViewerDebug = {
         last: () => lastOpenPerf ? { ...lastOpenPerf } : null

@@ -1,13 +1,12 @@
-import { state } from "./state.js?v=20260924-viewerswipe35";
-import { vkApi } from "./vk-api.js?v=20260924-viewerswipe35";
-import { getOwnerId } from "./group-context.js?v=20260924-viewerswipe35";
-import { getPhotoPreviewUrl, getErrorMessage } from "./helpers.js?v=20260924-viewerswipe35";
-import { ensureAlbumIndex } from "./albums.js?v=20260924-viewerswipe35";
-import { openAlbum } from "./photos.js?v=20260924-viewerswipe35";
-import { openPhotoViewer } from "./photo-viewer.js?v=20260924-viewerswipe35";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260924-viewerswipe35";
-import { getPhotoIndexSnapshot } from "./photo-index-db.js?v=20260924-viewerswipe35";
-import { synchronizePhotoIndex } from "./photo-index-sync.js?v=20260924-viewerswipe35";
+import { state } from "./state.js?v=20260924-searcharrows36";
+import { vkApi } from "./vk-api.js?v=20260924-searcharrows36";
+import { getOwnerId } from "./group-context.js?v=20260924-searcharrows36";
+import { getPhotoPreviewUrl, getErrorMessage } from "./helpers.js?v=20260924-searcharrows36";
+import { ensureAlbumIndex } from "./albums.js?v=20260924-searcharrows36";
+import { openPhotoViewer } from "./photo-viewer.js?v=20260924-searcharrows36";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260924-searcharrows36";
+import { getPhotoIndexSnapshot } from "./photo-index-db.js?v=20260924-searcharrows36";
+import { synchronizePhotoIndex } from "./photo-index-sync.js?v=20260924-searcharrows36";
 
 const SEARCH_RESULTS_PAGE_SIZE = 100;
 const FALLBACK_PAGE_SIZE = 200;
@@ -357,10 +356,17 @@ function createResultCard(photo) {
             description: ""
         };
 
+        // Фиксируем именно текущую выдачу поиска. Просмотрщик будет листать
+        // стрелками только эти результаты, даже если они относятся к разным
+        // альбомам. Сам альбом здесь специально не открываем.
+        const searchSequence = currentMatches.slice();
+
         await closeGlobalPhotoSearch();
         try {
-            await openAlbum(album);
-            await openPhotoViewer(photo, album);
+            await openPhotoViewer(photo, album, {
+                sequence: searchSequence,
+                viewerSource: "global-search"
+            });
         } catch (error) {
             console.warn("Не удалось открыть найденную фотографию:", error);
         }
@@ -669,7 +675,7 @@ function hideDirect() {
     overlay.classList.add("hidden");
 }
 
-export async function openGlobalPhotoSearch() {
+export async function openGlobalPhotoSearch({ restore = false } = {}) {
     ensureUi();
     overlay.classList.remove("hidden");
     openSwipeOverlay("global-photo-search", hideDirect);
@@ -685,7 +691,9 @@ export async function openGlobalPhotoSearch() {
     void hydratePersistentIndex().then(() => {
         if (!loading) void loadAllPhotos();
     });
-    requestAnimationFrame(() => input.focus());
+    if (!restore) {
+        requestAnimationFrame(() => input.focus());
+    }
 }
 
 export function closeGlobalPhotoSearch() {
@@ -697,6 +705,10 @@ export function initGlobalPhotoSearch() {
     if (initialized) return;
     initialized = true;
     ensureUi();
+
+    window.addEventListener("restore-global-photo-search", () => {
+        void openGlobalPhotoSearch({ restore: true });
+    });
 
     if (typeof window !== "undefined") {
         window.globalPhotoSearchDebug = {
