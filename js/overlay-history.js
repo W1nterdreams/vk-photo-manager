@@ -1,4 +1,4 @@
-import { state } from "./state.js?v=20260922-searchcards34";
+import { state } from "./state.js?v=20260924-viewerswipe35";
 
 let activeOverlay = null;
 let closingPromise = null;

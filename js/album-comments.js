@@ -1,21 +1,21 @@
-import { dom } from "./dom.js?v=20260922-searchcards34";
-import { state } from "./state.js?v=20260922-searchcards34";
-import { vkApi } from "./vk-api.js?v=20260922-searchcards34";
+import { dom } from "./dom.js?v=20260924-viewerswipe35";
+import { state } from "./state.js?v=20260924-viewerswipe35";
+import { vkApi } from "./vk-api.js?v=20260924-viewerswipe35";
 import {
     escapeHtml,
     getPhotoPreviewUrl
-} from "./helpers.js?v=20260922-searchcards34";
+} from "./helpers.js?v=20260924-viewerswipe35";
 import {
     showCommentsScreen,
     pushCommentsHistory
-} from "./navigation.js?v=20260922-searchcards34";
-import { getOwnerId } from "./group-context.js?v=20260922-searchcards34";
-import { cacheGet, cacheSet, invalidateCommentCaches } from "./cache.js?v=20260922-searchcards34";
-import { CACHE_TTL } from "./config.js?v=20260922-searchcards34";
-import { createPhotoComment, getPhotoCommentErrorText } from "./photo-comment-api.js?v=20260922-searchcards34";
-import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260922-searchcards34";
-import { openPhotoViewer } from "./photo-viewer.js?v=20260922-searchcards34";
-import { armLongPressReleaseGuard, consumeLongPressSyntheticClick } from "./long-press-guard.js?v=20260922-searchcards34";
+} from "./navigation.js?v=20260924-viewerswipe35";
+import { getOwnerId } from "./group-context.js?v=20260924-viewerswipe35";
+import { cacheGet, cacheSet, invalidateCommentCaches } from "./cache.js?v=20260924-viewerswipe35";
+import { CACHE_TTL } from "./config.js?v=20260924-viewerswipe35";
+import { createPhotoComment, getPhotoCommentErrorText } from "./photo-comment-api.js?v=20260924-viewerswipe35";
+import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260924-viewerswipe35";
+import { openPhotoViewer } from "./photo-viewer.js?v=20260924-viewerswipe35";
+import { armLongPressReleaseGuard, consumeLongPressSyntheticClick } from "./long-press-guard.js?v=20260924-viewerswipe35";
 
 const ALBUM_COMMENTS_DAYS = 3;
 const PAGE_SIZE = 100;

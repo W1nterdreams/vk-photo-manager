@@ -1,7 +1,7 @@
-import { state } from "./state.js?v=20260922-searchcards34";
-import { dom } from "./dom.js?v=20260922-searchcards34";
-import { cancelPhotoMultiSelect } from "./photo-multiselect.js?v=20260922-searchcards34";
-import { handleOverlayPopState } from "./overlay-history.js?v=20260922-searchcards34";
+import { state } from "./state.js?v=20260924-viewerswipe35";
+import { dom } from "./dom.js?v=20260924-viewerswipe35";
+import { cancelPhotoMultiSelect } from "./photo-multiselect.js?v=20260924-viewerswipe35";
+import { handleOverlayPopState } from "./overlay-history.js?v=20260924-viewerswipe35";
 
 let openAlbumFromHistory = null;
 let openPhotoFromHistory = null;
@@ -175,6 +175,31 @@ export function pushPhotoHistory(photo, album, { fromComments = false } = {}) {
             albumId,
             photoId,
             fromComments: Boolean(fromComments),
+            scrollY: 0
+        },
+        "",
+        `#photo-${photoId}`
+    );
+}
+
+export function replacePhotoHistory(photo, album, { fromComments = false } = {}) {
+    const albumId = String(album?.id ?? photo?.album_id ?? "");
+    const photoId = String(photo?.id || "");
+    if (!albumId || !photoId) return;
+
+    const current = history.state || {};
+
+    // Свайп между фотографиями не должен добавлять десятки записей в history.
+    // Меняем только текущую запись просмотрщика, а предыдущая запись альбома
+    // (с её scrollY) остаётся нетронутой. Поэтому «Назад» всегда возвращает
+    // пользователя ровно туда, откуда он открыл просмотрщик.
+    history.replaceState(
+        {
+            ...current,
+            screen: "photo",
+            albumId,
+            photoId,
+            fromComments: Boolean(current.fromComments || fromComments),
             scrollY: 0
         },
         "",

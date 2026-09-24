@@ -1,8 +1,8 @@
-import { dom } from "./dom.js?v=20260922-searchcards34";
-import { state } from "./state.js?v=20260922-searchcards34";
-import { getOwnerId } from "./group-context.js?v=20260922-searchcards34";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260922-searchcards34";
-import { openAlbumReorderMode } from "./photo-reorder.js?v=20260922-searchcards34";
+import { dom } from "./dom.js?v=20260924-viewerswipe35";
+import { state } from "./state.js?v=20260924-viewerswipe35";
+import { getOwnerId } from "./group-context.js?v=20260924-viewerswipe35";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260924-viewerswipe35";
+import { openAlbumReorderMode } from "./photo-reorder.js?v=20260924-viewerswipe35";
 
 function visible(element) {
     return Boolean(element && !element.classList.contains("hidden"));
@@ -149,7 +149,7 @@ export function initMainMenu() {
 
     dom.globalPhotoSearchMenuButton?.addEventListener("click", async () => {
         await closeMenu();
-        const { openGlobalPhotoSearch } = await import("./global-photo-search.js?v=20260922-searchcards34");
+        const { openGlobalPhotoSearch } = await import("./global-photo-search.js?v=20260924-viewerswipe35");
         void openGlobalPhotoSearch();
     });
 

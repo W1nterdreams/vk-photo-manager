@@ -1,16 +1,17 @@
-import { armLongPressReleaseGuard, consumeLongPressSyntheticClick } from "./long-press-guard.js?v=20260922-searchcards34";
-import { state } from "./state.js?v=20260922-searchcards34";
-import { dom } from "./dom.js?v=20260922-searchcards34";
-import { vkApi } from "./vk-api.js?v=20260922-searchcards34";
-import { getBestPhotoUrl, getPhotoPreviewUrl, escapeHtml } from "./helpers.js?v=20260922-searchcards34";
-import { getOwnerId } from "./group-context.js?v=20260922-searchcards34";
+import { armLongPressReleaseGuard, consumeLongPressSyntheticClick } from "./long-press-guard.js?v=20260924-viewerswipe35";
+import { state } from "./state.js?v=20260924-viewerswipe35";
+import { dom } from "./dom.js?v=20260924-viewerswipe35";
+import { vkApi } from "./vk-api.js?v=20260924-viewerswipe35";
+import { getBestPhotoUrl, getPhotoPreviewUrl, escapeHtml } from "./helpers.js?v=20260924-viewerswipe35";
+import { getOwnerId } from "./group-context.js?v=20260924-viewerswipe35";
 import {
     showPhotoViewerScreen,
-    pushPhotoHistory
-} from "./navigation.js?v=20260922-searchcards34";
-import { photoCommentOwnerId } from "./photo-comment-api.js?v=20260922-searchcards34";
-import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260922-searchcards34";
-import { invalidatePhotoActivityCaches } from "./cache.js?v=20260922-searchcards34";
+    pushPhotoHistory,
+    replacePhotoHistory
+} from "./navigation.js?v=20260924-viewerswipe35";
+import { photoCommentOwnerId } from "./photo-comment-api.js?v=20260924-viewerswipe35";
+import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260924-viewerswipe35";
+import { invalidatePhotoActivityCaches } from "./cache.js?v=20260924-viewerswipe35";
 
 const COMMENT_PAGE_SIZE = 100;
 const LONG_PRESS_MS = 900;
@@ -27,6 +28,16 @@ let imageLoadSequence = 0;
 let pendingHighResPhotoId = "";
 let pendingHighResUrl = "";
 let lastOpenPerf = null;
+let viewerPhotoSequence = [];
+let swipePointerId = null;
+let swipeStartX = 0;
+let swipeStartY = 0;
+let swipeStartAt = 0;
+let swipeCooldownUntil = 0;
+
+const PHOTO_SWIPE_MIN_X = 55;
+const PHOTO_SWIPE_MAX_MS = 900;
+const PHOTO_SWIPE_AXIS_RATIO = 1.15;
 
 function normalizeGroupsResponse(response) {
     if (Array.isArray(response)) return response;
@@ -613,9 +624,101 @@ async function refreshAfterNativePhotoReturn(detail) {
     }
 }
 
+function normalizeViewerSequence(sequence, currentPhoto) {
+    const source = Array.isArray(sequence) && sequence.length
+        ? sequence
+        : (Array.isArray(state.photos) ? state.photos : []);
+    const seen = new Set();
+    const normalized = [];
+
+    for (const item of source) {
+        const id = Number(item?.id || 0);
+        if (!id || seen.has(id)) continue;
+        seen.add(id);
+        normalized.push(item);
+    }
+
+    const currentId = Number(currentPhoto?.id || 0);
+    if (currentId && !seen.has(currentId)) normalized.push(currentPhoto);
+    return normalized;
+}
+
+function activeViewerPhotoIndex() {
+    const currentId = Number(activePhoto?.id || 0);
+    if (!currentId) return -1;
+    return viewerPhotoSequence.findIndex(item => Number(item?.id || 0) === currentId);
+}
+
+function albumForViewerPhoto(photo) {
+    const albumId = String(photo?.album_id ?? activeAlbum?.id ?? "");
+    if (!albumId) return activeAlbum;
+
+    return state.albums.find(item => String(item.id) === albumId) ||
+        state.albumIndex.find(item => String(item.id) === albumId) ||
+        (activeAlbum && String(activeAlbum.id) === albumId ? activeAlbum : activeAlbum);
+}
+
+function moveViewerBySwipe(step) {
+    if (Date.now() < swipeCooldownUntil) return;
+
+    const index = activeViewerPhotoIndex();
+    if (index < 0) return;
+
+    const next = viewerPhotoSequence[index + step];
+    if (!next?.id) return;
+
+    swipeCooldownUntil = Date.now() + 250;
+    const album = albumForViewerPhoto(next);
+
+    // Свайп меняет фотографию внутри одной записи history. Поэтому после
+    // любого количества свайпов кнопка «Назад» вернёт прямо в исходный список,
+    // а не будет прокручивать все просмотренные фотографии назад по одной.
+    void openPhotoViewer(next, album, {
+        replaceHistory: true,
+        sequence: viewerPhotoSequence
+    });
+}
+
+function initPhotoSwipe() {
+    const target = dom.photoViewerImage;
+    if (!target) return;
+
+    target.draggable = false;
+
+    target.addEventListener("pointerdown", event => {
+        if (event.pointerType === "mouse") return;
+        swipePointerId = event.pointerId;
+        swipeStartX = event.clientX;
+        swipeStartY = event.clientY;
+        swipeStartAt = Date.now();
+    }, { passive: true });
+
+    target.addEventListener("pointerup", event => {
+        if (event.pointerId !== swipePointerId) return;
+
+        const dx = event.clientX - swipeStartX;
+        const dy = event.clientY - swipeStartY;
+        const elapsed = Date.now() - swipeStartAt;
+        swipePointerId = null;
+
+        if (elapsed > PHOTO_SWIPE_MAX_MS) return;
+        if (Math.abs(dx) < PHOTO_SWIPE_MIN_X) return;
+        if (Math.abs(dx) < Math.abs(dy) * PHOTO_SWIPE_AXIS_RATIO) return;
+
+        // Палец влево -> следующая фотография, вправо -> предыдущая.
+        moveViewerBySwipe(dx < 0 ? 1 : -1);
+    }, { passive: true });
+
+    target.addEventListener("pointercancel", event => {
+        if (event.pointerId === swipePointerId) swipePointerId = null;
+    }, { passive: true });
+}
+
 export async function openPhotoViewer(photo, album, {
     fromHistory = false,
-    fromComments = false
+    fromComments = false,
+    replaceHistory = false,
+    sequence = null
 } = {}) {
     if (!photo?.id) return;
 
@@ -633,8 +736,20 @@ export async function openPhotoViewer(photo, album, {
     state.currentAlbum = activeAlbum || state.currentAlbum;
     state.currentPhoto = photo;
 
+    if (Array.isArray(sequence) && sequence.length) {
+        viewerPhotoSequence = normalizeViewerSequence(sequence, photo);
+    } else if (!replaceHistory && !fromHistory) {
+        viewerPhotoSequence = normalizeViewerSequence(state.photos, photo);
+    } else if (!viewerPhotoSequence.some(item => Number(item?.id || 0) === requestedPhotoId)) {
+        viewerPhotoSequence = normalizeViewerSequence(state.photos, photo);
+    }
+
     if (!fromHistory) {
-        pushPhotoHistory(photo, activeAlbum, { fromComments });
+        if (replaceHistory) {
+            replacePhotoHistory(photo, activeAlbum, { fromComments });
+        } else {
+            pushPhotoHistory(photo, activeAlbum, { fromComments });
+        }
     }
 
     // Очищаем изображение ДО показа экрана. Поэтому bitmap предыдущей
@@ -676,6 +791,8 @@ export async function openPhotoViewer(photo, album, {
 export function initPhotoViewer() {
     if (initialized) return;
     initialized = true;
+
+    initPhotoSwipe();
 
     window.photoViewerDebug = {
         last: () => lastOpenPerf ? { ...lastOpenPerf } : null

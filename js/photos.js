@@ -1,21 +1,21 @@
-import { state } from "./state.js?v=20260922-searchcards34";
-import { dom } from "./dom.js?v=20260922-searchcards34";
-import { vkApi } from "./vk-api.js?v=20260922-searchcards34";
-import { getPhotoPreviewUrl, escapeHtml, getErrorMessage } from "./helpers.js?v=20260922-searchcards34";
-import { showPhotosScreen, pushAlbumHistory } from "./navigation.js?v=20260922-searchcards34";
-import { CACHE_TTL } from "./config.js?v=20260922-searchcards34";
-import { cacheGet, cacheGetStale, cacheSet, albumPhotosKey } from "./cache.js?v=20260922-searchcards34";
-import { getOwnerId } from "./group-context.js?v=20260922-searchcards34";
-import { openPhotoViewer } from "./photo-viewer.js?v=20260922-searchcards34";
-import { bindPhotoContextLongPress } from "./photo-context-menu.js?v=20260922-searchcards34";
-import { syncPhotoIndexAlbumIfDirty } from "./photo-index-sync.js?v=20260922-searchcards34";
-import { getDirtyPhotoIndexAlbums } from "./photo-index-db.js?v=20260922-searchcards34";
+import { state } from "./state.js?v=20260924-viewerswipe35";
+import { dom } from "./dom.js?v=20260924-viewerswipe35";
+import { vkApi } from "./vk-api.js?v=20260924-viewerswipe35";
+import { getPhotoPreviewUrl, escapeHtml, getErrorMessage } from "./helpers.js?v=20260924-viewerswipe35";
+import { showPhotosScreen, pushAlbumHistory } from "./navigation.js?v=20260924-viewerswipe35";
+import { CACHE_TTL } from "./config.js?v=20260924-viewerswipe35";
+import { cacheGet, cacheGetStale, cacheSet, albumPhotosKey } from "./cache.js?v=20260924-viewerswipe35";
+import { getOwnerId } from "./group-context.js?v=20260924-viewerswipe35";
+import { openPhotoViewer } from "./photo-viewer.js?v=20260924-viewerswipe35";
+import { bindPhotoContextLongPress } from "./photo-context-menu.js?v=20260924-viewerswipe35";
+import { syncPhotoIndexAlbumIfDirty } from "./photo-index-sync.js?v=20260924-viewerswipe35";
+import { getDirtyPhotoIndexAlbums } from "./photo-index-db.js?v=20260924-viewerswipe35";
 import {
     isPhotoMultiSelectActive,
     isPhotoSelected,
     togglePhotoSelection,
     cancelPhotoMultiSelect
-} from "./photo-multiselect.js?v=20260922-searchcards34";
+} from "./photo-multiselect.js?v=20260924-viewerswipe35";
 
 const PAGE_SIZE = 20;
 const SORT_FETCH_SIZE = 100;
@@ -410,6 +410,11 @@ export async function openAlbum(album, { fromHistory = false, restoreScroll = 0 
     const previousAlbumId = state.currentAlbum ? String(state.currentAlbum.id) : "";
     const nextAlbumId = String(album?.id || "");
     const keepSearch = fromHistory && previousAlbumId === nextAlbumId;
+    const restoreLoadedGrid = Boolean(
+        fromHistory &&
+        previousAlbumId === nextAlbumId &&
+        state.photos.length
+    );
 
     if (!fromHistory) {
         pushAlbumHistory(album);
@@ -422,7 +427,12 @@ export async function openAlbum(album, { fromHistory = false, restoreScroll = 0 
     }
 
     state.currentAlbum = album;
-    showPhotosScreen({ restoreScroll });
+
+    // При возврате из просмотрщика сначала показываем уже загруженную сетку.
+    // Раньше loadPhotos() очищал state.photos и оставлял только небольшой
+    // UI-кэш, из-за чего документ становился короче и восстановление scrollY
+    // срабатывало до появления нужной позиции.
+    showPhotosScreen({ restoreScroll: restoreLoadedGrid ? 0 : restoreScroll });
 
     dom.albumTitle.textContent = album.title || "Альбом";
     dom.albumDescription.textContent = album.description || "";
@@ -435,6 +445,23 @@ export async function openAlbum(album, { fromHistory = false, restoreScroll = 0 
     updatePhotoSortButtons();
     updatePhotoSearchUi();
 
+    if (restoreLoadedGrid) {
+        renderPhotos();
+        updatePhotoCount();
+
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                window.scrollTo(0, Number(restoreScroll) || 0);
+            });
+        });
+
+        // Сетка остаётся на месте, но первую страницу всё равно тихо сверяем
+        // с VK, чтобы лайки/комментарии после просмотра не устаревали.
+        void revalidateFirstPhotoPage(album);
+        setTimeout(handlePhotoScroll, 0);
+        return;
+    }
+
     try {
         const ownerId = getOwnerId();
         const fingerprintDirty = getDirtyPhotoIndexAlbums(ownerId)
@@ -444,6 +471,17 @@ export async function openAlbum(album, { fromHistory = false, restoreScroll = 0 
         // показываем в этом случае сохранённый хвост из 60 карточек как свежий:
         // первая страница сразу берётся с сервера, а дальше пагинация обычная.
         await loadPhotos(album, { force: fingerprintDirty });
+
+        // После реального рендера сетки повторяем восстановление позиции.
+        // Это покрывает возврат после перезагрузки/восстановления history,
+        // когда старой сетки в памяти уже нет.
+        if (fromHistory && restoreScroll > 0) {
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    window.scrollTo(0, Number(restoreScroll) || 0);
+                });
+            });
+        }
 
         // Если полный глобальный фотоиндекс уже существует, в фоне точечно
         // обновляем и его. Для чистого альбома/непостроенного индекса запросов нет.
@@ -670,7 +708,9 @@ function createPhotoCard(photo) {
             event.stopPropagation();
             return;
         }
-        void openPhotoViewer(photo, state.currentAlbum);
+        void openPhotoViewer(photo, state.currentAlbum, {
+            sequence: photosForRender()
+        });
     });
 
     return card;

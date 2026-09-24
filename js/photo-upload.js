@@ -1,15 +1,15 @@
-import { state } from "./state.js?v=20260922-searchcards34";
-import { dom } from "./dom.js?v=20260922-searchcards34";
-import { getOwnerId } from "./group-context.js?v=20260922-searchcards34";
-import { closeMenu } from "./main-menu.js?v=20260922-searchcards34";
-import { openVkTarget } from "./vk-links.js?v=20260922-searchcards34";
-import { loadPhotos } from "./photos.js?v=20260922-searchcards34";
-import { renderAlbums } from "./albums.js?v=20260922-searchcards34";
+import { state } from "./state.js?v=20260924-viewerswipe35";
+import { dom } from "./dom.js?v=20260924-viewerswipe35";
+import { getOwnerId } from "./group-context.js?v=20260924-viewerswipe35";
+import { closeMenu } from "./main-menu.js?v=20260924-viewerswipe35";
+import { openVkTarget } from "./vk-links.js?v=20260924-viewerswipe35";
+import { loadPhotos } from "./photos.js?v=20260924-viewerswipe35";
+import { renderAlbums } from "./albums.js?v=20260924-viewerswipe35";
 import {
     invalidateAlbumCaches,
     invalidateAlbumPhotosCache
-} from "./cache.js?v=20260922-searchcards34";
-import { markPhotoIndexAlbumDirty } from "./photo-index-db.js?v=20260922-searchcards34";
+} from "./cache.js?v=20260924-viewerswipe35";
+import { markPhotoIndexAlbumDirty } from "./photo-index-db.js?v=20260924-viewerswipe35";
 
 function findAlbum(albumId) {
     const id = String(albumId || "");
