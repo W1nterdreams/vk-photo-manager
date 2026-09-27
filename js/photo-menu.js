@@ -1,20 +1,20 @@
-import { state } from "./state.js?v=20260927-apiopt42";
-import { dom } from "./dom.js?v=20260927-apiopt42";
-import { vkApi } from "./vk-api.js?v=20260927-apiopt42";
-import { getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260927-apiopt42";
-import { getOwnerId } from "./group-context.js?v=20260927-apiopt42";
+import { state } from "./state.js?v=20260927-captiontop43";
+import { dom } from "./dom.js?v=20260927-captiontop43";
+import { vkApi } from "./vk-api.js?v=20260927-captiontop43";
+import { getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260927-captiontop43";
+import { getOwnerId } from "./group-context.js?v=20260927-captiontop43";
 import {
     invalidateAlbumPhotosCache,
     invalidateAlbumCaches,
     invalidatePhotoActivityCaches
-} from "./cache.js?v=20260927-apiopt42";
-import { closeMenu } from "./main-menu.js?v=20260927-apiopt42";
-import { openPhotoTransfer } from "./photo-transfer.js?v=20260927-apiopt42";
-import { openPhotoReorder } from "./photo-reorder.js?v=20260927-apiopt42";
-import { openVkPhoto } from "./vk-links.js?v=20260927-apiopt42";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260927-apiopt42";
-import { markPhotoIndexAlbumDirty, clearPhotoIndexAlbumDirty } from "./photo-index-db.js?v=20260927-apiopt42";
-import { applyLocalPhotoUpdate, applyLocalPhotoDelete } from "./photo-index-sync.js?v=20260927-apiopt42";
+} from "./cache.js?v=20260927-captiontop43";
+import { closeMenu } from "./main-menu.js?v=20260927-captiontop43";
+import { openPhotoTransfer } from "./photo-transfer.js?v=20260927-captiontop43";
+import { openPhotoReorder } from "./photo-reorder.js?v=20260927-captiontop43";
+import { openVkPhoto } from "./vk-links.js?v=20260927-captiontop43";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260927-captiontop43";
+import { markPhotoIndexAlbumDirty, clearPhotoIndexAlbumDirty } from "./photo-index-db.js?v=20260927-captiontop43";
+import { applyLocalPhotoUpdate, applyLocalPhotoDelete } from "./photo-index-sync.js?v=20260927-captiontop43";
 
 let editOverlay = null;
 let editInput = null;
@@ -178,7 +178,29 @@ export function openPhotoDescriptionEditor(photo) {
     editInput.value = String(photo.text || "");
     editOverlay.classList.remove("hidden");
     openSwipeOverlay("edit-photo-description", hideEditModalDirect);
-    requestAnimationFrame(() => editInput.focus());
+
+    // При открытии существующего длинного описания Android WebView обычно
+    // ставит каретку в конец текста и прокручивает textarea вниз. Для рабочего
+    // сценария редактирования остатков удобнее всегда начинать с начала.
+    requestAnimationFrame(() => {
+        try {
+            editInput.focus({ preventScroll: true });
+        } catch {
+            editInput.focus();
+        }
+
+        editInput.setSelectionRange(0, 0);
+        editInput.scrollTop = 0;
+        editInput.scrollLeft = 0;
+
+        // Некоторые WebView повторно прокручивают поле к каретке уже после
+        // появления клавиатуры. Повторяем позиционирование на следующем кадре.
+        requestAnimationFrame(() => {
+            editInput.setSelectionRange(0, 0);
+            editInput.scrollTop = 0;
+            editInput.scrollLeft = 0;
+        });
+    });
 }
 
 function hideEditModalDirect() {
@@ -412,7 +434,7 @@ async function refreshAfterNativeDelete(detail) {
 
     if (album) {
         try {
-            const { loadPhotos } = await import("./photos.js?v=20260927-apiopt42");
+            const { loadPhotos } = await import("./photos.js?v=20260927-captiontop43");
             await loadPhotos(album, { force: true });
         } catch (error) {
             console.warn("Не удалось обновить альбом после возврата из VK:", error);

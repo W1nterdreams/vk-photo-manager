@@ -1,16 +1,16 @@
-import { state } from "./state.js?v=20260927-apiopt42";
-import { vkApi } from "./vk-api.js?v=20260927-apiopt42";
-import { getAlbumCover, getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260927-apiopt42";
-import { getOwnerId } from "./group-context.js?v=20260927-apiopt42";
+import { state } from "./state.js?v=20260927-captiontop43";
+import { vkApi } from "./vk-api.js?v=20260927-captiontop43";
+import { getAlbumCover, getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260927-captiontop43";
+import { getOwnerId } from "./group-context.js?v=20260927-captiontop43";
 import {
     invalidateAlbumCaches,
     invalidateAlbumPhotosCache,
     invalidateCommentCaches
-} from "./cache.js?v=20260927-apiopt42";
-import { openVkTarget, openVkPhoto } from "./vk-links.js?v=20260927-apiopt42";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260927-apiopt42";
-import { markPhotoIndexAlbumDirty } from "./photo-index-db.js?v=20260927-apiopt42";
-import { applyLocalPhotoMove } from "./photo-index-sync.js?v=20260927-apiopt42";
+} from "./cache.js?v=20260927-captiontop43";
+import { openVkTarget, openVkPhoto } from "./vk-links.js?v=20260927-captiontop43";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260927-captiontop43";
+import { markPhotoIndexAlbumDirty } from "./photo-index-db.js?v=20260927-captiontop43";
+import { applyLocalPhotoMove } from "./photo-index-sync.js?v=20260927-captiontop43";
 
 const ALBUM_PAGE_SIZE = 100;
 const MAX_ALBUM_PAGES = 200;

@@ -1,18 +1,18 @@
-import { armLongPressReleaseGuard, consumeLongPressSyntheticClick } from "./long-press-guard.js?v=20260927-apiopt42";
-import { state } from "./state.js?v=20260927-apiopt42";
-import { dom } from "./dom.js?v=20260927-apiopt42";
-import { vkApi } from "./vk-api.js?v=20260927-apiopt42";
-import { getBestPhotoUrl, getPhotoPreviewUrl, escapeHtml } from "./helpers.js?v=20260927-apiopt42";
-import { getOwnerId } from "./group-context.js?v=20260927-apiopt42";
+import { armLongPressReleaseGuard, consumeLongPressSyntheticClick } from "./long-press-guard.js?v=20260927-captiontop43";
+import { state } from "./state.js?v=20260927-captiontop43";
+import { dom } from "./dom.js?v=20260927-captiontop43";
+import { vkApi } from "./vk-api.js?v=20260927-captiontop43";
+import { getBestPhotoUrl, getPhotoPreviewUrl, escapeHtml } from "./helpers.js?v=20260927-captiontop43";
+import { getOwnerId } from "./group-context.js?v=20260927-captiontop43";
 import {
     showPhotoViewerScreen,
     pushPhotoHistory,
     replacePhotoHistory
-} from "./navigation.js?v=20260927-apiopt42";
-import { photoCommentOwnerId } from "./photo-comment-api.js?v=20260927-apiopt42";
-import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260927-apiopt42";
-import { invalidatePhotoActivityCaches } from "./cache.js?v=20260927-apiopt42";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260927-apiopt42";
+} from "./navigation.js?v=20260927-captiontop43";
+import { photoCommentOwnerId } from "./photo-comment-api.js?v=20260927-captiontop43";
+import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260927-captiontop43";
+import { invalidatePhotoActivityCaches } from "./cache.js?v=20260927-captiontop43";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260927-captiontop43";
 
 const COMMENT_PAGE_SIZE = 100;
 const LONG_PRESS_MS = 900;
@@ -772,7 +772,7 @@ function openViewerPhotoContext() {
         if (!album?.id) return;
 
         try {
-            const { openAlbum } = await import("./photos.js?v=20260927-apiopt42");
+            const { openAlbum } = await import("./photos.js?v=20260927-captiontop43");
             await openAlbum(album);
         } catch (error) {
             console.warn("Не удалось перейти в альбом фотографии:", error);

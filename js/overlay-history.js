@@ -1,4 +1,4 @@
-import { state } from "./state.js?v=20260927-apiopt42";
+import { state } from "./state.js?v=20260927-captiontop43";
 
 let activeOverlay = null;
 let closingPromise = null;
