@@ -1,11 +1,11 @@
-import { state } from "./state.js?v=20260927-copywait41";
-import { dom } from "./dom.js?v=20260927-copywait41";
-import { vkApi } from "./vk-api.js?v=20260927-copywait41";
-import { getErrorMessage } from "./helpers.js?v=20260927-copywait41";
-import { getOwnerId } from "./group-context.js?v=20260927-copywait41";
-import { cacheSet, cacheRemove, albumsKey, albumIndexKey } from "./cache.js?v=20260927-copywait41";
-import { renderAlbums, ensureAlbumIndex } from "./albums.js?v=20260927-copywait41";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260927-copywait41";
+import { state } from "./state.js?v=20260927-apiopt42";
+import { dom } from "./dom.js?v=20260927-apiopt42";
+import { vkApi } from "./vk-api.js?v=20260927-apiopt42";
+import { getErrorMessage } from "./helpers.js?v=20260927-apiopt42";
+import { getOwnerId } from "./group-context.js?v=20260927-apiopt42";
+import { cacheSet, cacheRemove, albumsKey, albumIndexKey } from "./cache.js?v=20260927-apiopt42";
+import { renderAlbums } from "./albums.js?v=20260927-apiopt42";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260927-apiopt42";
 
 let activeAlbum = null;
 let opening = false;
@@ -122,10 +122,19 @@ function persistAlbumState() {
         total: state.albumsTotal
     });
 
-    // Индекс поиска нельзя сохранять, если он ещё строится: иначе частичные
-    // первые страницы превращаются в "полный" индекс на несколько минут.
-    cacheRemove(albumIndexKey(ownerId));
-    state.albumIndexReady = false;
+    // Если полный индекс уже готов, редактирование одного альбома не делает
+    // его неполным: сохраняем обновлённую локальную копию без повторного
+    // обхода photos.getAlbums. Если индекс ещё строится, диск не трогаем.
+    if (state.albumIndexReady) {
+        cacheSet(albumIndexKey(ownerId), {
+            schema: 3,
+            complete: true,
+            total: Math.max(Number(state.albumsTotal || 0), state.albumIndex.length),
+            items: state.albumIndex
+        });
+    } else {
+        cacheRemove(albumIndexKey(ownerId));
+    }
 }
 
 async function saveAlbum(event) {
@@ -173,10 +182,9 @@ async function saveAlbum(event) {
         persistAlbumState();
         renderAlbums();
 
-        // Перестраиваем полный поисковый индекс с сервера. Это одновременно
-        // защищает от гонки с фоновой индексацией, начатой до редактирования.
-        void ensureAlbumIndex({ force: true });
-
+        // VK уже подтвердил photos.editAlbum, а локальные state.albums и
+        // state.albumIndex обновлены выше. Дополнительный полный обход списка
+        // альбомов здесь только расходовал API и не повышал достоверность.
         await closeSwipeOverlay("edit-album");
     } catch (error) {
         showError(getErrorMessage(error));

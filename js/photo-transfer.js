@@ -1,16 +1,16 @@
-import { state } from "./state.js?v=20260927-copywait41";
-import { vkApi } from "./vk-api.js?v=20260927-copywait41";
-import { getAlbumCover, getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260927-copywait41";
-import { getOwnerId } from "./group-context.js?v=20260927-copywait41";
+import { state } from "./state.js?v=20260927-apiopt42";
+import { vkApi } from "./vk-api.js?v=20260927-apiopt42";
+import { getAlbumCover, getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260927-apiopt42";
+import { getOwnerId } from "./group-context.js?v=20260927-apiopt42";
 import {
     invalidateAlbumCaches,
     invalidateAlbumPhotosCache,
     invalidateCommentCaches
-} from "./cache.js?v=20260927-copywait41";
-import { openVkTarget, openVkPhoto } from "./vk-links.js?v=20260927-copywait41";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260927-copywait41";
-import { markPhotoIndexAlbumDirty } from "./photo-index-db.js?v=20260927-copywait41";
-import { applyLocalPhotoMove } from "./photo-index-sync.js?v=20260927-copywait41";
+} from "./cache.js?v=20260927-apiopt42";
+import { openVkTarget, openVkPhoto } from "./vk-links.js?v=20260927-apiopt42";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260927-apiopt42";
+import { markPhotoIndexAlbumDirty } from "./photo-index-db.js?v=20260927-apiopt42";
+import { applyLocalPhotoMove } from "./photo-index-sync.js?v=20260927-apiopt42";
 
 const ALBUM_PAGE_SIZE = 100;
 const MAX_ALBUM_PAGES = 200;
@@ -526,6 +526,22 @@ async function fetchTransferAlbums(generation) {
         Array.isArray(state.albumIndex) ? state.albumIndex : [],
         Array.isArray(state.albums) ? state.albums : []
     );
+
+    const reportedTotal = Math.max(0, Number(state.albumsTotal || 0));
+    const knownComplete = Boolean(
+        state.albumIndexReady ||
+        (reportedTotal > 0 && allAlbums.length >= reportedTotal)
+    );
+
+    // Поиск альбомов уже строит полный локальный индекс. Если он готов,
+    // повторно перебирать photos.getAlbums при каждом копировании/перемещении
+    // не нужно: один и тот же список используется прямо из памяти.
+    if (knownComplete && allAlbums.length) {
+        transferAlbumsLoading = false;
+        renderAlbums();
+        return allAlbums;
+    }
+
     transferAlbumsLoading = true;
     renderAlbums();
 
@@ -649,16 +665,10 @@ async function movePhoto(album) {
     busy = false;
     await closeSwipeOverlay("photo-transfer");
 
-    // После перемещения перечитываем исходный альбом с VK. Это устраняет
-    // устаревшую карточку и сразу синхронизирует счётчик фотографий.
-    if (sourceAlbum) {
-        try {
-            const { loadPhotos } = await import("./photos.js?v=20260927-copywait41");
-            await loadPhotos(sourceAlbum, { force: true });
-        } catch (error) {
-            console.warn("Не удалось обновить альбом после перемещения фотографии:", error);
-        }
-    }
+    // VK уже подтвердил photos.move. Карточка и счётчики обновлены локально
+    // выше, поэтому повторное чтение всего исходного альбома здесь не нужно.
+    // Если внешний источник изменил альбом параллельно, это поймает обычное
+    // открытие альбома или ручная кнопка «Обновить».
 
     // Из общего просмотра фотографии возвращаемся в исходный альбом.
     // При перемещении через long press уже на экране альбома остаёмся там.
@@ -667,22 +677,6 @@ async function movePhoto(album) {
     }
 
     callback?.({ moved: 1, failed: 0 });
-}
-
-async function refreshSourceAlbumAfterMove(sourceAlbum) {
-    if (!sourceAlbum) return;
-
-    try {
-        const { loadPhotos } = await import("./photos.js?v=20260927-copywait41");
-        const freshSource = (
-            state.currentAlbum && String(state.currentAlbum.id) === String(sourceAlbum.id)
-                ? state.currentAlbum
-                : sourceAlbum
-        );
-        await loadPhotos(freshSource, { force: true });
-    } catch (error) {
-        console.warn("Не удалось обновить альбом после перемещения фотографий:", error);
-    }
 }
 
 async function moveManyPhotos(album, busyLabel, sourceButton) {
@@ -738,8 +732,6 @@ async function moveManyPhotos(album, busyLabel, sourceButton) {
         state.photos = state.photos.filter(photo => !movedIds.has(String(photo.id)));
         state.photosTotal = Math.max(0, Number(state.photosTotal || 0) - moved.length);
     }
-
-    await refreshSourceAlbumAfterMove(sourceAlbum);
 
     const callback = onTransferComplete;
 

@@ -1,21 +1,21 @@
-import { dom } from "./dom.js?v=20260927-copywait41";
-import { state } from "./state.js?v=20260927-copywait41";
-import { vkApi } from "./vk-api.js?v=20260927-copywait41";
+import { dom } from "./dom.js?v=20260927-apiopt42";
+import { state } from "./state.js?v=20260927-apiopt42";
+import { vkApi } from "./vk-api.js?v=20260927-apiopt42";
 import {
     escapeHtml,
     getPhotoPreviewUrl
-} from "./helpers.js?v=20260927-copywait41";
+} from "./helpers.js?v=20260927-apiopt42";
 import {
     showCommentsScreen,
     pushCommentsHistory
-} from "./navigation.js?v=20260927-copywait41";
-import { getOwnerId } from "./group-context.js?v=20260927-copywait41";
-import { cacheGet, cacheSet, invalidateCommentCaches } from "./cache.js?v=20260927-copywait41";
-import { CACHE_TTL } from "./config.js?v=20260927-copywait41";
-import { createPhotoComment, getPhotoCommentErrorText } from "./photo-comment-api.js?v=20260927-copywait41";
-import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260927-copywait41";
-import { openPhotoViewer } from "./photo-viewer.js?v=20260927-copywait41";
-import { armLongPressReleaseGuard, consumeLongPressSyntheticClick } from "./long-press-guard.js?v=20260927-copywait41";
+} from "./navigation.js?v=20260927-apiopt42";
+import { getOwnerId } from "./group-context.js?v=20260927-apiopt42";
+import { cacheGet, cacheSet, invalidateCommentCaches } from "./cache.js?v=20260927-apiopt42";
+import { CACHE_TTL } from "./config.js?v=20260927-apiopt42";
+import { createPhotoComment, getPhotoCommentErrorText } from "./photo-comment-api.js?v=20260927-apiopt42";
+import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260927-apiopt42";
+import { openPhotoViewer } from "./photo-viewer.js?v=20260927-apiopt42";
+import { armLongPressReleaseGuard, consumeLongPressSyntheticClick } from "./long-press-guard.js?v=20260927-apiopt42";
 
 const ALBUM_COMMENTS_DAYS = 3;
 const PAGE_SIZE = 100;
@@ -35,6 +35,7 @@ let loadSequence = 0;
 let albumCommentsSessionActive = false;
 let albumCommentsOpenSequence = 0;
 let initialLoadTimer = null;
+const sessionAuthors = new Map();
 
 function commentsTitleElement() {
     return document.querySelector(".comments-title");
@@ -530,13 +531,13 @@ async function loadPhotosForComments(comments, existing = new Map()) {
 }
 
 async function loadAuthors(comments) {
-    const userIds = [...new Set(
+    const allUserIds = [...new Set(
         comments
             .map(item => Number(item?.from_id || 0))
             .filter(id => id > 0)
     )];
 
-    const groupIds = [...new Set(
+    const allGroupIds = [...new Set(
         comments
             .map(item => Number(item?.from_id || 0))
             .filter(id => id < 0)
@@ -544,6 +545,21 @@ async function loadAuthors(comments) {
     )];
 
     const authors = new Map();
+
+    // Имена авторов не являются складскими данными и не требуют повторной
+    // загрузки при каждом открытии комментариев. Держим их только в памяти
+    // текущего запуска приложения; сами комментарии по-прежнему читаются
+    // свежими с VK при каждом открытии экрана.
+    for (const id of allUserIds) {
+        if (sessionAuthors.has(id)) authors.set(id, sessionAuthors.get(id));
+    }
+    for (const rawId of allGroupIds) {
+        const id = -Math.abs(rawId);
+        if (sessionAuthors.has(id)) authors.set(id, sessionAuthors.get(id));
+    }
+
+    const userIds = allUserIds.filter(id => !authors.has(id));
+    const groupIds = allGroupIds.filter(rawId => !authors.has(-Math.abs(rawId)));
 
     if (userIds.length) {
         try {
@@ -554,12 +570,14 @@ async function loadAuthors(comments) {
             for (const user of Array.isArray(users) ? users : []) {
                 const id = Number(user.id);
                 const name = `${user.first_name || ""} ${user.last_name || ""}`.trim() || `id${id}`;
-                authors.set(id, {
+                const author = {
                     id,
                     name,
                     url: getAuthorLinkById(id),
                     isGroup: false
-                });
+                };
+                authors.set(id, author);
+                sessionAuthors.set(id, author);
             }
         } catch (error) {
             console.warn("Не удалось получить имена авторов комментариев:", error);
@@ -574,12 +592,14 @@ async function loadAuthors(comments) {
 
             for (const group of normalizeGroupsResponse(response)) {
                 const id = -Math.abs(Number(group.id));
-                authors.set(id, {
+                const author = {
                     id,
                     name: group.name || `club${group.id}`,
                     url: getAuthorLinkById(id),
                     isGroup: true
-                });
+                };
+                authors.set(id, author);
+                sessionAuthors.set(id, author);
             }
         } catch (error) {
             console.warn("Не удалось получить названия сообществ-авторов:", error);

@@ -22,6 +22,7 @@ export const state = {
     photosOffset: 0,
     photosHasMore: false,
     photosLoadingMore: false,
+    photosFreshAlbumId: null,
     photoSortMode: "vk",
     photoSearchText: "",
     suppressPhotoOpenUntil: 0,

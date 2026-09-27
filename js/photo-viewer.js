@@ -1,18 +1,18 @@
-import { armLongPressReleaseGuard, consumeLongPressSyntheticClick } from "./long-press-guard.js?v=20260927-copywait41";
-import { state } from "./state.js?v=20260927-copywait41";
-import { dom } from "./dom.js?v=20260927-copywait41";
-import { vkApi } from "./vk-api.js?v=20260927-copywait41";
-import { getBestPhotoUrl, getPhotoPreviewUrl, escapeHtml } from "./helpers.js?v=20260927-copywait41";
-import { getOwnerId } from "./group-context.js?v=20260927-copywait41";
+import { armLongPressReleaseGuard, consumeLongPressSyntheticClick } from "./long-press-guard.js?v=20260927-apiopt42";
+import { state } from "./state.js?v=20260927-apiopt42";
+import { dom } from "./dom.js?v=20260927-apiopt42";
+import { vkApi } from "./vk-api.js?v=20260927-apiopt42";
+import { getBestPhotoUrl, getPhotoPreviewUrl, escapeHtml } from "./helpers.js?v=20260927-apiopt42";
+import { getOwnerId } from "./group-context.js?v=20260927-apiopt42";
 import {
     showPhotoViewerScreen,
     pushPhotoHistory,
     replacePhotoHistory
-} from "./navigation.js?v=20260927-copywait41";
-import { photoCommentOwnerId } from "./photo-comment-api.js?v=20260927-copywait41";
-import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260927-copywait41";
-import { invalidatePhotoActivityCaches } from "./cache.js?v=20260927-copywait41";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260927-copywait41";
+} from "./navigation.js?v=20260927-apiopt42";
+import { photoCommentOwnerId } from "./photo-comment-api.js?v=20260927-apiopt42";
+import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260927-apiopt42";
+import { invalidatePhotoActivityCaches } from "./cache.js?v=20260927-apiopt42";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260927-apiopt42";
 
 const COMMENT_PAGE_SIZE = 100;
 const LONG_PRESS_MS = 900;
@@ -22,6 +22,7 @@ let initialized = false;
 let activePhoto = null;
 let activeAlbum = null;
 let authors = new Map();
+const sessionAuthors = new Map();
 let comments = [];
 let contextOverlay = null;
 let contextOverlayKind = "";
@@ -32,6 +33,7 @@ let pendingHighResPhotoId = "";
 let pendingHighResUrl = "";
 let lastOpenPerf = null;
 let viewerPhotoSequence = [];
+let viewerSequenceDataFresh = false;
 
 function normalizeGroupsResponse(response) {
     if (Array.isArray(response)) return response;
@@ -103,20 +105,24 @@ function addAuthors(profiles = [], groups = []) {
     for (const user of Array.isArray(profiles) ? profiles : []) {
         const id = Number(user?.id || 0);
         if (!id) continue;
-        authors.set(id, {
+        const author = {
             id,
             name: `${user.first_name || ""} ${user.last_name || ""}`.trim() || `id${id}`
-        });
+        };
+        authors.set(id, author);
+        sessionAuthors.set(id, author);
     }
 
     for (const group of Array.isArray(groups) ? groups : []) {
         const raw = Number(group?.id || 0);
         if (!raw) continue;
         const id = -Math.abs(raw);
-        authors.set(id, {
+        const author = {
             id,
             name: group.name || `club${raw}`
-        });
+        };
+        authors.set(id, author);
+        sessionAuthors.set(id, author);
     }
 }
 
@@ -167,8 +173,9 @@ async function fetchAllComments(photo) {
     const ownerId = photoCommentOwnerId(photo);
     const photoId = Number(photo.id);
     const collected = [];
-    authors = new Map();
+    authors = new Map(sessionAuthors);
     let offset = 0;
+    let reportedCount = 0;
 
     while (true) {
         const result = await vkApi("photos.getComments", {
@@ -183,6 +190,8 @@ async function fetchAllComments(photo) {
         });
 
         const items = Array.isArray(result?.items) ? result.items : [];
+        const apiCount = Number(result?.count || 0);
+        if (Number.isFinite(apiCount)) reportedCount = Math.max(reportedCount, apiCount);
         collected.push(...items);
         addAuthors(result?.profiles, result?.groups);
 
@@ -192,6 +201,18 @@ async function fetchAllComments(photo) {
 
     comments = flattenComments(collected);
     await loadMissingAuthors(comments);
+
+    if (activePhoto && Number(activePhoto.id) === photoId) {
+        const updated = {
+            ...activePhoto,
+            comments: {
+                ...(activePhoto.comments || {}),
+                count: Math.max(reportedCount, comments.length)
+            }
+        };
+        syncViewerPhotoEverywhere(updated);
+    }
+
     return comments;
 }
 
@@ -611,6 +632,7 @@ async function refreshPhotoComments() {
 
     try {
         await fetchAllComments(activePhoto);
+        renderPhotoHeader(activePhoto);
         renderPhotoComments();
     } catch (error) {
         dom.photoViewerComments.innerHTML = `
@@ -634,8 +656,7 @@ async function refreshAfterNativePhotoReturn(detail) {
 
     try {
         const fullPhoto = await fetchPhoto(activePhoto);
-        activePhoto = fullPhoto;
-        state.currentPhoto = fullPhoto;
+        syncViewerPhotoEverywhere(fullPhoto);
         updateViewerArrows();
         renderPhotoHeader(fullPhoto);
         await refreshPhotoComments();
@@ -688,6 +709,22 @@ function albumForViewerPhoto(photo) {
     };
 }
 
+function syncViewerPhotoEverywhere(photo) {
+    if (!photo?.id) return;
+    const id = Number(photo.id);
+
+    activePhoto = photo;
+    state.currentPhoto = photo;
+
+    state.photos = (Array.isArray(state.photos) ? state.photos : []).map(item =>
+        Number(item?.id || 0) === id ? { ...item, ...photo } : item
+    );
+
+    viewerPhotoSequence = viewerPhotoSequence.map(item =>
+        Number(item?.id || 0) === id ? { ...item, ...photo } : item
+    );
+}
+
 function updateViewerArrows() {
     const index = activeViewerPhotoIndex();
     const hasPrevious = index > 0;
@@ -711,7 +748,8 @@ function moveViewerByStep(step) {
     void openPhotoViewer(next, album, {
         replaceHistory: true,
         sequence: viewerPhotoSequence,
-        viewerSource: state.photoViewerSource
+        viewerSource: state.photoViewerSource,
+        photoDataFresh: viewerSequenceDataFresh
     });
 }
 
@@ -734,7 +772,7 @@ function openViewerPhotoContext() {
         if (!album?.id) return;
 
         try {
-            const { openAlbum } = await import("./photos.js?v=20260927-copywait41");
+            const { openAlbum } = await import("./photos.js?v=20260927-apiopt42");
             await openAlbum(album);
         } catch (error) {
             console.warn("Не удалось перейти в альбом фотографии:", error);
@@ -762,7 +800,8 @@ export async function openPhotoViewer(photo, album, {
     fromComments = false,
     replaceHistory = false,
     sequence = null,
-    viewerSource = null
+    viewerSource = null,
+    photoDataFresh = false
 } = {}) {
     if (!photo?.id) return;
 
@@ -787,10 +826,15 @@ export async function openPhotoViewer(photo, album, {
 
     if (Array.isArray(sequence) && sequence.length) {
         viewerPhotoSequence = normalizeViewerSequence(sequence, photo);
+        if (!replaceHistory || !viewerPhotoSequence.length) {
+            viewerSequenceDataFresh = Boolean(photoDataFresh);
+        }
     } else if (!replaceHistory && !fromHistory) {
         viewerPhotoSequence = normalizeViewerSequence(state.photos, photo);
+        viewerSequenceDataFresh = Boolean(photoDataFresh);
     } else if (!viewerPhotoSequence.some(item => Number(item?.id || 0) === requestedPhotoId)) {
         viewerPhotoSequence = normalizeViewerSequence(state.photos, photo);
+        viewerSequenceDataFresh = Boolean(photoDataFresh);
     }
 
     updateViewerArrows();
@@ -818,7 +862,7 @@ export async function openPhotoViewer(photo, album, {
     // фотографии физически не может мелькнуть при открытии следующей.
     clearPhotoViewerImage();
     comments = [];
-    authors = new Map();
+    authors = new Map(sessionAuthors);
 
     showPhotoViewerScreen();
     dom.pageTitle.textContent = "Фотография";
@@ -829,11 +873,13 @@ export async function openPhotoViewer(photo, album, {
     renderPhotoHeader(photo);
 
     try {
-        const fullPhoto = await fetchPhoto(photo);
+        // Фото, открытое прямо из только что загруженного альбома, уже пришло
+        // от photos.get extended=1. Повторный photos.getById здесь ничего не
+        // добавляет к актуальности, но удваивает расход API при каждом просмотре.
+        const fullPhoto = photoDataFresh ? photo : await fetchPhoto(photo);
         if (seq !== viewerSequence || state.currentScreen !== "photo" || Number(activePhoto?.id) !== requestedPhotoId) return;
 
-        activePhoto = fullPhoto;
-        state.currentPhoto = fullPhoto;
+        syncViewerPhotoEverywhere(fullPhoto);
         updateViewerArrows();
         renderPhotoHeader(fullPhoto);
         await refreshPhotoComments();

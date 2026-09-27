@@ -1,9 +1,9 @@
-import { state } from "./state.js?v=20260927-copywait41";
-import { dom } from "./dom.js?v=20260927-copywait41";
-import { vkApi } from "./vk-api.js?v=20260927-copywait41";
-import { getAlbumCover, escapeHtml, getErrorMessage } from "./helpers.js?v=20260927-copywait41";
-import { openAlbum, loadPhotos } from "./photos.js?v=20260927-copywait41";
-import { CACHE_TTL } from "./config.js?v=20260927-copywait41";
+import { state } from "./state.js?v=20260927-apiopt42";
+import { dom } from "./dom.js?v=20260927-apiopt42";
+import { vkApi } from "./vk-api.js?v=20260927-apiopt42";
+import { getAlbumCover, escapeHtml, getErrorMessage } from "./helpers.js?v=20260927-apiopt42";
+import { openAlbum, loadPhotos } from "./photos.js?v=20260927-apiopt42";
+import { CACHE_TTL } from "./config.js?v=20260927-apiopt42";
 import {
     cacheGet,
     cacheGetStale,
@@ -11,13 +11,13 @@ import {
     invalidateAlbumCaches,
     albumsKey,
     albumIndexKey
-} from "./cache.js?v=20260927-copywait41";
-import { getOwnerId } from "./group-context.js?v=20260927-copywait41";
-import { bindAlbumLongPress } from "./album-menu.js?v=20260927-copywait41";
-import { observeAlbumFingerprints, reconcileAlbumFingerprints } from "./album-fingerprint.js?v=20260927-copywait41";
+} from "./cache.js?v=20260927-apiopt42";
+import { getOwnerId } from "./group-context.js?v=20260927-apiopt42";
+import { bindAlbumLongPress } from "./album-menu.js?v=20260927-apiopt42";
+import { observeAlbumFingerprints, reconcileAlbumFingerprints } from "./album-fingerprint.js?v=20260927-apiopt42";
 
-const PAGE_SIZE = 20;
-const INDEX_PAGE_SIZE = 100;
+const PAGE_SIZE = 1000;
+const INDEX_PAGE_SIZE = 1000;
 const INDEX_CACHE_SCHEMA = 3;
 
 let loadMoreObserver = null;
@@ -30,7 +30,11 @@ function normalizeTitle(value) {
 }
 
 function toIndexItem(album) {
+    // Индекс используется не только для поиска, но и как готовый список
+    // назначения при копировании/перемещении. Сохраняем обложку тоже — это
+    // позволяет повторно не запрашивать тот же альбом только ради карточки.
     return {
+        ...album,
         id: album.id,
         owner_id: album.owner_id,
         title: album.title || "",
@@ -126,14 +130,12 @@ async function fetchFirstPageFromVK() {
     );
     state.albumsOffset = items.length;
 
-    // Для ленивой загрузки не доверяем result.count как признаку конца.
-    // На больших сообществах VK может вернуть значение, которое не годится
-    // для остановки пагинации. Конец подтверждаем пустой страницей, либо
-    // полным поисковым индексом, если он уже построен.
-    state.albumsHasMore = items.length > 0;
-    if (state.albumIndexReady && state.albums.length >= state.albumIndex.length) {
-        state.albumsHasMore = false;
-    }
+    // На холодном запуске поисковый индекс продолжит пагинацию от этого же
+    // offset. Пока он не увидел следующую страницу, не запускаем параллельно
+    // ещё одну такую же загрузку от scroll-sentinel. Это убирает дубликаты.
+    state.albumsHasMore = Boolean(
+        state.albumIndexReady && state.albums.length < state.albumIndex.length
+    );
 
     cacheSet(albumsKey(ownerId), {
         items: state.albums,
@@ -193,18 +195,21 @@ export async function loadAlbums({ force = false } = {}) {
 
         dom.albums.innerHTML = '<div class="status-message">Обновляем альбомы сообщества...</div>';
         await fetchFirstPageFromVK();
-        void ensureAlbumIndex({ force: true });
+        void ensureAlbumIndex({
+            force: true,
+            seedItems: state.albums,
+            seedOffset: state.albumsOffset
+        });
         return;
     }
-
-    // Полный поисковый индекс поднимается независимо от ленивого списка карточек.
-    void ensureAlbumIndex();
 
     const cached = cacheGet(key, CACHE_TTL.albums);
     if (cached) {
         restoreAlbumsCache(cached);
         renderAlbums();
-        // Кэш показываем сразу, но первый экран всегда тихо сверяем с VK.
+        // Полный индекс поднимаем из своего кэша или обновляем в фоне.
+        void ensureAlbumIndex();
+        // Кэш показываем сразу, но текущий список всегда тихо сверяем с VK.
         void revalidateVisibleAlbums();
         return;
     }
@@ -213,12 +218,19 @@ export async function loadAlbums({ force = false } = {}) {
     if (stale) {
         restoreAlbumsCache(stale);
         renderAlbums();
+        void ensureAlbumIndex();
         void revalidateVisibleAlbums();
         return;
     }
 
+    // Холодный запуск: сначала получаем большой пакет для самого экрана, затем
+    // продолжаем поисковый индекс С ЭТОГО offset, а не повторяем страницу 0.
     dom.albums.innerHTML = '<div class="status-message">Загружаем альбомы сообщества...</div>';
     await fetchFirstPageFromVK();
+    void ensureAlbumIndex({
+        seedItems: state.albums,
+        seedOffset: state.albumsOffset
+    });
 }
 
 export async function loadMoreAlbums() {
@@ -229,6 +241,41 @@ export async function loadMoreAlbums() {
     renderAlbums();
 
     try {
+        // Если фоновый поисковый индекс уже получил следующие альбомы,
+        // обычная лента использует их прямо из памяти и не повторяет тот же
+        // photos.getAlbums с тем же offset.
+        if (state.albumIndex.length > state.albums.length) {
+            const localItems = state.albumIndex.slice(
+                state.albums.length,
+                state.albums.length + PAGE_SIZE
+            );
+
+            state.albums = mergeAlbums(state.albums, localItems);
+            state.albumsOffset = state.albums.length;
+            state.albumsTotal = Math.max(
+                state.albumsTotal || 0,
+                state.albumIndex.length,
+                state.albums.length
+            );
+            state.albumsHasMore = state.albumIndexReady
+                ? state.albums.length < state.albumIndex.length
+                : state.albumIndex.length > state.albums.length;
+
+            const ownerId = getOwnerId();
+            cacheSet(albumsKey(ownerId), {
+                items: state.albums,
+                total: state.albumsTotal
+            });
+            return;
+        }
+
+        // Если индекс уже подтверждён как полный, сервер больше спрашивать не
+        // нужно — локальный список действительно закончился.
+        if (state.albumIndexReady) {
+            state.albumsHasMore = false;
+            return;
+        }
+
         const result = await fetchAlbumPage(state.albumsOffset, PAGE_SIZE);
         const items = Array.isArray(result?.items) ? result.items : [];
 
@@ -275,17 +322,22 @@ export async function loadMoreAlbums() {
     }
 }
 
-async function buildAlbumIndex(generation) {
+async function buildAlbumIndex(generation, { seedItems = [], seedOffset = 0 } = {}) {
     const ownerId = getOwnerId();
+
+    // Первый большой пакет, уже полученный экраном альбомов, можно использовать
+    // как начало поискового индекса. Так холодный запуск не запрашивает одну и
+    // ту же первую страницу дважды. Конец всё равно подтверждаем штатной
+    // пагинацией ниже, поэтому полнота поиска не страдает.
 
     // Строим индекс НЕ по result.count, а до первой реально пустой страницы.
     // На больших сообществах photos.getAlbums может вернуть count, который
     // нельзя безопасно использовать как условие остановки. Из-за этого старый
     // вариант иногда останавливался после первых ~100 альбомов.
-    let index = [];
-    let offset = 0;
+    let index = mergeIndex([], Array.isArray(seedItems) ? seedItems : []);
+    let offset = Math.max(0, Number(seedOffset || 0));
     let pages = 0;
-    let reportedTotal = 0;
+    let reportedTotal = index.length;
     let reachedEnd = false;
     const MAX_INDEX_PAGES = 200;
 
@@ -392,7 +444,7 @@ async function buildAlbumIndex(generation) {
     }
 }
 
-export async function ensureAlbumIndex({ force = false } = {}) {
+export async function ensureAlbumIndex({ force = false, seedItems = [], seedOffset = 0 } = {}) {
     const ownerId = getOwnerId();
 
     if (!force) {
@@ -424,7 +476,7 @@ export async function ensureAlbumIndex({ force = false } = {}) {
     }
 
     const generation = ++indexBuildGeneration;
-    indexBuildPromise = buildAlbumIndex(generation).finally(() => {
+    indexBuildPromise = buildAlbumIndex(generation, { seedItems, seedOffset }).finally(() => {
         if (generation === indexBuildGeneration) indexBuildPromise = null;
     });
 

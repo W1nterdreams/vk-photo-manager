@@ -1,5 +1,5 @@
-import { vkApi } from "./vk-api.js?v=20260927-copywait41";
-import { getOwnerId } from "./group-context.js?v=20260927-copywait41";
+import { vkApi } from "./vk-api.js?v=20260927-apiopt42";
+import { getOwnerId } from "./group-context.js?v=20260927-apiopt42";
 import {
     compactPhotoForIndex,
     getPhotoIndexMeta,
@@ -13,9 +13,9 @@ import {
     clearPhotoIndexAlbumDirty,
     clearPhotoIndexDirtyThrough,
     getPhotoIndexDiagnostics
-} from "./photo-index-db.js?v=20260927-copywait41";
-import { getPhotoIndexSyncPlan } from "./photo-index-policy.js?v=20260927-copywait41";
-import { getAlbumFingerprintDiagnostics } from "./album-fingerprint.js?v=20260927-copywait41";
+} from "./photo-index-db.js?v=20260927-apiopt42";
+import { getPhotoIndexSyncPlan } from "./photo-index-policy.js?v=20260927-apiopt42";
+import { getAlbumFingerprintDiagnostics } from "./album-fingerprint.js?v=20260927-apiopt42";
 
 const GLOBAL_PAGE_SIZE = 200;
 const ALBUM_PAGE_SIZE = 1000;

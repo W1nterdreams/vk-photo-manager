@@ -1,14 +1,14 @@
-import { state } from "./state.js?v=20260927-copywait41";
-import { dom } from "./dom.js?v=20260927-copywait41";
-import { vkApi } from "./vk-api.js?v=20260927-copywait41";
-import { escapeHtml, getErrorMessage, getPhotoPreviewUrl } from "./helpers.js?v=20260927-copywait41";
-import { showCommentsScreen, pushCommentsHistory } from "./navigation.js?v=20260927-copywait41";
-import { closeMenu } from "./main-menu.js?v=20260927-copywait41";
-import { CACHE_TTL } from "./config.js?v=20260927-copywait41";
-import { cacheGet, cacheSet, invalidateCommentCaches } from "./cache.js?v=20260927-copywait41";
-import { getOwnerId } from "./group-context.js?v=20260927-copywait41";
-import { openVkProfile, openVkPhoto, openVkTarget } from "./vk-links.js?v=20260927-copywait41";
-import { openPhotoViewer } from "./photo-viewer.js?v=20260927-copywait41";
+import { state } from "./state.js?v=20260927-apiopt42";
+import { dom } from "./dom.js?v=20260927-apiopt42";
+import { vkApi } from "./vk-api.js?v=20260927-apiopt42";
+import { escapeHtml, getErrorMessage, getPhotoPreviewUrl } from "./helpers.js?v=20260927-apiopt42";
+import { showCommentsScreen, pushCommentsHistory } from "./navigation.js?v=20260927-apiopt42";
+import { closeMenu } from "./main-menu.js?v=20260927-apiopt42";
+import { CACHE_TTL } from "./config.js?v=20260927-apiopt42";
+import { cacheGet, cacheSet, invalidateCommentCaches } from "./cache.js?v=20260927-apiopt42";
+import { getOwnerId } from "./group-context.js?v=20260927-apiopt42";
+import { openVkProfile, openVkPhoto, openVkTarget } from "./vk-links.js?v=20260927-apiopt42";
+import { openPhotoViewer } from "./photo-viewer.js?v=20260927-apiopt42";
 
 const GLOBAL_COMMENTS_DAYS = 5;
 const PAGE_SIZE = 100;
@@ -16,6 +16,7 @@ const READ_TIMEOUT_MS = 9000;
 const CACHE_SCHEMA = 3;
 
 let globalFeedActive = false;
+const sessionAuthors = new Map();
 
 function cacheKey() {
     return `global-comments:v${CACHE_SCHEMA}:${getOwnerId()}:${GLOBAL_COMMENTS_DAYS}d`;
@@ -258,8 +259,17 @@ async function loadPhotos(comments) {
     const ids = [...new Set(comments.map(commentPhotoId).filter(Boolean))];
     const photos = new Map();
 
-    for (let i = 0; i < ids.length; i += 500) {
-        const chunk = ids.slice(i, i + 500);
+    // Если нужная фотография уже находится в свежем/текущем альбоме,
+    // используем её без повторного photos.getById. Остальные добираем пачками.
+    const wanted = new Set(ids.map(String));
+    for (const photo of Array.isArray(state.photos) ? state.photos : []) {
+        if (wanted.has(String(photo?.id))) photos.set(String(photo.id), photo);
+    }
+
+    const missingIds = ids.filter(id => !photos.has(String(id)));
+
+    for (let i = 0; i < missingIds.length; i += 500) {
+        const chunk = missingIds.slice(i, i + 500);
         if (!chunk.length) continue;
 
         try {
@@ -281,13 +291,24 @@ async function loadPhotos(comments) {
 }
 
 async function loadAuthors(comments) {
-    const userIds = [...new Set(
+    const allUserIds = [...new Set(
         comments.map(c => Number(c?.from_id || 0)).filter(id => id > 0)
     )];
-    const groupIds = [...new Set(
+    const allGroupIds = [...new Set(
         comments.map(c => Number(c?.from_id || 0)).filter(id => id < 0).map(id => Math.abs(id))
     )];
     const authors = new Map();
+
+    for (const id of allUserIds) {
+        if (sessionAuthors.has(id)) authors.set(id, sessionAuthors.get(id));
+    }
+    for (const rawId of allGroupIds) {
+        const id = -Math.abs(rawId);
+        if (sessionAuthors.has(id)) authors.set(id, sessionAuthors.get(id));
+    }
+
+    const userIds = allUserIds.filter(id => !authors.has(id));
+    const groupIds = allGroupIds.filter(rawId => !authors.has(-Math.abs(rawId)));
 
     if (userIds.length) {
         try {
@@ -295,10 +316,12 @@ async function loadAuthors(comments) {
             for (const user of Array.isArray(users) ? users : []) {
                 const id = Number(user.id || 0);
                 if (!id) continue;
-                authors.set(id, {
+                const author = {
                     id,
                     name: `${user.first_name || ""} ${user.last_name || ""}`.trim() || `id${id}`
-                });
+                };
+                authors.set(id, author);
+                sessionAuthors.set(id, author);
             }
         } catch (error) {
             console.warn("Не удалось получить авторов общей ленты комментариев:", error);
@@ -311,10 +334,12 @@ async function loadAuthors(comments) {
             for (const group of normalizeGroupsResponse(response)) {
                 const id = -Math.abs(Number(group.id || 0));
                 if (!id) continue;
-                authors.set(id, {
+                const author = {
                     id,
                     name: group.name || `club${Math.abs(id)}`
-                });
+                };
+                authors.set(id, author);
+                sessionAuthors.set(id, author);
             }
         } catch (error) {
             console.warn("Не удалось получить сообщества-авторов общей ленты:", error);

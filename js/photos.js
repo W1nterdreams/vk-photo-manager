@@ -1,24 +1,24 @@
-import { state } from "./state.js?v=20260927-copywait41";
-import { dom } from "./dom.js?v=20260927-copywait41";
-import { vkApi } from "./vk-api.js?v=20260927-copywait41";
-import { getPhotoPreviewUrl, escapeHtml, getErrorMessage } from "./helpers.js?v=20260927-copywait41";
-import { showPhotosScreen, pushAlbumHistory } from "./navigation.js?v=20260927-copywait41";
-import { CACHE_TTL } from "./config.js?v=20260927-copywait41";
-import { cacheGet, cacheGetStale, cacheSet, albumPhotosKey } from "./cache.js?v=20260927-copywait41";
-import { getOwnerId } from "./group-context.js?v=20260927-copywait41";
-import { openPhotoViewer } from "./photo-viewer.js?v=20260927-copywait41";
-import { bindPhotoContextLongPress } from "./photo-context-menu.js?v=20260927-copywait41";
-import { syncPhotoIndexAlbumIfDirty } from "./photo-index-sync.js?v=20260927-copywait41";
-import { getDirtyPhotoIndexAlbums } from "./photo-index-db.js?v=20260927-copywait41";
+import { state } from "./state.js?v=20260927-apiopt42";
+import { dom } from "./dom.js?v=20260927-apiopt42";
+import { vkApi } from "./vk-api.js?v=20260927-apiopt42";
+import { getPhotoPreviewUrl, escapeHtml, getErrorMessage } from "./helpers.js?v=20260927-apiopt42";
+import { showPhotosScreen, pushAlbumHistory } from "./navigation.js?v=20260927-apiopt42";
+import { CACHE_TTL } from "./config.js?v=20260927-apiopt42";
+import { cacheGet, cacheGetStale, cacheSet, albumPhotosKey } from "./cache.js?v=20260927-apiopt42";
+import { getOwnerId } from "./group-context.js?v=20260927-apiopt42";
+import { openPhotoViewer } from "./photo-viewer.js?v=20260927-apiopt42";
+import { bindPhotoContextLongPress } from "./photo-context-menu.js?v=20260927-apiopt42";
+import { syncPhotoIndexAlbumIfDirty } from "./photo-index-sync.js?v=20260927-apiopt42";
+import { getDirtyPhotoIndexAlbums } from "./photo-index-db.js?v=20260927-apiopt42";
 import {
     isPhotoMultiSelectActive,
     isPhotoSelected,
     togglePhotoSelection,
     cancelPhotoMultiSelect
-} from "./photo-multiselect.js?v=20260927-copywait41";
+} from "./photo-multiselect.js?v=20260927-apiopt42";
 
-const PAGE_SIZE = 20;
-const SORT_FETCH_SIZE = 100;
+const PAGE_SIZE = 1000;
+const SORT_FETCH_SIZE = 1000;
 const UI_PHOTO_CACHE_LIMIT = 60;
 
 let sortingAllPhotos = false;
@@ -332,6 +332,11 @@ function restorePhotosCache(cached, album) {
 function applyFirstPage(album, result, { preserveLoadedTail = false } = {}) {
     if (!currentAlbumIs(album)) return false;
 
+    // Эта страница только что пришла от VK. Для типичного магазина весь альбом
+    // (до ~250 фото) помещается в один запрос count=1000, поэтому карточки можно
+    // открывать без повторного photos.getById.
+    state.photosFreshAlbumId = String(album.id);
+
     const previousFirstIds = state.photos
         .slice(0, PAGE_SIZE)
         .map(photo => String(photo.id));
@@ -455,9 +460,11 @@ export async function openAlbum(album, { fromHistory = false, restoreScroll = 0 
             });
         });
 
-        // Сетка остаётся на месте, но первую страницу всё равно тихо сверяем
-        // с VK, чтобы лайки/комментарии после просмотра не устаревали.
-        void revalidateFirstPhotoPage(album);
+        // При обычном возврате из просмотрщика сетку не перечитываем целиком.
+        // Сам просмотрщик получает свежие комментарии, а изменения описания/
+        // перемещения, выполненные нашим приложением, сразу применяются локально.
+        // Полная сверка альбома остаётся при его обычном открытии и по кнопке
+        // «Обновить», поэтому возврат из каждого фото больше не тратит API.
         setTimeout(handlePhotoScroll, 0);
         return;
     }
@@ -500,6 +507,7 @@ export async function loadPhotos(album, { force = false } = {}) {
 
     firstPageRefreshToken += 1;
     state.photos = [];
+    state.photosFreshAlbumId = null;
     state.photosTotal = Number(album.size || 0);
     state.photosOffset = 0;
     state.photosHasMore = false;
@@ -709,7 +717,8 @@ function createPhotoCard(photo) {
             return;
         }
         void openPhotoViewer(photo, state.currentAlbum, {
-            sequence: photosForRender()
+            sequence: photosForRender(),
+            photoDataFresh: String(state.photosFreshAlbumId || "") === String(state.currentAlbum?.id || "")
         });
     });
 

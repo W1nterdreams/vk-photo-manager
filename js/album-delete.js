@@ -1,8 +1,8 @@
-import { getOwnerId } from "./group-context.js?v=20260927-copywait41";
-import { openVkTarget } from "./vk-links.js?v=20260927-copywait41";
-import { loadAlbums, ensureAlbumIndex } from "./albums.js?v=20260927-copywait41";
-import { invalidateAlbumCaches, invalidateCommentCaches } from "./cache.js?v=20260927-copywait41";
-import { markPhotoIndexAlbumDirty } from "./photo-index-db.js?v=20260927-copywait41";
+import { getOwnerId } from "./group-context.js?v=20260927-apiopt42";
+import { openVkTarget } from "./vk-links.js?v=20260927-apiopt42";
+import { loadAlbums } from "./albums.js?v=20260927-apiopt42";
+import { invalidateAlbumCaches, invalidateCommentCaches } from "./cache.js?v=20260927-apiopt42";
+import { markPhotoIndexAlbumDirty } from "./photo-index-db.js?v=20260927-apiopt42";
 
 let waitingForVkReturn = false;
 let refreshingAfterReturn = false;
@@ -25,7 +25,6 @@ async function refreshAfterVkReturn() {
 
     try {
         await loadAlbums({ force: true });
-        void ensureAlbumIndex({ force: true });
     } catch (error) {
         console.warn("Не удалось обновить альбомы после возврата из VK:", error);
     } finally {
