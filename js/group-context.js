@@ -1,4 +1,4 @@
-import { state } from "./state.js?v=20260927-commentslink40";
+import { state } from "./state.js?v=20260927-copywait41";
 
 let lastAccessDiagnostic = null;
 

@@ -1,19 +1,20 @@
-import { state } from "./state.js?v=20260927-commentslink40";
-import { vkApi } from "./vk-api.js?v=20260927-commentslink40";
-import { getAlbumCover, getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260927-commentslink40";
-import { getOwnerId } from "./group-context.js?v=20260927-commentslink40";
+import { state } from "./state.js?v=20260927-copywait41";
+import { vkApi } from "./vk-api.js?v=20260927-copywait41";
+import { getAlbumCover, getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260927-copywait41";
+import { getOwnerId } from "./group-context.js?v=20260927-copywait41";
 import {
     invalidateAlbumCaches,
     invalidateAlbumPhotosCache,
     invalidateCommentCaches
-} from "./cache.js?v=20260927-commentslink40";
-import { openVkTarget, openVkPhoto } from "./vk-links.js?v=20260927-commentslink40";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260927-commentslink40";
-import { markPhotoIndexAlbumDirty } from "./photo-index-db.js?v=20260927-commentslink40";
-import { applyLocalPhotoMove } from "./photo-index-sync.js?v=20260927-commentslink40";
+} from "./cache.js?v=20260927-copywait41";
+import { openVkTarget, openVkPhoto } from "./vk-links.js?v=20260927-copywait41";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260927-copywait41";
+import { markPhotoIndexAlbumDirty } from "./photo-index-db.js?v=20260927-copywait41";
+import { applyLocalPhotoMove } from "./photo-index-sync.js?v=20260927-copywait41";
 
 const ALBUM_PAGE_SIZE = 100;
 const MAX_ALBUM_PAGES = 200;
+const COPY_DOWNLOAD_TIMEOUT_MS = 20000;
 
 let overlay = null;
 let grid = null;
@@ -31,6 +32,7 @@ let busy = false;
 let allAlbums = [];
 let loadGeneration = 0;
 let transferAlbumsLoading = false;
+let cancelActiveCopyWait = null;
 
 function create(tag, className = "", text = "") {
     const element = document.createElement(tag);
@@ -290,11 +292,49 @@ function installStyles() {
             align-items: center;
             justify-content: center;
             padding: 10px;
-            background: rgba(0,0,0,0.62);
+            background: rgba(0,0,0,0.68);
             color: #fff;
             font-size: 14px;
             font-weight: 600;
             text-align: center;
+        }
+
+        .photo-transfer-copy-wait {
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .photo-transfer-copy-wait-text {
+            line-height: 1.3;
+        }
+
+        .photo-transfer-copy-countdown {
+            font-size: 13px;
+            font-weight: 500;
+            color: #d7dade;
+        }
+
+        .photo-transfer-copy-cancel {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 34px;
+            padding: 0 14px;
+            border: 1px solid rgba(255,255,255,0.34);
+            border-radius: 8px;
+            background: rgba(255,255,255,0.10);
+            color: #fff;
+            font: inherit;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .photo-transfer-copy-cancel:active {
+            background: rgba(255,255,255,0.20);
         }
 
         @media (min-width: 700px) {
@@ -451,6 +491,8 @@ function renderAlbums() {
 function hideModalDirect() {
     if (!overlay) return;
     loadGeneration += 1;
+    cancelActiveCopyWait?.("closed");
+    cancelActiveCopyWait = null;
     overlay.classList.add("hidden");
     activePhoto = null;
     activePhotos = [];
@@ -611,7 +653,7 @@ async function movePhoto(album) {
     // устаревшую карточку и сразу синхронизирует счётчик фотографий.
     if (sourceAlbum) {
         try {
-            const { loadPhotos } = await import("./photos.js?v=20260927-commentslink40");
+            const { loadPhotos } = await import("./photos.js?v=20260927-copywait41");
             await loadPhotos(sourceAlbum, { force: true });
         } catch (error) {
             console.warn("Не удалось обновить альбом после перемещения фотографии:", error);
@@ -631,7 +673,7 @@ async function refreshSourceAlbumAfterMove(sourceAlbum) {
     if (!sourceAlbum) return;
 
     try {
-        const { loadPhotos } = await import("./photos.js?v=20260927-commentslink40");
+        const { loadPhotos } = await import("./photos.js?v=20260927-copywait41");
         const freshSource = (
             state.currentAlbum && String(state.currentAlbum.id) === String(sourceAlbum.id)
                 ? state.currentAlbum
@@ -726,26 +768,145 @@ async function moveManyPhotos(album, busyLabel, sourceButton) {
     callback?.({ moved: moved.length, failed: failed.length, partial: true });
 }
 
-async function downloadForNativeCopy(photo) {
-    const url = getBestPhotoUrl(photo);
-    if (!url) throw new Error("У фотографии нет ссылки на оригинал.");
-
-    if (window.vkBridge?.send) {
-        const result = await window.vkBridge.send("VKWebAppDownloadFile", {
-            url,
-            filename: `vk-photo-${Number(photo.id)}.jpg`
-        });
-        if (result?.result === true || result === true) return true;
-    }
-
-    throw new Error("Нативное скачивание файла недоступно на этом устройстве.");
+function makeCopyWaitError(message, code) {
+    const error = new Error(message);
+    error.code = code;
+    return error;
 }
 
-async function copyPhotoNative(album) {
+async function downloadForNativeCopy(photo, { onTick = null } = {}) {
+    const url = getBestPhotoUrl(photo);
+    if (!url) throw new Error("У фотографии нет ссылки на оригинал.");
+    if (!window.vkBridge?.send) {
+        throw new Error("Нативное скачивание файла недоступно на этом устройстве.");
+    }
+
+    const timeoutMs = COPY_DOWNLOAD_TIMEOUT_MS;
+    const startedAt = Date.now();
+    let settled = false;
+    let intervalId = null;
+    let timeoutId = null;
+    let rejectManual = null;
+
+    const cleanup = () => {
+        if (intervalId !== null) window.clearInterval(intervalId);
+        if (timeoutId !== null) window.clearTimeout(timeoutId);
+        intervalId = null;
+        timeoutId = null;
+        if (cancelActiveCopyWait === cancel) cancelActiveCopyWait = null;
+    };
+
+    const tick = () => {
+        const elapsed = Date.now() - startedAt;
+        const remainingMs = Math.max(0, timeoutMs - elapsed);
+        const remainingSeconds = Math.ceil(remainingMs / 1000);
+        onTick?.(remainingSeconds);
+    };
+
+    const cancel = reason => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        const manual = reason === "manual";
+        rejectManual?.(makeCopyWaitError(
+            manual ? "Копирование отменено пользователем." : "Копирование было прервано.",
+            manual ? "COPY_CANCELLED" : "COPY_INTERRUPTED"
+        ));
+    };
+
+    cancelActiveCopyWait = cancel;
+    tick();
+    intervalId = window.setInterval(tick, 250);
+
+    const timeoutPromise = new Promise((_, reject) => {
+        timeoutId = window.setTimeout(() => {
+            if (settled) return;
+            settled = true;
+            cleanup();
+            reject(makeCopyWaitError(
+                "VK не ответил на подготовку фотографии за 20 секунд. Попробуйте ещё раз.",
+                "COPY_TIMEOUT"
+            ));
+        }, timeoutMs);
+    });
+
+    const manualCancelPromise = new Promise((_, reject) => {
+        rejectManual = reject;
+    });
+
+    const bridgePromise = Promise.resolve(window.vkBridge.send("VKWebAppDownloadFile", {
+        url,
+        filename: `vk-photo-${Number(photo.id)}.jpg`
+    })).then(result => {
+        if (settled) return { ignored: true };
+        settled = true;
+        cleanup();
+        return result;
+    }, error => {
+        if (settled) return { ignored: true };
+        settled = true;
+        cleanup();
+        throw error;
+    });
+
+    const result = await Promise.race([
+        bridgePromise,
+        timeoutPromise,
+        manualCancelPromise
+    ]);
+
+    if (result?.ignored) {
+        throw makeCopyWaitError("Копирование было прервано.", "COPY_INTERRUPTED");
+    }
+    if (result?.result === true || result === true) return true;
+
+    throw new Error("VK не подтвердил подготовку фотографии для копирования.");
+}
+
+function setCopyWaitBusy(button) {
+    const busyLabel = create("div", "photo-transfer-busy-label photo-transfer-copy-wait");
+    const text = create("div", "photo-transfer-copy-wait-text", "Подготавливаем копию...");
+    const countdown = create("div", "photo-transfer-copy-countdown", "Ожидание ответа VK: до 20 с");
+    const cancel = create("div", "photo-transfer-copy-cancel", "Отменить");
+    cancel.setAttribute("role", "button");
+    cancel.setAttribute("tabindex", "0");
+
+    const cancelAction = event => {
+        event?.preventDefault?.();
+        event?.stopPropagation?.();
+        cancelActiveCopyWait?.("manual");
+    };
+
+    cancel.addEventListener("click", cancelAction);
+    cancel.addEventListener("pointerdown", event => event.stopPropagation());
+    cancel.addEventListener("keydown", event => {
+        if (event.key === "Enter" || event.key === " ") cancelAction(event);
+    });
+
+    busyLabel.append(text, countdown, cancel);
+    busyLabel.addEventListener("click", event => event.stopPropagation());
+    button.classList.add("is-busy");
+    button.appendChild(busyLabel);
+
+    return {
+        element: busyLabel,
+        update(seconds) {
+            countdown.textContent = seconds > 0
+                ? `Ожидание ответа VK: ${seconds} с`
+                : "Время ожидания истекло";
+        },
+        remove() {
+            button.classList.remove("is-busy");
+            busyLabel.remove();
+        }
+    };
+}
+
+async function copyPhotoNative(album, onTick = null) {
     const photo = activePhoto;
     const ownerId = Number(photo?.owner_id || getOwnerId());
 
-    await downloadForNativeCopy(photo);
+    await downloadForNativeCopy(photo, { onTick });
 
     invalidateAlbumPhotosCache(ownerId, Number(album.id));
     invalidateAlbumCaches(ownerId);
@@ -775,10 +936,10 @@ async function chooseAlbum(album, button) {
 
     busy = true;
     showError("");
-    const busyLabel = setCardBusy(
-        button,
-        mode === "move" ? "Перемещаем..." : "Подготавливаем копию..."
-    );
+    const busyIndicator = mode === "move"
+        ? setCardBusy(button, "Перемещаем...")
+        : setCopyWaitBusy(button);
+    const busyLabel = busyIndicator?.element || busyIndicator;
 
     try {
         if (mode === "move") {
@@ -788,12 +949,20 @@ async function chooseAlbum(album, button) {
                 await movePhoto(album);
             }
         } else {
-            await copyPhotoNative(album);
+            await copyPhotoNative(album, seconds => busyIndicator.update(seconds));
         }
     } catch (error) {
         busy = false;
+        cancelActiveCopyWait = null;
         button.disabled = false;
-        busyLabel.remove();
+        if (typeof busyIndicator?.remove === "function") busyIndicator.remove();
+        else busyLabel?.remove?.();
+
+        if (error?.code === "COPY_CANCELLED") {
+            showError("Копирование отменено.");
+            return;
+        }
+
         showError(getErrorMessage(error));
 
         if (mode === "move") {

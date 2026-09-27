@@ -1,20 +1,20 @@
-import { state } from "./state.js?v=20260927-commentslink40";
-import { dom } from "./dom.js?v=20260927-commentslink40";
-import { vkApi } from "./vk-api.js?v=20260927-commentslink40";
-import { getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260927-commentslink40";
-import { getOwnerId } from "./group-context.js?v=20260927-commentslink40";
+import { state } from "./state.js?v=20260927-copywait41";
+import { dom } from "./dom.js?v=20260927-copywait41";
+import { vkApi } from "./vk-api.js?v=20260927-copywait41";
+import { getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260927-copywait41";
+import { getOwnerId } from "./group-context.js?v=20260927-copywait41";
 import {
     invalidateAlbumPhotosCache,
     invalidateAlbumCaches,
     invalidatePhotoActivityCaches
-} from "./cache.js?v=20260927-commentslink40";
-import { closeMenu } from "./main-menu.js?v=20260927-commentslink40";
-import { openPhotoTransfer } from "./photo-transfer.js?v=20260927-commentslink40";
-import { openPhotoReorder } from "./photo-reorder.js?v=20260927-commentslink40";
-import { openVkPhoto } from "./vk-links.js?v=20260927-commentslink40";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260927-commentslink40";
-import { markPhotoIndexAlbumDirty, clearPhotoIndexAlbumDirty } from "./photo-index-db.js?v=20260927-commentslink40";
-import { applyLocalPhotoUpdate, applyLocalPhotoDelete } from "./photo-index-sync.js?v=20260927-commentslink40";
+} from "./cache.js?v=20260927-copywait41";
+import { closeMenu } from "./main-menu.js?v=20260927-copywait41";
+import { openPhotoTransfer } from "./photo-transfer.js?v=20260927-copywait41";
+import { openPhotoReorder } from "./photo-reorder.js?v=20260927-copywait41";
+import { openVkPhoto } from "./vk-links.js?v=20260927-copywait41";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260927-copywait41";
+import { markPhotoIndexAlbumDirty, clearPhotoIndexAlbumDirty } from "./photo-index-db.js?v=20260927-copywait41";
+import { applyLocalPhotoUpdate, applyLocalPhotoDelete } from "./photo-index-sync.js?v=20260927-copywait41";
 
 let editOverlay = null;
 let editInput = null;
@@ -412,7 +412,7 @@ async function refreshAfterNativeDelete(detail) {
 
     if (album) {
         try {
-            const { loadPhotos } = await import("./photos.js?v=20260927-commentslink40");
+            const { loadPhotos } = await import("./photos.js?v=20260927-copywait41");
             await loadPhotos(album, { force: true });
         } catch (error) {
             console.warn("Не удалось обновить альбом после возврата из VK:", error);

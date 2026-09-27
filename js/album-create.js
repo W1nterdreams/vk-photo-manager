@@ -1,12 +1,12 @@
-import { state } from "./state.js?v=20260927-commentslink40";
-import { dom } from "./dom.js?v=20260927-commentslink40";
-import { vkApi } from "./vk-api.js?v=20260927-commentslink40";
-import { getErrorMessage } from "./helpers.js?v=20260927-commentslink40";
-import { loadAlbums } from "./albums.js?v=20260927-commentslink40";
-import { closeMenu } from "./main-menu.js?v=20260927-commentslink40";
-import { getGroupId, getOwnerId } from "./group-context.js?v=20260927-commentslink40";
-import { invalidateAlbumCaches } from "./cache.js?v=20260927-commentslink40";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260927-commentslink40";
+import { state } from "./state.js?v=20260927-copywait41";
+import { dom } from "./dom.js?v=20260927-copywait41";
+import { vkApi } from "./vk-api.js?v=20260927-copywait41";
+import { getErrorMessage } from "./helpers.js?v=20260927-copywait41";
+import { loadAlbums } from "./albums.js?v=20260927-copywait41";
+import { closeMenu } from "./main-menu.js?v=20260927-copywait41";
+import { getGroupId, getOwnerId } from "./group-context.js?v=20260927-copywait41";
+import { invalidateAlbumCaches } from "./cache.js?v=20260927-copywait41";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260927-copywait41";
 
 async function openModal() {
     await closeMenu();
