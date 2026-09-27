@@ -2501,3 +2501,40 @@ img {
     width: min(360px, calc(100vw - 40px));
     max-height: calc(100vh - 80px);
 }
+
+
+/* =========================================================
+   РЕДАКТОР ОПИСАНИЯ ФОТОГРАФИИ
+   ========================================================= */
+
+.photo-description-edit-modal-window {
+    width: min(680px, calc(100vw - 24px));
+    max-height: 92dvh;
+    padding: 20px;
+}
+
+.photo-description-edit-textarea {
+    min-height: 260px;
+    max-height: 56dvh;
+    resize: vertical;
+    overflow-y: auto;
+    line-height: 1.5;
+    font-size: 16px;
+    caret-color: #ffffff;
+    user-select: text;
+    -webkit-user-select: text;
+    -webkit-touch-callout: default;
+}
+
+@media (max-width: 520px) {
+    .photo-description-edit-modal-window {
+        width: calc(100vw - 16px);
+        max-height: 94dvh;
+        padding: 16px;
+    }
+
+    .photo-description-edit-textarea {
+        min-height: 220px;
+        max-height: 52dvh;
+    }
+}
