@@ -1,20 +1,20 @@
-import { state } from "./state.js?v=20260924-menufix38";
-import { dom } from "./dom.js?v=20260924-menufix38";
-import { vkApi } from "./vk-api.js?v=20260924-menufix38";
-import { getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260924-menufix38";
-import { getOwnerId } from "./group-context.js?v=20260924-menufix38";
+import { state } from "./state.js?v=20260927-captionfix39";
+import { dom } from "./dom.js?v=20260927-captionfix39";
+import { vkApi } from "./vk-api.js?v=20260927-captionfix39";
+import { getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260927-captionfix39";
+import { getOwnerId } from "./group-context.js?v=20260927-captionfix39";
 import {
     invalidateAlbumPhotosCache,
     invalidateAlbumCaches,
     invalidatePhotoActivityCaches
-} from "./cache.js?v=20260924-menufix38";
-import { closeMenu } from "./main-menu.js?v=20260924-menufix38";
-import { openPhotoTransfer } from "./photo-transfer.js?v=20260924-menufix38";
-import { openPhotoReorder } from "./photo-reorder.js?v=20260924-menufix38";
-import { openVkPhoto } from "./vk-links.js?v=20260924-menufix38";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260924-menufix38";
-import { markPhotoIndexAlbumDirty, clearPhotoIndexAlbumDirty } from "./photo-index-db.js?v=20260924-menufix38";
-import { applyLocalPhotoUpdate, applyLocalPhotoDelete } from "./photo-index-sync.js?v=20260924-menufix38";
+} from "./cache.js?v=20260927-captionfix39";
+import { closeMenu } from "./main-menu.js?v=20260927-captionfix39";
+import { openPhotoTransfer } from "./photo-transfer.js?v=20260927-captionfix39";
+import { openPhotoReorder } from "./photo-reorder.js?v=20260927-captionfix39";
+import { openVkPhoto } from "./vk-links.js?v=20260927-captionfix39";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260927-captionfix39";
+import { markPhotoIndexAlbumDirty, clearPhotoIndexAlbumDirty } from "./photo-index-db.js?v=20260927-captionfix39";
+import { applyLocalPhotoUpdate, applyLocalPhotoDelete } from "./photo-index-sync.js?v=20260927-captionfix39";
 
 let editOverlay = null;
 let editInput = null;
@@ -70,7 +70,7 @@ function ensureEditModal() {
     editOverlay.id = "editPhotoDescriptionModal";
 
     const modal = document.createElement("div");
-    modal.className = "modal";
+    modal.className = "modal photo-description-edit-modal-window";
 
     const header = document.createElement("div");
     header.className = "modal-header";
@@ -91,9 +91,13 @@ function ensureEditModal() {
     label.textContent = "Описание";
 
     editInput = document.createElement("textarea");
-    editInput.className = "form-textarea";
-    editInput.maxLength = 1000;
-    editInput.rows = 6;
+    editInput.className = "form-textarea photo-description-edit-textarea";
+    // Не задаём maxlength: существующие подписи VK могут быть длиннее
+    // прежнего локального ограничения 1000 символов. Если value уже было
+    // длиннее maxlength, Android WebView позволял удалять текст, но блокировал
+    // новый ввод — курсор двигался, а символы фактически не добавлялись.
+    editInput.rows = 12;
+    editInput.setAttribute("spellcheck", "true");
 
     editError = document.createElement("div");
     editError.className = "form-error hidden";
@@ -372,7 +376,7 @@ async function refreshAfterNativeDelete(detail) {
 
     if (album) {
         try {
-            const { loadPhotos } = await import("./photos.js?v=20260924-menufix38");
+            const { loadPhotos } = await import("./photos.js?v=20260927-captionfix39");
             await loadPhotos(album, { force: true });
         } catch (error) {
             console.warn("Не удалось обновить альбом после возврата из VK:", error);

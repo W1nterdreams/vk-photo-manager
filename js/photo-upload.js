@@ -1,15 +1,15 @@
-import { state } from "./state.js?v=20260924-menufix38";
-import { dom } from "./dom.js?v=20260924-menufix38";
-import { getOwnerId } from "./group-context.js?v=20260924-menufix38";
-import { closeMenu } from "./main-menu.js?v=20260924-menufix38";
-import { openVkTarget } from "./vk-links.js?v=20260924-menufix38";
-import { loadPhotos } from "./photos.js?v=20260924-menufix38";
-import { renderAlbums } from "./albums.js?v=20260924-menufix38";
+import { state } from "./state.js?v=20260927-captionfix39";
+import { dom } from "./dom.js?v=20260927-captionfix39";
+import { getOwnerId } from "./group-context.js?v=20260927-captionfix39";
+import { closeMenu } from "./main-menu.js?v=20260927-captionfix39";
+import { openVkTarget } from "./vk-links.js?v=20260927-captionfix39";
+import { loadPhotos } from "./photos.js?v=20260927-captionfix39";
+import { renderAlbums } from "./albums.js?v=20260927-captionfix39";
 import {
     invalidateAlbumCaches,
     invalidateAlbumPhotosCache
-} from "./cache.js?v=20260924-menufix38";
-import { markPhotoIndexAlbumDirty } from "./photo-index-db.js?v=20260924-menufix38";
+} from "./cache.js?v=20260927-captionfix39";
+import { markPhotoIndexAlbumDirty } from "./photo-index-db.js?v=20260927-captionfix39";
 
 function findAlbum(albumId) {
     const id = String(albumId || "");

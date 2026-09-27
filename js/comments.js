@@ -1,14 +1,14 @@
-import { state } from "./state.js?v=20260924-menufix38";
-import { dom } from "./dom.js?v=20260924-menufix38";
-import { vkApi } from "./vk-api.js?v=20260924-menufix38";
-import { escapeHtml, getErrorMessage, getPhotoPreviewUrl } from "./helpers.js?v=20260924-menufix38";
-import { showCommentsScreen, pushCommentsHistory } from "./navigation.js?v=20260924-menufix38";
-import { closeMenu } from "./main-menu.js?v=20260924-menufix38";
-import { CACHE_TTL } from "./config.js?v=20260924-menufix38";
-import { cacheGet, cacheSet, invalidateCommentCaches } from "./cache.js?v=20260924-menufix38";
-import { getOwnerId } from "./group-context.js?v=20260924-menufix38";
-import { openVkProfile, openVkPhoto, openVkTarget } from "./vk-links.js?v=20260924-menufix38";
-import { openPhotoViewer } from "./photo-viewer.js?v=20260924-menufix38";
+import { state } from "./state.js?v=20260927-captionfix39";
+import { dom } from "./dom.js?v=20260927-captionfix39";
+import { vkApi } from "./vk-api.js?v=20260927-captionfix39";
+import { escapeHtml, getErrorMessage, getPhotoPreviewUrl } from "./helpers.js?v=20260927-captionfix39";
+import { showCommentsScreen, pushCommentsHistory } from "./navigation.js?v=20260927-captionfix39";
+import { closeMenu } from "./main-menu.js?v=20260927-captionfix39";
+import { CACHE_TTL } from "./config.js?v=20260927-captionfix39";
+import { cacheGet, cacheSet, invalidateCommentCaches } from "./cache.js?v=20260927-captionfix39";
+import { getOwnerId } from "./group-context.js?v=20260927-captionfix39";
+import { openVkProfile, openVkPhoto, openVkTarget } from "./vk-links.js?v=20260927-captionfix39";
+import { openPhotoViewer } from "./photo-viewer.js?v=20260927-captionfix39";
 
 const GLOBAL_COMMENTS_DAYS = 5;
 const PAGE_SIZE = 100;
