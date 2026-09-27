@@ -1,18 +1,18 @@
-import { armLongPressReleaseGuard, consumeLongPressSyntheticClick } from "./long-press-guard.js?v=20260927-captionfix39";
-import { state } from "./state.js?v=20260927-captionfix39";
-import { dom } from "./dom.js?v=20260927-captionfix39";
-import { vkApi } from "./vk-api.js?v=20260927-captionfix39";
-import { getBestPhotoUrl, getPhotoPreviewUrl, escapeHtml } from "./helpers.js?v=20260927-captionfix39";
-import { getOwnerId } from "./group-context.js?v=20260927-captionfix39";
+import { armLongPressReleaseGuard, consumeLongPressSyntheticClick } from "./long-press-guard.js?v=20260927-commentslink40";
+import { state } from "./state.js?v=20260927-commentslink40";
+import { dom } from "./dom.js?v=20260927-commentslink40";
+import { vkApi } from "./vk-api.js?v=20260927-commentslink40";
+import { getBestPhotoUrl, getPhotoPreviewUrl, escapeHtml } from "./helpers.js?v=20260927-commentslink40";
+import { getOwnerId } from "./group-context.js?v=20260927-commentslink40";
 import {
     showPhotoViewerScreen,
     pushPhotoHistory,
     replacePhotoHistory
-} from "./navigation.js?v=20260927-captionfix39";
-import { photoCommentOwnerId } from "./photo-comment-api.js?v=20260927-captionfix39";
-import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260927-captionfix39";
-import { invalidatePhotoActivityCaches } from "./cache.js?v=20260927-captionfix39";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260927-captionfix39";
+} from "./navigation.js?v=20260927-commentslink40";
+import { photoCommentOwnerId } from "./photo-comment-api.js?v=20260927-commentslink40";
+import { openVkProfile, openVkTarget, openVkPhoto } from "./vk-links.js?v=20260927-commentslink40";
+import { invalidatePhotoActivityCaches } from "./cache.js?v=20260927-commentslink40";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260927-commentslink40";
 
 const COMMENT_PAGE_SIZE = 100;
 const LONG_PRESS_MS = 900;
@@ -96,7 +96,7 @@ function flattenComments(items) {
         }
     }
 
-    return [...map.values()].sort((a, b) => Number(b.date || 0) - Number(a.date || 0));
+    return [...map.values()].sort((a, b) => Number(a.date || 0) - Number(b.date || 0));
 }
 
 function addAuthors(profiles = [], groups = []) {
@@ -734,7 +734,7 @@ function openViewerPhotoContext() {
         if (!album?.id) return;
 
         try {
-            const { openAlbum } = await import("./photos.js?v=20260927-captionfix39");
+            const { openAlbum } = await import("./photos.js?v=20260927-commentslink40");
             await openAlbum(album);
         } catch (error) {
             console.warn("Не удалось перейти в альбом фотографии:", error);

@@ -1,9 +1,9 @@
-import { state } from "./state.js?v=20260927-captionfix39";
-import { dom } from "./dom.js?v=20260927-captionfix39";
-import { vkApi } from "./vk-api.js?v=20260927-captionfix39";
-import { getAlbumCover, escapeHtml, getErrorMessage } from "./helpers.js?v=20260927-captionfix39";
-import { openAlbum, loadPhotos } from "./photos.js?v=20260927-captionfix39";
-import { CACHE_TTL } from "./config.js?v=20260927-captionfix39";
+import { state } from "./state.js?v=20260927-commentslink40";
+import { dom } from "./dom.js?v=20260927-commentslink40";
+import { vkApi } from "./vk-api.js?v=20260927-commentslink40";
+import { getAlbumCover, escapeHtml, getErrorMessage } from "./helpers.js?v=20260927-commentslink40";
+import { openAlbum, loadPhotos } from "./photos.js?v=20260927-commentslink40";
+import { CACHE_TTL } from "./config.js?v=20260927-commentslink40";
 import {
     cacheGet,
     cacheGetStale,
@@ -11,10 +11,10 @@ import {
     invalidateAlbumCaches,
     albumsKey,
     albumIndexKey
-} from "./cache.js?v=20260927-captionfix39";
-import { getOwnerId } from "./group-context.js?v=20260927-captionfix39";
-import { bindAlbumLongPress } from "./album-menu.js?v=20260927-captionfix39";
-import { observeAlbumFingerprints, reconcileAlbumFingerprints } from "./album-fingerprint.js?v=20260927-captionfix39";
+} from "./cache.js?v=20260927-commentslink40";
+import { getOwnerId } from "./group-context.js?v=20260927-commentslink40";
+import { bindAlbumLongPress } from "./album-menu.js?v=20260927-commentslink40";
+import { observeAlbumFingerprints, reconcileAlbumFingerprints } from "./album-fingerprint.js?v=20260927-commentslink40";
 
 const PAGE_SIZE = 20;
 const INDEX_PAGE_SIZE = 100;

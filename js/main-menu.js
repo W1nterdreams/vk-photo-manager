@@ -1,8 +1,8 @@
-import { dom } from "./dom.js?v=20260927-captionfix39";
-import { state } from "./state.js?v=20260927-captionfix39";
-import { getOwnerId } from "./group-context.js?v=20260927-captionfix39";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260927-captionfix39";
-import { openAlbumReorderMode } from "./photo-reorder.js?v=20260927-captionfix39";
+import { dom } from "./dom.js?v=20260927-commentslink40";
+import { state } from "./state.js?v=20260927-commentslink40";
+import { getOwnerId } from "./group-context.js?v=20260927-commentslink40";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260927-commentslink40";
+import { openAlbumReorderMode } from "./photo-reorder.js?v=20260927-commentslink40";
 
 function visible(element) {
     return Boolean(element && !element.classList.contains("hidden"));
@@ -81,6 +81,7 @@ export function syncMainMenu() {
 
     // Открытая фотография.
     setMenuItemVisible(dom.downloadPhotoMenuButton, onPhoto);
+    setMenuItemVisible(dom.copyPhotoLinkMenuButton, onPhoto);
     setMenuItemVisible(dom.editPhotoDescriptionMenuButton, onPhoto);
     setMenuItemVisible(dom.copyPhotoMenuButton, onPhoto);
     setMenuItemVisible(dom.movePhotoMenuButton, onPhoto);
@@ -149,7 +150,7 @@ export function initMainMenu() {
 
     dom.globalPhotoSearchMenuButton?.addEventListener("click", async () => {
         await closeMenu();
-        const { openGlobalPhotoSearch } = await import("./global-photo-search.js?v=20260927-captionfix39");
+        const { openGlobalPhotoSearch } = await import("./global-photo-search.js?v=20260927-commentslink40");
         void openGlobalPhotoSearch();
     });
 

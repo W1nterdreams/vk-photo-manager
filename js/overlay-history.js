@@ -1,4 +1,4 @@
-import { state } from "./state.js?v=20260927-captionfix39";
+import { state } from "./state.js?v=20260927-commentslink40";
 
 let activeOverlay = null;
 let closingPromise = null;

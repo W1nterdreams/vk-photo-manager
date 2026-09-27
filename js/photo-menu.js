@@ -1,20 +1,20 @@
-import { state } from "./state.js?v=20260927-captionfix39";
-import { dom } from "./dom.js?v=20260927-captionfix39";
-import { vkApi } from "./vk-api.js?v=20260927-captionfix39";
-import { getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260927-captionfix39";
-import { getOwnerId } from "./group-context.js?v=20260927-captionfix39";
+import { state } from "./state.js?v=20260927-commentslink40";
+import { dom } from "./dom.js?v=20260927-commentslink40";
+import { vkApi } from "./vk-api.js?v=20260927-commentslink40";
+import { getBestPhotoUrl, getErrorMessage } from "./helpers.js?v=20260927-commentslink40";
+import { getOwnerId } from "./group-context.js?v=20260927-commentslink40";
 import {
     invalidateAlbumPhotosCache,
     invalidateAlbumCaches,
     invalidatePhotoActivityCaches
-} from "./cache.js?v=20260927-captionfix39";
-import { closeMenu } from "./main-menu.js?v=20260927-captionfix39";
-import { openPhotoTransfer } from "./photo-transfer.js?v=20260927-captionfix39";
-import { openPhotoReorder } from "./photo-reorder.js?v=20260927-captionfix39";
-import { openVkPhoto } from "./vk-links.js?v=20260927-captionfix39";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260927-captionfix39";
-import { markPhotoIndexAlbumDirty, clearPhotoIndexAlbumDirty } from "./photo-index-db.js?v=20260927-captionfix39";
-import { applyLocalPhotoUpdate, applyLocalPhotoDelete } from "./photo-index-sync.js?v=20260927-captionfix39";
+} from "./cache.js?v=20260927-commentslink40";
+import { closeMenu } from "./main-menu.js?v=20260927-commentslink40";
+import { openPhotoTransfer } from "./photo-transfer.js?v=20260927-commentslink40";
+import { openPhotoReorder } from "./photo-reorder.js?v=20260927-commentslink40";
+import { openVkPhoto } from "./vk-links.js?v=20260927-commentslink40";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260927-commentslink40";
+import { markPhotoIndexAlbumDirty, clearPhotoIndexAlbumDirty } from "./photo-index-db.js?v=20260927-commentslink40";
+import { applyLocalPhotoUpdate, applyLocalPhotoDelete } from "./photo-index-sync.js?v=20260927-commentslink40";
 
 let editOverlay = null;
 let editInput = null;
@@ -28,6 +28,42 @@ function currentPhoto() {
 
 function fileNameForPhoto(photo) {
     return `vk-photo-${Number(photo?.id || Date.now())}.jpg`;
+}
+
+function photoLink(photo) {
+    const photoId = Number(photo?.id || 0);
+    const ownerId = Number(photo?.owner_id || getOwnerId() || 0);
+    if (!photoId || !ownerId) return "";
+    return `https://vk.com/photo${ownerId}_${photoId}`;
+}
+
+async function copyText(value) {
+    const text = String(value || "");
+    if (!text) return false;
+
+    if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        return true;
+    }
+
+    const area = document.createElement("textarea");
+    area.value = text;
+    area.setAttribute("readonly", "");
+    area.style.position = "fixed";
+    area.style.opacity = "0";
+    area.style.pointerEvents = "none";
+    document.body.appendChild(area);
+    area.select();
+    const ok = document.execCommand("copy");
+    area.remove();
+    return ok;
+}
+
+export async function copyPhotoLink(photo) {
+    const link = photoLink(photo);
+    if (!link) throw new Error("Не удалось сформировать ссылку на фотографию.");
+    await copyText(link);
+    return link;
 }
 
 export async function downloadPhotoFile(photo, { quiet = false } = {}) {
@@ -376,7 +412,7 @@ async function refreshAfterNativeDelete(detail) {
 
     if (album) {
         try {
-            const { loadPhotos } = await import("./photos.js?v=20260927-captionfix39");
+            const { loadPhotos } = await import("./photos.js?v=20260927-commentslink40");
             await loadPhotos(album, { force: true });
         } catch (error) {
             console.warn("Не удалось обновить альбом после возврата из VK:", error);
@@ -417,6 +453,18 @@ export async function deletePhoto(photo, { returnFromViewer = false } = {}) {
     });
 }
 
+async function onCopyLink() {
+    const photo = currentPhoto();
+    if (!photo) return;
+    await closeMenu();
+
+    try {
+        await copyPhotoLink(photo);
+    } catch (error) {
+        alert(`Не удалось скопировать ссылку.\n\n${getErrorMessage(error)}`);
+    }
+}
+
 async function onDelete() {
     const photo = currentPhoto();
     if (!photo) return;
@@ -427,6 +475,7 @@ async function onDelete() {
 export function initPhotoMenu() {
     ensureEditModal();
     dom.downloadPhotoMenuButton?.addEventListener("click", () => void onDownload());
+    dom.copyPhotoLinkMenuButton?.addEventListener("click", () => void onCopyLink());
     dom.editPhotoDescriptionMenuButton?.addEventListener("click", () => void onEdit());
     dom.copyPhotoMenuButton?.addEventListener("click", () => void onCopy());
     dom.movePhotoMenuButton?.addEventListener("click", () => void onMove());

@@ -1,22 +1,23 @@
-import { state } from "./state.js?v=20260927-captionfix39";
+import { state } from "./state.js?v=20260927-commentslink40";
 import {
     downloadPhotoFile,
+    copyPhotoLink,
     openPhotoDescriptionEditor,
     deletePhoto,
     makePhotoAlbumCover
-} from "./photo-menu.js?v=20260927-captionfix39";
-import { openPhotoTransfer } from "./photo-transfer.js?v=20260927-captionfix39";
-import { openPhotoReorder } from "./photo-reorder.js?v=20260927-captionfix39";
-import { getErrorMessage } from "./helpers.js?v=20260927-captionfix39";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260927-captionfix39";
+} from "./photo-menu.js?v=20260927-commentslink40";
+import { openPhotoTransfer } from "./photo-transfer.js?v=20260927-commentslink40";
+import { openPhotoReorder } from "./photo-reorder.js?v=20260927-commentslink40";
+import { getErrorMessage } from "./helpers.js?v=20260927-commentslink40";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260927-commentslink40";
 import {
     armLongPressReleaseGuard,
     consumeLongPressSyntheticClick
-} from "./long-press-guard.js?v=20260927-captionfix39";
+} from "./long-press-guard.js?v=20260927-commentslink40";
 import {
     isPhotoMultiSelectActive,
     startPhotoMultiSelect
-} from "./photo-multiselect.js?v=20260927-captionfix39";
+} from "./photo-multiselect.js?v=20260927-commentslink40";
 
 const LONG_PRESS_MS = 900;
 const MOVE_CANCEL_PX = 15;
@@ -42,6 +43,11 @@ function createItem(label, action, extraClass = "") {
         try {
             if (action === "download") {
                 await downloadPhotoFile(photo);
+                return;
+            }
+
+            if (action === "copy-link") {
+                await copyPhotoLink(photo);
                 return;
             }
 
@@ -100,6 +106,7 @@ function ensureMenu() {
 
     menu.append(
         createItem("Скачать фото", "download"),
+        createItem("Скопировать ссылку", "copy-link"),
         createItem("Изменить описание", "edit"),
         createItem("Копировать в альбом", "copy"),
         createItem("Переместить в альбом", "move"),
