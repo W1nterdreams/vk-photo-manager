@@ -1,15 +1,15 @@
-import { state } from "./state.js?v=20260928-client02";
-import { dom } from "./dom.js?v=20260928-client02";
-import { loadClientConfig } from "./config.js?v=20260928-client02";
-import { initGroupContext } from "./group-context.js?v=20260928-client02";
-import { vkInit, loadUser, getAccessToken } from "./vk-api.js?v=20260928-client02";
-import { initNavigation, showAlbumsScreen } from "./navigation.js?v=20260928-client02";
-import { initAlbums, loadAllowedAlbums } from "./albums.js?v=20260928-client02";
-import { initPhotos, openAlbum, refreshCurrentAlbum } from "./photos.js?v=20260928-client02";
-import { initPhotoViewer, openPhotoViewer } from "./photo-viewer.js?v=20260928-client02";
-import { initGlobalPhotoSearch, openGlobalSearch, refreshGlobalSearch } from "./global-photo-search.js?v=20260928-client02";
-import { initMainMenu } from "./main-menu.js?v=20260928-client02";
-import { getErrorMessage, logError } from "./helpers.js?v=20260928-client02";
+import { state } from "./state.js?v=20260928-client03-groups";
+import { dom } from "./dom.js?v=20260928-client03-groups";
+import { loadClientConfig } from "./config.js?v=20260928-client03-groups";
+import { initGroupContext } from "./group-context.js?v=20260928-client03-groups";
+import { vkInit, loadUser, getAccessToken } from "./vk-api.js?v=20260928-client03-groups";
+import { initNavigation, showAlbumsScreen } from "./navigation.js?v=20260928-client03-groups";
+import { initAlbums, loadSearchAlbums } from "./albums.js?v=20260928-client03-groups";
+import { initPhotos, openAlbum, refreshCurrentAlbum } from "./photos.js?v=20260928-client03-groups";
+import { initPhotoViewer, openPhotoViewer } from "./photo-viewer.js?v=20260928-client03-groups";
+import { initGlobalPhotoSearch, openGlobalSearch, refreshGlobalSearch } from "./global-photo-search.js?v=20260928-client03-groups";
+import { initMainMenu } from "./main-menu.js?v=20260928-client03-groups";
+import { getErrorMessage, logError } from "./helpers.js?v=20260928-client03-groups";
 
 let hiddenAt = 0;
 let refreshing = false;
@@ -35,7 +35,7 @@ async function refreshCurrentScreen() {
 
     try {
         if (state.currentScreen === "albums") {
-            await loadAllowedAlbums({ force: true });
+            await loadSearchAlbums({ force: true });
             return;
         }
         if (state.currentScreen === "photos") {
@@ -98,7 +98,7 @@ async function start() {
         dom.refreshButton?.addEventListener("click", () => { void refreshCurrentScreen(); });
 
         showAlbumsScreen();
-        await loadAllowedAlbums({ force: false });
+        await loadSearchAlbums({ force: false });
     } catch (error) {
         logError("Ошибка запуска клиентского приложения:", error);
         showFatalError(error);

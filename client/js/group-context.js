@@ -1,4 +1,4 @@
-import { state } from "./state.js?v=20260928-client02";
+import { state } from "./state.js?v=20260928-client03-groups";
 
 function launchGroupId() {
     const params = new URLSearchParams(window.location.search);
@@ -7,23 +7,31 @@ function launchGroupId() {
 }
 
 export function initGroupContext(config) {
-    const configured = Number(config?.group_id || 0);
     const launched = launchGroupId();
+    const homeGroupId = Number(config?.home_group_id || 0);
 
-    if (configured > 0 && launched > 0 && configured !== launched) {
-        throw new Error(
-            `Приложение настроено для сообщества ${configured}, а открыто из сообщества ${launched}.`
-        );
+    // Если приложение запущено из сообщества, работаем с этим сообществом.
+    // При прямом запуске используем нашу домашнюю группу.
+    const groupId = launched || homeGroupId;
+    if (!groupId) {
+        throw new Error("VK не передал vk_group_id, а home_group_id не указан в config.json.");
     }
 
-    const groupId = configured || launched;
-    if (!groupId) {
-        throw new Error("Не указан group_id в config.json и VK не передал vk_group_id.");
+    const blocked = new Set((config?.blocked_group_ids || []).map(Number));
+    if (blocked.has(groupId)) {
+        throw new Error("Приложение недоступно для этого сообщества.");
     }
 
     state.groupId = groupId;
     state.ownerId = -Math.abs(groupId);
-    return { groupId, ownerId: state.ownerId };
+    state.restrictAlbums = Boolean(homeGroupId > 0 && groupId === homeGroupId);
+
+    return {
+        groupId,
+        ownerId: state.ownerId,
+        restrictAlbums: state.restrictAlbums,
+        launchedGroupId: launched
+    };
 }
 
 export function getGroupId() {
@@ -34,4 +42,14 @@ export function getGroupId() {
 export function getOwnerId() {
     if (!state.ownerId) throw new Error("Контекст сообщества не инициализирован.");
     return state.ownerId;
+}
+
+export function usesRestrictedAlbums() {
+    return Boolean(state.restrictAlbums);
+}
+
+export function getConfiguredHomeAlbumIds() {
+    return Array.isArray(state.config?.home_group_album_ids)
+        ? state.config.home_group_album_ids.map(Number).filter(id => Number.isInteger(id) && id > 0)
+        : [];
 }

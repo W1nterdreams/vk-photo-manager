@@ -1,11 +1,11 @@
-import { state } from "./state.js?v=20260928-client02";
-import { dom } from "./dom.js?v=20260928-client02";
-import { vkApi } from "./vk-api.js?v=20260928-client02";
-import { getPhotoPreviewUrl, matchesAllTokens, searchTokens, formatPhotoDate, getErrorMessage } from "./helpers.js?v=20260928-client02";
-import { getOwnerId } from "./group-context.js?v=20260928-client02";
-import { pushAlbumHistory, showPhotosScreen } from "./navigation.js?v=20260928-client02";
-import { bindPhotoLongPress } from "./photo-actions.js?v=20260928-client02";
-import { updateAlbumMetadataFromPhotos } from "./albums.js?v=20260928-client02";
+import { state } from "./state.js?v=20260928-client03-groups";
+import { dom } from "./dom.js?v=20260928-client03-groups";
+import { vkApi } from "./vk-api.js?v=20260928-client03-groups";
+import { getPhotoPreviewUrl, matchesAllTokens, searchTokens, formatPhotoDate, getErrorMessage } from "./helpers.js?v=20260928-client03-groups";
+import { getOwnerId } from "./group-context.js?v=20260928-client03-groups";
+import { pushAlbumHistory, showPhotosScreen } from "./navigation.js?v=20260928-client03-groups";
+import { bindPhotoLongPress } from "./photo-actions.js?v=20260928-client03-groups";
+import { updateAlbumMetadataFromPhotos } from "./albums.js?v=20260928-client03-groups";
 
 const API_PAGE_SIZE = 1000;
 const RENDER_BATCH_SIZE = 100;
@@ -87,7 +87,7 @@ async function fetchAllAlbumPhotos(album) {
     // Если глобальный индекс уже существует, свежий открытый альбом можно
     // обновить там бесплатно — без дополнительного запроса к VK.
     try {
-        const { replaceIndexedAlbumIfIndexExists } = await import("./photo-index-db.js?v=20260928-client02");
+        const { replaceIndexedAlbumIfIndexExists } = await import("./photo-index-db.js?v=20260928-client03-groups");
         await replaceIndexedAlbumIfIndexExists(ownerId, Number(album.id), all);
     } catch (error) {
         console.debug("Индекс не обновлён из открытого альбома:", error);

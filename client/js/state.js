@@ -4,6 +4,7 @@ export const state = {
     accessToken: null,
     groupId: 0,
     ownerId: 0,
+    restrictAlbums: false,
 
     albums: [],
     albumsFetchedAt: 0,

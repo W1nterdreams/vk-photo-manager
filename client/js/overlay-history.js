@@ -1,4 +1,4 @@
-import { state } from "./state.js?v=20260928-client02";
+import { state } from "./state.js?v=20260928-client03-groups";
 
 let activeOverlay = null;
 let closingPromise = null;

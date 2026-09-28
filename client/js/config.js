@@ -1,10 +1,11 @@
-export const CACHE_VERSION = "20260928-client02";
+export const CACHE_VERSION = "20260928-client03-groups";
 export const VK_API_VERSION = "5.199";
 
 const DEFAULT_CONFIG = {
     vk_app_id: 0,
-    group_id: 0,
-    allowed_album_ids: [],
+    home_group_id: 0,
+    home_group_album_ids: [],
+    blocked_group_ids: [],
     album_metadata_ttl_minutes: 30,
     album_session_fresh_seconds: 60,
     global_index_check_minutes: 30
@@ -12,7 +13,7 @@ const DEFAULT_CONFIG = {
 
 let cachedConfig = null;
 
-function normalizeAlbumIds(value) {
+function normalizePositiveIds(value) {
     const source = Array.isArray(value) ? value : [];
     const seen = new Set();
     const result = [];
@@ -39,12 +40,19 @@ export async function loadClientConfig({ force = false } = {}) {
     }
 
     const raw = await response.json();
+
+    // Совместимость с самой первой клиентской версией:
+    // group_id -> home_group_id, allowed_album_ids -> home_group_album_ids.
+    const homeGroupId = Number(raw?.home_group_id || raw?.group_id || 0);
+    const homeAlbumIds = raw?.home_group_album_ids ?? raw?.allowed_album_ids ?? [];
+
     cachedConfig = {
         ...DEFAULT_CONFIG,
         ...raw,
         vk_app_id: Math.max(0, Number(raw?.vk_app_id || 0)),
-        group_id: Math.max(0, Number(raw?.group_id || 0)),
-        allowed_album_ids: normalizeAlbumIds(raw?.allowed_album_ids),
+        home_group_id: Number.isInteger(homeGroupId) && homeGroupId > 0 ? homeGroupId : 0,
+        home_group_album_ids: normalizePositiveIds(homeAlbumIds),
+        blocked_group_ids: normalizePositiveIds(raw?.blocked_group_ids),
         album_metadata_ttl_minutes: Math.max(1, Number(raw?.album_metadata_ttl_minutes || DEFAULT_CONFIG.album_metadata_ttl_minutes)),
         album_session_fresh_seconds: Math.max(5, Number(raw?.album_session_fresh_seconds || DEFAULT_CONFIG.album_session_fresh_seconds)),
         global_index_check_minutes: Math.max(5, Number(raw?.global_index_check_minutes || DEFAULT_CONFIG.global_index_check_minutes))

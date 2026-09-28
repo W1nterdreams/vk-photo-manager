@@ -1,12 +1,12 @@
-import { state } from "./state.js?v=20260928-client02";
-import { dom } from "./dom.js?v=20260928-client02";
-import { getOwnerId } from "./group-context.js?v=20260928-client02";
-import { searchTokens, matchesAllTokens, getPhotoPreviewUrl, formatPhotoDate } from "./helpers.js?v=20260928-client02";
-import { pushGlobalSearchHistory, showGlobalSearchScreen } from "./navigation.js?v=20260928-client02";
-import { getIndexSnapshot, replaceIndexedAlbum, removeDisallowedAlbums, updateIndexMeta } from "./photo-index-db.js?v=20260928-client02";
-import { getFreshAlbumPhotos } from "./photos.js?v=20260928-client02";
-import { loadAllowedAlbums } from "./albums.js?v=20260928-client02";
-import { bindPhotoLongPress } from "./photo-actions.js?v=20260928-client02";
+import { state } from "./state.js?v=20260928-client03-groups";
+import { dom } from "./dom.js?v=20260928-client03-groups";
+import { getOwnerId, usesRestrictedAlbums } from "./group-context.js?v=20260928-client03-groups";
+import { searchTokens, matchesAllTokens, getPhotoPreviewUrl, formatPhotoDate } from "./helpers.js?v=20260928-client03-groups";
+import { pushGlobalSearchHistory, showGlobalSearchScreen } from "./navigation.js?v=20260928-client03-groups";
+import { getIndexSnapshot, replaceIndexedAlbum, removeDisallowedAlbums, updateIndexMeta } from "./photo-index-db.js?v=20260928-client03-groups";
+import { getFreshAlbumPhotos } from "./photos.js?v=20260928-client03-groups";
+import { loadSearchAlbums, getSearchAlbumIds } from "./albums.js?v=20260928-client03-groups";
+import { bindPhotoLongPress } from "./photo-actions.js?v=20260928-client03-groups";
 
 const RENDER_BATCH = 100;
 let initialized = false;
@@ -14,12 +14,13 @@ let syncing = false;
 let searchTimer = 0;
 let openPhotoHandler = null;
 
-function allowedIds() {
-    return state.config?.allowed_album_ids || [];
+function searchAlbumIds() {
+    return getSearchAlbumIds();
 }
 
 function signature() {
-    return allowedIds().join(",");
+    const mode = usesRestrictedAlbums() ? "restricted" : "all";
+    return `${state.groupId}:${mode}:${searchAlbumIds().join(",")}`;
 }
 
 function checkIntervalMs() {
@@ -147,7 +148,7 @@ export function renderGlobalSearch({ reset = true } = {}) {
 
 async function hydrateIndex() {
     const ownerId = getOwnerId();
-    const snap = await getIndexSnapshot(ownerId, allowedIds());
+    const snap = await getIndexSnapshot(ownerId, searchAlbumIds());
     state.globalMatchesSource = snap.items || [];
     return snap;
 }
@@ -165,23 +166,29 @@ export async function synchronizeGlobalIndex({ forceCheck = false } = {}) {
 
     try {
         const ownerId = getOwnerId();
-        const sig = signature();
-        let snap = await getIndexSnapshot(ownerId, allowedIds());
+        let ids = searchAlbumIds();
+        let snap = await getIndexSnapshot(ownerId, ids);
         const oldFingerprints = { ...(snap.meta?.albumFingerprints || {}) };
-
-        await removeDisallowedAlbums(ownerId, allowedIds());
+        const oldSignature = signature();
 
         const needMetadata = metadataCheckDue(snap.meta, forceCheck) ||
-            snap.meta?.allowedSignature !== sig ||
+            snap.meta?.allowedSignature !== oldSignature ||
             !snap.meta?.complete;
 
         if (needMetadata) {
             updateStatus("Проверяем актуальность альбомов…");
-            // Один photos.getAlbums на каждые 1000 разрешённых album_id.
-            await loadAllowedAlbums({ force: true });
+            // Для нашей группы запрашиваются только заданные album_id.
+            // Для остальных групп получаем список всех доступных альбомов постранично.
+            await loadSearchAlbums({ force: true });
+            ids = searchAlbumIds();
         }
 
-        const albums = allowedIds().map(id => albumById(id)).filter(Boolean);
+        // Удаляем из локального индекса фото альбомов, которые больше не входят
+        // в область поиска (для нашей группы — не разрешены; для чужой — удалены/недоступны).
+        await removeDisallowedAlbums(ownerId, ids);
+
+        const currentSignature = signature();
+        const albums = ids.map(id => albumById(id)).filter(Boolean);
         const currentFingerprints = Object.fromEntries(
             albums.map(album => [String(Number(album.id)), albumFingerprint(album)])
         );
@@ -205,7 +212,7 @@ export async function synchronizeGlobalIndex({ forceCheck = false } = {}) {
             updateStatus(`Обновляем поиск: ${album.title || `альбом ${album.id}`}…`);
 
             try {
-                // Если альбом уже был только что открыт пользователем, это 0 API.
+                // Если альбом уже был открыт в текущем сеансе и ещё свежий — 0 API.
                 // Иначе типичный альбом до 1000 фото = 1 photos.get.
                 const photos = await getFreshAlbumPhotos(album, { force: false });
                 await replaceIndexedAlbum(ownerId, album.id, photos);
@@ -224,7 +231,7 @@ export async function synchronizeGlobalIndex({ forceCheck = false } = {}) {
 
         await updateIndexMeta(ownerId, {
             complete,
-            allowedSignature: sig,
+            allowedSignature: currentSignature,
             albumFingerprints: nextFingerprints,
             lastMetadataCheck: Math.max(Date.now(), Number(state.albumsFetchedAt || 0))
         });

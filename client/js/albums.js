@@ -1,20 +1,22 @@
-import { state } from "./state.js?v=20260928-client02";
-import { dom } from "./dom.js?v=20260928-client02";
-import { vkApi } from "./vk-api.js?v=20260928-client02";
-import { getAlbumCover, matchesAllTokens, searchTokens, getErrorMessage } from "./helpers.js?v=20260928-client02";
-import { getOwnerId } from "./group-context.js?v=20260928-client02";
-import { pushAlbumHistory, showPhotosScreen } from "./navigation.js?v=20260928-client02";
+import { state } from "./state.js?v=20260928-client03-groups";
+import { dom } from "./dom.js?v=20260928-client03-groups";
+import { vkApi } from "./vk-api.js?v=20260928-client03-groups";
+import { getAlbumCover, matchesAllTokens, searchTokens } from "./helpers.js?v=20260928-client03-groups";
+import { getOwnerId, usesRestrictedAlbums, getConfiguredHomeAlbumIds } from "./group-context.js?v=20260928-client03-groups";
 
 const MAX_ALBUM_IDS_PER_REQUEST = 1000;
+const ALL_ALBUMS_PAGE_SIZE = 1000;
+const MAX_ALBUM_PAGES = 100;
+
 let initialized = false;
 let openAlbumHandler = null;
 
-function idsSignature() {
-    return (state.config?.allowed_album_ids || []).join(",");
+function restrictionSignature() {
+    return usesRestrictedAlbums() ? getConfiguredHomeAlbumIds().join(",") : "all";
 }
 
 function cacheKey() {
-    return `vk-photo-client:albums:v1:${state.groupId}:${idsSignature()}`;
+    return `vk-photo-client:albums:v2:${state.groupId}:${restrictionSignature()}`;
 }
 
 function loadCache() {
@@ -39,15 +41,31 @@ function metadataTtlMs() {
     return Math.max(60_000, Number(state.config?.album_metadata_ttl_minutes || 30) * 60_000);
 }
 
-function orderedAllowedAlbums(items) {
-    const order = new Map((state.config?.allowed_album_ids || []).map((id, index) => [Number(id), index]));
-    return [...items]
+function uniqueAlbums(items) {
+    const seen = new Set();
+    const result = [];
+    for (const album of Array.isArray(items) ? items : []) {
+        const id = Number(album?.id || 0);
+        if (!id || seen.has(id)) continue;
+        seen.add(id);
+        result.push(album);
+    }
+    return result;
+}
+
+function normalizeAlbumsForCurrentGroup(items) {
+    const unique = uniqueAlbums(items);
+    if (!usesRestrictedAlbums()) return unique;
+
+    const ids = getConfiguredHomeAlbumIds();
+    const order = new Map(ids.map((id, index) => [Number(id), index]));
+    return unique
         .filter(album => order.has(Number(album?.id)))
         .sort((a, b) => Number(order.get(Number(a.id))) - Number(order.get(Number(b.id))));
 }
 
-async function fetchAllowedAlbums() {
-    const ids = state.config?.allowed_album_ids || [];
+async function fetchRestrictedAlbums() {
+    const ids = getConfiguredHomeAlbumIds();
     if (!ids.length) return [];
 
     const ownerId = getOwnerId();
@@ -65,13 +83,50 @@ async function fetchAllowedAlbums() {
         all.push(...(Array.isArray(response?.items) ? response.items : []));
     }
 
-    return orderedAllowedAlbums(all);
+    return normalizeAlbumsForCurrentGroup(all);
 }
 
-export async function loadAllowedAlbums({ force = false } = {}) {
-    const ids = state.config?.allowed_album_ids || [];
+async function fetchAllAlbums() {
+    const ownerId = getOwnerId();
+    const all = [];
+    let offset = 0;
+    let total = Infinity;
 
-    if (!ids.length) {
+    for (let page = 0; page < MAX_ALBUM_PAGES && offset < total; page += 1) {
+        const response = await vkApi("photos.getAlbums", {
+            owner_id: ownerId,
+            need_system: 0,
+            need_covers: 1,
+            photo_sizes: 1,
+            count: ALL_ALBUMS_PAGE_SIZE,
+            offset
+        });
+
+        const items = Array.isArray(response?.items) ? response.items : [];
+        const reported = Number(response?.count);
+        if (Number.isFinite(reported) && reported >= 0) total = reported;
+
+        all.push(...items);
+        offset += items.length;
+
+        if (!items.length || items.length < ALL_ALBUMS_PAGE_SIZE) break;
+    }
+
+    return normalizeAlbumsForCurrentGroup(all);
+}
+
+async function fetchAlbumsForCurrentGroup() {
+    return usesRestrictedAlbums() ? fetchRestrictedAlbums() : fetchAllAlbums();
+}
+
+export function getSearchAlbumIds() {
+    return state.albums
+        .map(album => Number(album?.id || 0))
+        .filter(id => Number.isInteger(id) && id > 0);
+}
+
+export async function loadSearchAlbums({ force = false } = {}) {
+    if (usesRestrictedAlbums() && !getConfiguredHomeAlbumIds().length) {
         state.albums = [];
         renderAlbums();
         return [];
@@ -81,7 +136,7 @@ export async function loadAllowedAlbums({ force = false } = {}) {
     const cacheFresh = cached && Date.now() - Number(cached.savedAt || 0) < metadataTtlMs();
 
     if (!force && cached?.items?.length) {
-        state.albums = orderedAllowedAlbums(cached.items);
+        state.albums = normalizeAlbumsForCurrentGroup(cached.items);
         renderAlbums();
         if (cacheFresh) return state.albums;
     }
@@ -91,7 +146,7 @@ export async function loadAllowedAlbums({ force = false } = {}) {
     }
 
     try {
-        const items = await fetchAllowedAlbums();
+        const items = await fetchAlbumsForCurrentGroup();
         state.albums = items;
         state.albumsFetchedAt = Date.now();
         saveCache(items);
@@ -99,7 +154,7 @@ export async function loadAllowedAlbums({ force = false } = {}) {
         return items;
     } catch (error) {
         if (cached?.items?.length) {
-            state.albums = orderedAllowedAlbums(cached.items);
+            state.albums = normalizeAlbumsForCurrentGroup(cached.items);
             renderAlbums();
             console.warn("Не удалось обновить альбомы, используем локальный список:", error);
             if (!force) return state.albums;
@@ -107,6 +162,9 @@ export async function loadAllowedAlbums({ force = false } = {}) {
         throw error;
     }
 }
+
+// Совместимый экспорт для старых импортов/кэшей модулей.
+export const loadAllowedAlbums = loadSearchAlbums;
 
 export function updateAlbumMetadataFromPhotos(albumId, photoCount) {
     const id = Number(albumId);
@@ -171,18 +229,18 @@ function createAlbumCard(album) {
 export function renderAlbums() {
     dom.albums.innerHTML = "";
 
-    if (!(state.config?.allowed_album_ids || []).length) {
+    if (usesRestrictedAlbums() && !getConfiguredHomeAlbumIds().length) {
         dom.albums.innerHTML = `
             <div class="status-message client-config-message">
-                Список клиентских альбомов пока пуст.<br><br>
-                Добавьте ID разрешённых альбомов в <b>config.json</b> → <b>allowed_album_ids</b>.
+                Для нашей группы список альбомов пока пуст.<br><br>
+                Добавьте ID в <b>config.json</b> → <b>home_group_album_ids</b>.
             </div>`;
         return;
     }
 
     const list = filteredAlbums();
     if (!list.length) {
-        dom.albums.innerHTML = `<div class="status-message">${state.albumSearchText ? "Альбомы не найдены" : "Разрешённые альбомы недоступны"}</div>`;
+        dom.albums.innerHTML = `<div class="status-message">${state.albumSearchText ? "Альбомы не найдены" : "Доступные альбомы не найдены"}</div>`;
         return;
     }
 
