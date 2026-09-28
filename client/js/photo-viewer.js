@@ -1,9 +1,9 @@
-import { state } from "./state.js?v=20260928-client04-albumfix";
-import { dom } from "./dom.js?v=20260928-client04-albumfix";
-import { getBestPhotoUrl, getPhotoPreviewUrl } from "./helpers.js?v=20260928-client04-albumfix";
-import { showPhotoViewerScreen, pushPhotoHistory, replacePhotoHistory } from "./navigation.js?v=20260928-client04-albumfix";
-import { bindPhotoLongPress, openPhotoComments } from "./photo-actions.js?v=20260928-client04-albumfix";
-import { ensureAlbumFreshForGlobal, isAlbumFresh } from "./photos.js?v=20260928-client04-albumfix";
+import { state } from "./state.js?v=20260928-client05-dualsearch";
+import { dom } from "./dom.js?v=20260928-client05-dualsearch";
+import { getBestPhotoUrl, getPhotoPreviewUrl } from "./helpers.js?v=20260928-client05-dualsearch";
+import { showPhotoViewerScreen, pushPhotoHistory, replacePhotoHistory } from "./navigation.js?v=20260928-client05-dualsearch";
+import { bindPhotoLongPress, openPhotoComments } from "./photo-actions.js?v=20260928-client05-dualsearch";
+import { ensureAlbumFreshForGlobal, isAlbumFresh } from "./photos.js?v=20260928-client05-dualsearch";
 
 let initialized = false;
 let activePhoto = null;

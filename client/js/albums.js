@@ -1,8 +1,8 @@
-import { state } from "./state.js?v=20260928-client04-albumfix";
-import { dom } from "./dom.js?v=20260928-client04-albumfix";
-import { vkApi } from "./vk-api.js?v=20260928-client04-albumfix";
-import { getAlbumCover, matchesAllTokens, searchTokens } from "./helpers.js?v=20260928-client04-albumfix";
-import { getOwnerId, usesRestrictedAlbums, getConfiguredHomeAlbumIds } from "./group-context.js?v=20260928-client04-albumfix";
+import { state } from "./state.js?v=20260928-client05-dualsearch";
+import { dom } from "./dom.js?v=20260928-client05-dualsearch";
+import { vkApi } from "./vk-api.js?v=20260928-client05-dualsearch";
+import { getAlbumCover, matchesAllTokens, searchTokens } from "./helpers.js?v=20260928-client05-dualsearch";
+import { getOwnerId, usesRestrictedAlbums, getConfiguredHomeAlbumIds } from "./group-context.js?v=20260928-client05-dualsearch";
 
 const ALL_ALBUMS_PAGE_SIZE = 1000;
 const MAX_ALBUM_PAGES = 100;
@@ -161,7 +161,7 @@ export function updateAlbumMetadataFromPhotos(albumId, photoCount) {
     saveCache(state.albums);
 }
 
-function filteredAlbums() {
+export function getFilteredAlbums() {
     const tokens = searchTokens(state.albumSearchText || "");
     if (!tokens.length) return state.albums;
 
@@ -213,6 +213,16 @@ function createAlbumCard(album) {
 }
 
 export function renderAlbums() {
+    if (!dom.albums) return;
+
+    // Если введён запрос по фотографиям, главный экран показывает
+    // результаты фото-поиска, а не карточки альбомов.
+    if (searchTokens(state.globalQuery || "").length) {
+        dom.albums.classList.add("hidden");
+        return;
+    }
+
+    dom.albums.classList.remove("hidden");
     dom.albums.innerHTML = "";
 
     if (usesRestrictedAlbums() && !getConfiguredHomeAlbumIds().length) {
@@ -224,7 +234,7 @@ export function renderAlbums() {
         return;
     }
 
-    const list = filteredAlbums();
+    const list = getFilteredAlbums();
     if (!list.length) {
         dom.albums.innerHTML = `<div class="status-message">${state.albumSearchText ? "Альбомы не найдены" : "Доступные альбомы не найдены"}</div>`;
         return;
@@ -247,6 +257,7 @@ export function initAlbums({ onOpenAlbum } = {}) {
             state.albumSearchText = String(event.target.value || "");
             dom.clearAlbumSearch?.classList.toggle("hidden", !state.albumSearchText);
             renderAlbums();
+            window.dispatchEvent(new CustomEvent("client-album-filter-changed"));
         }, 100);
     });
 
@@ -258,5 +269,6 @@ export function initAlbums({ onOpenAlbum } = {}) {
         }
         dom.clearAlbumSearch.classList.add("hidden");
         renderAlbums();
+        window.dispatchEvent(new CustomEvent("client-album-filter-changed"));
     });
 }

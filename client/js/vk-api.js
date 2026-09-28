@@ -1,7 +1,7 @@
-import { VK_API_VERSION, resolveVkAppId } from "./config.js?v=20260928-client04-albumfix";
-import { state } from "./state.js?v=20260928-client04-albumfix";
-import { dom } from "./dom.js?v=20260928-client04-albumfix";
-import { logError } from "./helpers.js?v=20260928-client04-albumfix";
+import { VK_API_VERSION, resolveVkAppId } from "./config.js?v=20260928-client05-dualsearch";
+import { state } from "./state.js?v=20260928-client05-dualsearch";
+import { dom } from "./dom.js?v=20260928-client05-dualsearch";
+import { logError } from "./helpers.js?v=20260928-client05-dualsearch";
 
 let apiStats = { startedAt: Date.now(), total: 0, methods: {}, errors: {} };
 

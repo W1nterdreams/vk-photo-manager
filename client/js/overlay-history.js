@@ -1,4 +1,4 @@
-import { state } from "./state.js?v=20260928-client04-albumfix";
+import { state } from "./state.js?v=20260928-client05-dualsearch";
 
 let activeOverlay = null;
 let closingPromise = null;

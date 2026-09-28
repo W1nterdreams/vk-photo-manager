@@ -7,14 +7,6 @@ export const dom = {
     backButton: id("backButton"),
     refreshButton: id("refreshButton"),
 
-    menuContainer: id("menuContainer"),
-    menuButton: id("menuButton"),
-    mainMenu: id("mainMenu"),
-    globalPhotoSearchMenuButton: id("globalPhotoSearchMenuButton"),
-    downloadPhotoMenuButton: id("downloadPhotoMenuButton"),
-    copyPhotoLinkMenuButton: id("copyPhotoLinkMenuButton"),
-    openPhotoCommentsMenuButton: id("openPhotoCommentsMenuButton"),
-
     albumSortControls: id("albumSortControls"),
     sortNewestButton: id("sortNewestButton"),
     sortOldestButton: id("sortOldestButton"),
@@ -22,7 +14,6 @@ export const dom = {
 
     albumsScreen: id("albumsScreen"),
     photosScreen: id("photosScreen"),
-    globalSearchScreen: id("globalSearchScreen"),
     photoViewerScreen: id("photoViewerScreen"),
 
     albumSearch: id("albumSearch"),

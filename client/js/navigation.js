@@ -1,11 +1,10 @@
-import { state } from "./state.js?v=20260928-client04-albumfix";
-import { dom } from "./dom.js?v=20260928-client04-albumfix";
-import { handleOverlayPopState } from "./overlay-history.js?v=20260928-client04-albumfix";
+import { state } from "./state.js?v=20260928-client05-dualsearch";
+import { dom } from "./dom.js?v=20260928-client05-dualsearch";
+import { handleOverlayPopState } from "./overlay-history.js?v=20260928-client05-dualsearch";
 
 let initialized = false;
 let openAlbumFromHistory = null;
 let openPhotoFromHistory = null;
-let openGlobalSearchFromHistory = null;
 
 function setSwipeHistory(enabled) {
     try {
@@ -17,7 +16,6 @@ function setSwipeHistory(enabled) {
 function hideAllScreens() {
     dom.albumsScreen?.classList.add("hidden");
     dom.photosScreen?.classList.add("hidden");
-    dom.globalSearchScreen?.classList.add("hidden");
     dom.photoViewerScreen?.classList.add("hidden");
 }
 
@@ -27,7 +25,6 @@ function setCommonUi({ title, showBack, showSort = false, showRefresh = true }) 
     dom.albumSortControls?.classList.toggle("hidden", !showSort);
     dom.refreshButton?.classList.toggle("hidden", !showRefresh);
     setSwipeHistory(showBack);
-    window.dispatchEvent(new CustomEvent("client-screen-changed"));
 }
 
 export function showAlbumsScreen({ restoreScroll = 0 } = {}) {
@@ -46,16 +43,6 @@ export function showPhotosScreen({ restoreScroll = 0 } = {}) {
     requestAnimationFrame(() => window.scrollTo(0, Number(restoreScroll) || 0));
 }
 
-export function showGlobalSearchScreen({ restoreScroll = 0 } = {}) {
-    hideAllScreens();
-    dom.globalSearchScreen?.classList.remove("hidden");
-    state.currentScreen = "global-search";
-    setCommonUi({ title: "Поиск фотографий", showBack: true, showRefresh: true });
-    requestAnimationFrame(() => {
-        if (dom.globalSearchResults) dom.globalSearchResults.scrollTop = Number(restoreScroll) || 0;
-    });
-}
-
 export function showPhotoViewerScreen() {
     hideAllScreens();
     dom.photoViewerScreen?.classList.remove("hidden");
@@ -65,9 +52,6 @@ export function showPhotoViewerScreen() {
 }
 
 function currentScroll() {
-    if (state.currentScreen === "global-search") {
-        return Number(dom.globalSearchResults?.scrollTop || 0);
-    }
     return Number(window.scrollY || 0);
 }
 
@@ -80,11 +64,6 @@ export function saveCurrentScrollToHistory() {
 export function pushAlbumHistory(album) {
     saveCurrentScrollToHistory();
     history.pushState({ screen: "photos", albumId: String(album.id), scrollY: 0 }, "", `#album-${album.id}`);
-}
-
-export function pushGlobalSearchHistory() {
-    saveCurrentScrollToHistory();
-    history.pushState({ screen: "global-search", scrollY: 0 }, "", "#global-search");
 }
 
 export function pushPhotoHistory(photo, album, { viewerSource = "" } = {}) {
@@ -125,16 +104,6 @@ async function handlePopState(event) {
         return;
     }
 
-    if (nav.screen === "global-search") {
-        state.globalScrollTop = Number(nav.scrollY || 0);
-        if (openGlobalSearchFromHistory) {
-            await openGlobalSearchFromHistory({ fromHistory: true });
-        } else {
-            showGlobalSearchScreen({ restoreScroll: nav.scrollY || 0 });
-        }
-        return;
-    }
-
     if (nav.screen === "photos") {
         const album = findAlbum(nav.albumId);
         if (album && openAlbumFromHistory) {
@@ -165,12 +134,11 @@ async function handlePopState(event) {
     showAlbumsScreen();
 }
 
-export function initNavigation({ onOpenAlbumFromHistory, onOpenPhotoFromHistory, onOpenGlobalSearchFromHistory } = {}) {
+export function initNavigation({ onOpenAlbumFromHistory, onOpenPhotoFromHistory } = {}) {
     if (initialized) return;
     initialized = true;
     openAlbumFromHistory = onOpenAlbumFromHistory || null;
     openPhotoFromHistory = onOpenPhotoFromHistory || null;
-    openGlobalSearchFromHistory = onOpenGlobalSearchFromHistory || null;
 
     history.replaceState({ screen: "albums", scrollY: 0 }, "", window.location.href.split("#")[0]);
 

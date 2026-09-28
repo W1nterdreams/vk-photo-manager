@@ -1,4 +1,4 @@
-export const CACHE_VERSION = "20260928-client04-albumfix";
+export const CACHE_VERSION = "20260928-client05-dualsearch";
 export const VK_API_VERSION = "5.199";
 
 const DEFAULT_CONFIG = {

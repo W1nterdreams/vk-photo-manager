@@ -1,4 +1,4 @@
-import { state } from "./state.js?v=20260928-client04-albumfix";
+import { state } from "./state.js?v=20260928-client05-dualsearch";
 
 function launchGroupId() {
     const params = new URLSearchParams(window.location.search);

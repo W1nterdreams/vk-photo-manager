@@ -1,15 +1,15 @@
-import { state } from "./state.js?v=20260928-client04-albumfix";
-import { dom } from "./dom.js?v=20260928-client04-albumfix";
-import { loadClientConfig } from "./config.js?v=20260928-client04-albumfix";
-import { initGroupContext } from "./group-context.js?v=20260928-client04-albumfix";
-import { vkInit, loadUser, getAccessToken } from "./vk-api.js?v=20260928-client04-albumfix";
-import { initNavigation, showAlbumsScreen } from "./navigation.js?v=20260928-client04-albumfix";
-import { initAlbums, loadSearchAlbums } from "./albums.js?v=20260928-client04-albumfix";
-import { initPhotos, openAlbum, refreshCurrentAlbum } from "./photos.js?v=20260928-client04-albumfix";
-import { initPhotoViewer, openPhotoViewer } from "./photo-viewer.js?v=20260928-client04-albumfix";
-import { initGlobalPhotoSearch, openGlobalSearch, refreshGlobalSearch } from "./global-photo-search.js?v=20260928-client04-albumfix";
-import { initMainMenu } from "./main-menu.js?v=20260928-client04-albumfix";
-import { getErrorMessage, logError } from "./helpers.js?v=20260928-client04-albumfix";
+import { state } from "./state.js?v=20260928-client05-dualsearch";
+import { dom } from "./dom.js?v=20260928-client05-dualsearch";
+import { loadClientConfig } from "./config.js?v=20260928-client05-dualsearch";
+import { initGroupContext } from "./group-context.js?v=20260928-client05-dualsearch";
+import { vkInit, loadUser, getAccessToken } from "./vk-api.js?v=20260928-client05-dualsearch";
+import { initNavigation, showAlbumsScreen } from "./navigation.js?v=20260928-client05-dualsearch";
+import { initAlbums, loadSearchAlbums } from "./albums.js?v=20260928-client05-dualsearch";
+import { initPhotos, openAlbum, refreshCurrentAlbum } from "./photos.js?v=20260928-client05-dualsearch";
+import { initPhotoViewer, openPhotoViewer } from "./photo-viewer.js?v=20260928-client05-dualsearch";
+import { initGlobalPhotoSearch, refreshGlobalSearch } from "./global-photo-search.js?v=20260928-client05-dualsearch";
+import { searchTokens } from "./helpers.js?v=20260928-client05-dualsearch";
+import { getErrorMessage, logError } from "./helpers.js?v=20260928-client05-dualsearch";
 
 let hiddenAt = 0;
 let refreshing = false;
@@ -35,15 +35,12 @@ async function refreshCurrentScreen() {
 
     try {
         if (state.currentScreen === "albums") {
-            await loadSearchAlbums({ force: true });
+            if (searchTokens(state.globalQuery || "").length) await refreshGlobalSearch();
+            else await loadSearchAlbums({ force: true });
             return;
         }
         if (state.currentScreen === "photos") {
             await refreshCurrentAlbum();
-            return;
-        }
-        if (state.currentScreen === "global-search") {
-            await refreshGlobalSearch();
         }
     } catch (error) {
         alert(`Не удалось обновить данные.\n\n${getErrorMessage(error)}`);
@@ -64,8 +61,6 @@ function initVisibilityFreshness() {
         hiddenAt = 0;
         const threshold = Math.max(5_000, Number(state.config?.album_session_fresh_seconds || 60) * 1000);
 
-        // Если пользователь надолго уходил из приложения, актуализируем только
-        // уже открытый альбом. Один типичный альбом до 1000 фото = 1 API.
         if (awayMs >= threshold && state.currentScreen === "photos" && state.currentAlbum) {
             void refreshCurrentAlbum();
         }
@@ -89,10 +84,8 @@ async function start() {
         initGlobalPhotoSearch({ onOpenPhoto: openPhotoViewer });
         initNavigation({
             onOpenAlbumFromHistory: openAlbum,
-            onOpenPhotoFromHistory: openPhotoViewer,
-            onOpenGlobalSearchFromHistory: openGlobalSearch
+            onOpenPhotoFromHistory: openPhotoViewer
         });
-        initMainMenu();
         initVisibilityFreshness();
 
         dom.refreshButton?.addEventListener("click", () => { void refreshCurrentScreen(); });
