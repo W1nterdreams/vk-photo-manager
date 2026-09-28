@@ -24,6 +24,5 @@
   ],
   "blocked_group_ids": [],
   "album_metadata_ttl_minutes": 30,
-  "album_session_fresh_seconds": 60,
-  "global_index_check_minutes": 30
+  "album_session_fresh_seconds": 60
 }
