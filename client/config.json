@@ -1,0 +1,8 @@
+{
+  "vk_app_id": 0,
+  "group_id": 173909287,
+  "allowed_album_ids": [],
+  "album_metadata_ttl_minutes": 30,
+  "album_session_fresh_seconds": 60,
+  "global_index_check_minutes": 30
+}
