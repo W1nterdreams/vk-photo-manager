@@ -2702,3 +2702,94 @@ img {
         padding-left: 14px;
     }
 }
+
+/* =========================================================
+   CLIENT 05 — TWO SEARCH LINES ON THE MAIN SCREEN
+   ========================================================= */
+
+.client-dual-search {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.client-photo-search-line {
+    margin-top: 0;
+}
+
+#globalPhotoSearch {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: #ffffff;
+    font-size: 17px;
+}
+
+#globalPhotoSearch::placeholder {
+    color: #96999d;
+}
+
+#globalPhotoSearch::-webkit-search-cancel-button {
+    display: none;
+}
+
+.client-dual-search .client-global-search-status {
+    margin: 0;
+    padding: 1px 2px 0;
+}
+
+/* Результаты поиска фото находятся прямо на главном экране. */
+.client-home-photo-results {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-content: start;
+    gap: 3px;
+    width: 100%;
+    padding: 0 3px 3px;
+}
+
+/* Фото в альбоме и результаты поиска — крупные, как карточки альбомов. */
+.photos-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 3px;
+    padding: 3px;
+}
+
+.photo-card,
+.client-search-photo-card {
+    aspect-ratio: 1.45 / 1;
+    border-radius: 4px;
+}
+
+.client-search-photo-card .client-global-photo-album {
+    right: 6px;
+    bottom: 6px;
+    left: 6px;
+}
+
+.client-home-photo-results .client-global-search-empty,
+.client-home-photo-results .status-message,
+.client-home-photo-results .error {
+    grid-column: 1 / -1;
+}
+
+@media (min-width: 700px) {
+    .photos-grid,
+    .client-home-photo-results {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 5px;
+        padding: 0 5px 5px;
+    }
+}
+
+@media (min-width: 1100px) {
+    .photos-grid,
+    .client-home-photo-results {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}

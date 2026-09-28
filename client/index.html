@@ -1,35 +1,17 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <!-- CACHE_VERSION: 20260928-client04-albumfix -->
+    <!-- CACHE_VERSION: 20260928-client05-dualsearch -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Поиск пряжи VK</title>
-    <link rel="stylesheet" href="./style.css?v=20260928-client04-albumfix">
+    <link rel="stylesheet" href="./style.css?v=20260928-client05-dualsearch">
     <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
 </head>
 <body>
 <div id="app">
     <header class="topbar">
         <button id="backButton" class="topbar-button hidden" type="button" title="Назад">←</button>
-
-        <div id="menuContainer" class="menu-container">
-            <button id="menuButton" class="topbar-button menu-button" type="button" title="Меню">☰</button>
-            <div id="mainMenu" class="main-menu hidden">
-                <button id="globalPhotoSearchMenuButton" class="menu-item" type="button">
-                    <span class="menu-item-icon">🔎</span><span>Поиск фотографий</span>
-                </button>
-                <button id="downloadPhotoMenuButton" class="menu-item hidden" type="button">
-                    <span class="menu-item-icon">↓</span><span>Скачать фото</span>
-                </button>
-                <button id="copyPhotoLinkMenuButton" class="menu-item hidden" type="button">
-                    <span class="menu-item-icon">🔗</span><span>Скопировать ссылку</span>
-                </button>
-                <button id="openPhotoCommentsMenuButton" class="menu-item hidden" type="button">
-                    <span class="menu-item-icon">💬</span><span>Перейти к комментариям</span>
-                </button>
-            </div>
-        </div>
 
         <div id="pageTitle" class="topbar-title">Фотоальбомы</div>
 
@@ -44,16 +26,26 @@
     </header>
 
     <main id="albumsScreen" class="screen">
-        <div class="search-container">
+        <div class="search-container client-dual-search">
             <div class="search-box">
-                <span class="search-icon">🔎</span>
-                <input id="albumSearch" type="search" placeholder="Найти альбом..." autocomplete="off" spellcheck="false">
+                <span class="search-icon">▣</span>
+                <input id="albumSearch" type="search" placeholder="Поиск альбомов..." autocomplete="off" spellcheck="false">
                 <button id="clearAlbumSearch" class="clear-search hidden" type="button">×</button>
             </div>
+
+            <div class="search-box client-photo-search-line">
+                <span class="search-icon">🔎</span>
+                <input id="globalPhotoSearch" type="search" placeholder="Поиск фотографий..." autocomplete="off" spellcheck="false">
+                <button id="clearGlobalPhotoSearch" class="clear-search hidden" type="button">×</button>
+            </div>
+
+            <div id="globalSearchStatus" class="client-global-search-status hidden"></div>
         </div>
+
         <div id="albums" class="albums-grid">
             <div class="status-message">Загружаем альбомы...</div>
         </div>
+        <div id="globalSearchResults" class="client-home-photo-results hidden"></div>
     </main>
 
     <main id="photosScreen" class="screen hidden">
@@ -72,18 +64,6 @@
             </div>
         </section>
         <div id="photos" class="photos-grid"><div class="status-message">Выберите альбом</div></div>
-    </main>
-
-    <main id="globalSearchScreen" class="screen hidden client-global-search-screen">
-        <div class="search-container client-global-search-controls">
-            <div class="search-box">
-                <span class="search-icon">🔎</span>
-                <input id="globalPhotoSearch" type="search" placeholder="Например: синий шерсть" autocomplete="off" spellcheck="false">
-                <button id="clearGlobalPhotoSearch" class="clear-search hidden" type="button">×</button>
-            </div>
-            <div id="globalSearchStatus" class="client-global-search-status">Введите слова для поиска</div>
-        </div>
-        <div id="globalSearchResults" class="client-global-search-results"></div>
     </main>
 
     <main id="photoViewerScreen" class="screen hidden">
@@ -107,6 +87,6 @@
     </main>
 </div>
 
-<script type="module" src="./js/app.js?v=20260928-client04-albumfix"></script>
+<script type="module" src="./js/app.js?v=20260928-client05-dualsearch"></script>
 </body>
 </html>
