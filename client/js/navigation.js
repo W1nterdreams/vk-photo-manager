@@ -1,6 +1,6 @@
-import { state } from "./state.js?v=20260928-client05-dualsearch";
-import { dom } from "./dom.js?v=20260928-client05-dualsearch";
-import { handleOverlayPopState } from "./overlay-history.js?v=20260928-client05-dualsearch";
+import { state } from "./state.js?v=20260928-client06-memorysearch";
+import { dom } from "./dom.js?v=20260928-client06-memorysearch";
+import { handleOverlayPopState } from "./overlay-history.js?v=20260928-client06-memorysearch";
 
 let initialized = false;
 let openAlbumFromHistory = null;

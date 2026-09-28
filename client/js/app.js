@@ -1,15 +1,15 @@
-import { state } from "./state.js?v=20260928-client05-dualsearch";
-import { dom } from "./dom.js?v=20260928-client05-dualsearch";
-import { loadClientConfig } from "./config.js?v=20260928-client05-dualsearch";
-import { initGroupContext } from "./group-context.js?v=20260928-client05-dualsearch";
-import { vkInit, loadUser, getAccessToken } from "./vk-api.js?v=20260928-client05-dualsearch";
-import { initNavigation, showAlbumsScreen } from "./navigation.js?v=20260928-client05-dualsearch";
-import { initAlbums, loadSearchAlbums } from "./albums.js?v=20260928-client05-dualsearch";
-import { initPhotos, openAlbum, refreshCurrentAlbum } from "./photos.js?v=20260928-client05-dualsearch";
-import { initPhotoViewer, openPhotoViewer } from "./photo-viewer.js?v=20260928-client05-dualsearch";
-import { initGlobalPhotoSearch, refreshGlobalSearch } from "./global-photo-search.js?v=20260928-client05-dualsearch";
-import { searchTokens } from "./helpers.js?v=20260928-client05-dualsearch";
-import { getErrorMessage, logError } from "./helpers.js?v=20260928-client05-dualsearch";
+import { state } from "./state.js?v=20260928-client06-memorysearch";
+import { dom } from "./dom.js?v=20260928-client06-memorysearch";
+import { loadClientConfig } from "./config.js?v=20260928-client06-memorysearch";
+import { initGroupContext } from "./group-context.js?v=20260928-client06-memorysearch";
+import { vkInit, loadUser, getAccessToken } from "./vk-api.js?v=20260928-client06-memorysearch";
+import { initNavigation, showAlbumsScreen } from "./navigation.js?v=20260928-client06-memorysearch";
+import { initAlbums, loadSearchAlbums } from "./albums.js?v=20260928-client06-memorysearch";
+import { initPhotos, openAlbum, refreshCurrentAlbum } from "./photos.js?v=20260928-client06-memorysearch";
+import { initPhotoViewer, openPhotoViewer } from "./photo-viewer.js?v=20260928-client06-memorysearch";
+import { initGlobalPhotoSearch, refreshGlobalSearch } from "./global-photo-search.js?v=20260928-client06-memorysearch";
+import { searchTokens } from "./helpers.js?v=20260928-client06-memorysearch";
+import { getErrorMessage, logError } from "./helpers.js?v=20260928-client06-memorysearch";
 
 let hiddenAt = 0;
 let refreshing = false;

@@ -1,4 +1,4 @@
-import { state } from "./state.js?v=20260928-client05-dualsearch";
+import { state } from "./state.js?v=20260928-client06-memorysearch";
 
 function launchGroupId() {
     const params = new URLSearchParams(window.location.search);

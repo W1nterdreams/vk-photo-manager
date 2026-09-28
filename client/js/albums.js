@@ -1,8 +1,8 @@
-import { state } from "./state.js?v=20260928-client05-dualsearch";
-import { dom } from "./dom.js?v=20260928-client05-dualsearch";
-import { vkApi } from "./vk-api.js?v=20260928-client05-dualsearch";
-import { getAlbumCover, matchesAllTokens, searchTokens } from "./helpers.js?v=20260928-client05-dualsearch";
-import { getOwnerId, usesRestrictedAlbums, getConfiguredHomeAlbumIds } from "./group-context.js?v=20260928-client05-dualsearch";
+import { state } from "./state.js?v=20260928-client06-memorysearch";
+import { dom } from "./dom.js?v=20260928-client06-memorysearch";
+import { vkApi } from "./vk-api.js?v=20260928-client06-memorysearch";
+import { getAlbumCover, matchesAllTokens, searchTokens } from "./helpers.js?v=20260928-client06-memorysearch";
+import { getOwnerId, usesRestrictedAlbums, getConfiguredHomeAlbumIds } from "./group-context.js?v=20260928-client06-memorysearch";
 
 const ALL_ALBUMS_PAGE_SIZE = 1000;
 const MAX_ALBUM_PAGES = 100;

@@ -1,7 +1,7 @@
-import { VK_API_VERSION, resolveVkAppId } from "./config.js?v=20260928-client05-dualsearch";
-import { state } from "./state.js?v=20260928-client05-dualsearch";
-import { dom } from "./dom.js?v=20260928-client05-dualsearch";
-import { logError } from "./helpers.js?v=20260928-client05-dualsearch";
+import { VK_API_VERSION, resolveVkAppId } from "./config.js?v=20260928-client06-memorysearch";
+import { state } from "./state.js?v=20260928-client06-memorysearch";
+import { dom } from "./dom.js?v=20260928-client06-memorysearch";
+import { logError } from "./helpers.js?v=20260928-client06-memorysearch";
 
 let apiStats = { startedAt: Date.now(), total: 0, methods: {}, errors: {} };
 
@@ -38,11 +38,13 @@ export async function loadUser() {
     return user;
 }
 
+// Клиенту не нужен доступ к его личным фотографиям. Для чтения публичных
+// альбомов сообщества запрашиваем обычный токен без специальных scope.
 export async function getAccessToken() {
     const appId = resolveVkAppId(state.config);
     const result = await window.vkBridge.send("VKWebAppGetAuthToken", {
         app_id: appId,
-        scope: "photos"
+        scope: ""
     });
 
     state.accessToken = result?.access_token || "";

@@ -1,11 +1,11 @@
-import { state } from "./state.js?v=20260928-client05-dualsearch";
-import { dom } from "./dom.js?v=20260928-client05-dualsearch";
-import { vkApi } from "./vk-api.js?v=20260928-client05-dualsearch";
-import { getPhotoPreviewUrl, matchesAllTokens, searchTokens, formatPhotoDate, getErrorMessage } from "./helpers.js?v=20260928-client05-dualsearch";
-import { getOwnerId } from "./group-context.js?v=20260928-client05-dualsearch";
-import { pushAlbumHistory, showPhotosScreen } from "./navigation.js?v=20260928-client05-dualsearch";
-import { bindPhotoLongPress } from "./photo-actions.js?v=20260928-client05-dualsearch";
-import { updateAlbumMetadataFromPhotos } from "./albums.js?v=20260928-client05-dualsearch";
+import { state } from "./state.js?v=20260928-client06-memorysearch";
+import { dom } from "./dom.js?v=20260928-client06-memorysearch";
+import { vkApi } from "./vk-api.js?v=20260928-client06-memorysearch";
+import { getPhotoPreviewUrl, matchesAllTokens, searchTokens, formatPhotoDate, getErrorMessage } from "./helpers.js?v=20260928-client06-memorysearch";
+import { getOwnerId } from "./group-context.js?v=20260928-client06-memorysearch";
+import { pushAlbumHistory, showPhotosScreen } from "./navigation.js?v=20260928-client06-memorysearch";
+import { bindPhotoLongPress } from "./photo-actions.js?v=20260928-client06-memorysearch";
+import { updateAlbumMetadataFromPhotos } from "./albums.js?v=20260928-client06-memorysearch";
 
 const API_PAGE_SIZE = 1000;
 const RENDER_BATCH_SIZE = 10;
@@ -83,15 +83,6 @@ async function fetchAllAlbumPhotos(album) {
 
     updateAlbumMetadataFromPhotos(album.id, total || all.length);
     storeAlbumPhotos(album.id, all);
-
-    // Если глобальный индекс уже существует, свежий открытый альбом можно
-    // обновить там бесплатно — без дополнительного запроса к VK.
-    try {
-        const { replaceIndexedAlbumIfIndexExists } = await import("./photo-index-db.js?v=20260928-client05-dualsearch");
-        await replaceIndexedAlbumIfIndexExists(ownerId, Number(album.id), all);
-    } catch (error) {
-        console.debug("Индекс не обновлён из открытого альбома:", error);
-    }
 
     return all;
 }

@@ -1,4 +1,4 @@
-export const CACHE_VERSION = "20260928-client05-dualsearch";
+export const CACHE_VERSION = "20260928-client06-memorysearch";
 export const VK_API_VERSION = "5.199";
 
 const DEFAULT_CONFIG = {
@@ -7,8 +7,7 @@ const DEFAULT_CONFIG = {
     home_group_album_ids: [],
     blocked_group_ids: [],
     album_metadata_ttl_minutes: 30,
-    album_session_fresh_seconds: 60,
-    global_index_check_minutes: 30
+    album_session_fresh_seconds: 60
 };
 
 let cachedConfig = null;
@@ -54,8 +53,7 @@ export async function loadClientConfig({ force = false } = {}) {
         home_group_album_ids: normalizePositiveIds(homeAlbumIds),
         blocked_group_ids: normalizePositiveIds(raw?.blocked_group_ids),
         album_metadata_ttl_minutes: Math.max(1, Number(raw?.album_metadata_ttl_minutes || DEFAULT_CONFIG.album_metadata_ttl_minutes)),
-        album_session_fresh_seconds: Math.max(5, Number(raw?.album_session_fresh_seconds || DEFAULT_CONFIG.album_session_fresh_seconds)),
-        global_index_check_minutes: Math.max(5, Number(raw?.global_index_check_minutes || DEFAULT_CONFIG.global_index_check_minutes))
+        album_session_fresh_seconds: Math.max(5, Number(raw?.album_session_fresh_seconds || DEFAULT_CONFIG.album_session_fresh_seconds))
     };
 
     return cachedConfig;
