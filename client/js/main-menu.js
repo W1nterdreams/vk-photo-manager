@@ -1,8 +1,8 @@
-import { state } from "./state.js?v=20260928-client03-groups";
-import { dom } from "./dom.js?v=20260928-client03-groups";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260928-client03-groups";
-import { openGlobalSearch } from "./global-photo-search.js?v=20260928-client03-groups";
-import { downloadPhoto, copyPhotoLink, openPhotoComments } from "./photo-actions.js?v=20260928-client03-groups";
+import { state } from "./state.js?v=20260928-client04-albumfix";
+import { dom } from "./dom.js?v=20260928-client04-albumfix";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260928-client04-albumfix";
+import { openGlobalSearch } from "./global-photo-search.js?v=20260928-client04-albumfix";
+import { downloadPhoto, copyPhotoLink, openPhotoComments } from "./photo-actions.js?v=20260928-client04-albumfix";
 
 let initialized = false;
 

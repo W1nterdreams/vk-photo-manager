@@ -1,12 +1,12 @@
-import { state } from "./state.js?v=20260928-client03-groups";
-import { dom } from "./dom.js?v=20260928-client03-groups";
-import { getOwnerId, usesRestrictedAlbums } from "./group-context.js?v=20260928-client03-groups";
-import { searchTokens, matchesAllTokens, getPhotoPreviewUrl, formatPhotoDate } from "./helpers.js?v=20260928-client03-groups";
-import { pushGlobalSearchHistory, showGlobalSearchScreen } from "./navigation.js?v=20260928-client03-groups";
-import { getIndexSnapshot, replaceIndexedAlbum, removeDisallowedAlbums, updateIndexMeta } from "./photo-index-db.js?v=20260928-client03-groups";
-import { getFreshAlbumPhotos } from "./photos.js?v=20260928-client03-groups";
-import { loadSearchAlbums, getSearchAlbumIds } from "./albums.js?v=20260928-client03-groups";
-import { bindPhotoLongPress } from "./photo-actions.js?v=20260928-client03-groups";
+import { state } from "./state.js?v=20260928-client04-albumfix";
+import { dom } from "./dom.js?v=20260928-client04-albumfix";
+import { getOwnerId, usesRestrictedAlbums } from "./group-context.js?v=20260928-client04-albumfix";
+import { searchTokens, matchesAllTokens, getPhotoPreviewUrl, formatPhotoDate } from "./helpers.js?v=20260928-client04-albumfix";
+import { pushGlobalSearchHistory, showGlobalSearchScreen } from "./navigation.js?v=20260928-client04-albumfix";
+import { getIndexSnapshot, replaceIndexedAlbum, removeDisallowedAlbums, updateIndexMeta } from "./photo-index-db.js?v=20260928-client04-albumfix";
+import { getFreshAlbumPhotos } from "./photos.js?v=20260928-client04-albumfix";
+import { loadSearchAlbums, getSearchAlbumIds } from "./albums.js?v=20260928-client04-albumfix";
+import { bindPhotoLongPress } from "./photo-actions.js?v=20260928-client04-albumfix";
 
 const RENDER_BATCH = 100;
 let initialized = false;

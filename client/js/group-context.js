@@ -1,4 +1,4 @@
-import { state } from "./state.js?v=20260928-client03-groups";
+import { state } from "./state.js?v=20260928-client04-albumfix";
 
 function launchGroupId() {
     const params = new URLSearchParams(window.location.search);

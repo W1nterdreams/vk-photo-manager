@@ -1,15 +1,15 @@
-import { state } from "./state.js?v=20260928-client03-groups";
-import { dom } from "./dom.js?v=20260928-client03-groups";
-import { loadClientConfig } from "./config.js?v=20260928-client03-groups";
-import { initGroupContext } from "./group-context.js?v=20260928-client03-groups";
-import { vkInit, loadUser, getAccessToken } from "./vk-api.js?v=20260928-client03-groups";
-import { initNavigation, showAlbumsScreen } from "./navigation.js?v=20260928-client03-groups";
-import { initAlbums, loadSearchAlbums } from "./albums.js?v=20260928-client03-groups";
-import { initPhotos, openAlbum, refreshCurrentAlbum } from "./photos.js?v=20260928-client03-groups";
-import { initPhotoViewer, openPhotoViewer } from "./photo-viewer.js?v=20260928-client03-groups";
-import { initGlobalPhotoSearch, openGlobalSearch, refreshGlobalSearch } from "./global-photo-search.js?v=20260928-client03-groups";
-import { initMainMenu } from "./main-menu.js?v=20260928-client03-groups";
-import { getErrorMessage, logError } from "./helpers.js?v=20260928-client03-groups";
+import { state } from "./state.js?v=20260928-client04-albumfix";
+import { dom } from "./dom.js?v=20260928-client04-albumfix";
+import { loadClientConfig } from "./config.js?v=20260928-client04-albumfix";
+import { initGroupContext } from "./group-context.js?v=20260928-client04-albumfix";
+import { vkInit, loadUser, getAccessToken } from "./vk-api.js?v=20260928-client04-albumfix";
+import { initNavigation, showAlbumsScreen } from "./navigation.js?v=20260928-client04-albumfix";
+import { initAlbums, loadSearchAlbums } from "./albums.js?v=20260928-client04-albumfix";
+import { initPhotos, openAlbum, refreshCurrentAlbum } from "./photos.js?v=20260928-client04-albumfix";
+import { initPhotoViewer, openPhotoViewer } from "./photo-viewer.js?v=20260928-client04-albumfix";
+import { initGlobalPhotoSearch, openGlobalSearch, refreshGlobalSearch } from "./global-photo-search.js?v=20260928-client04-albumfix";
+import { initMainMenu } from "./main-menu.js?v=20260928-client04-albumfix";
+import { getErrorMessage, logError } from "./helpers.js?v=20260928-client04-albumfix";
 
 let hiddenAt = 0;
 let refreshing = false;

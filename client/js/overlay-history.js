@@ -1,4 +1,4 @@
-import { state } from "./state.js?v=20260928-client03-groups";
+import { state } from "./state.js?v=20260928-client04-albumfix";
 
 let activeOverlay = null;
 let closingPromise = null;

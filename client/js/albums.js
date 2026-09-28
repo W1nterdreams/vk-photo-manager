@@ -1,10 +1,9 @@
-import { state } from "./state.js?v=20260928-client03-groups";
-import { dom } from "./dom.js?v=20260928-client03-groups";
-import { vkApi } from "./vk-api.js?v=20260928-client03-groups";
-import { getAlbumCover, matchesAllTokens, searchTokens } from "./helpers.js?v=20260928-client03-groups";
-import { getOwnerId, usesRestrictedAlbums, getConfiguredHomeAlbumIds } from "./group-context.js?v=20260928-client03-groups";
+import { state } from "./state.js?v=20260928-client04-albumfix";
+import { dom } from "./dom.js?v=20260928-client04-albumfix";
+import { vkApi } from "./vk-api.js?v=20260928-client04-albumfix";
+import { getAlbumCover, matchesAllTokens, searchTokens } from "./helpers.js?v=20260928-client04-albumfix";
+import { getOwnerId, usesRestrictedAlbums, getConfiguredHomeAlbumIds } from "./group-context.js?v=20260928-client04-albumfix";
 
-const MAX_ALBUM_IDS_PER_REQUEST = 1000;
 const ALL_ALBUMS_PAGE_SIZE = 1000;
 const MAX_ALBUM_PAGES = 100;
 
@@ -65,25 +64,12 @@ function normalizeAlbumsForCurrentGroup(items) {
 }
 
 async function fetchRestrictedAlbums() {
-    const ids = getConfiguredHomeAlbumIds();
-    if (!ids.length) return [];
-
-    const ownerId = getOwnerId();
-    const all = [];
-
-    for (let offset = 0; offset < ids.length; offset += MAX_ALBUM_IDS_PER_REQUEST) {
-        const chunk = ids.slice(offset, offset + MAX_ALBUM_IDS_PER_REQUEST);
-        const response = await vkApi("photos.getAlbums", {
-            owner_id: ownerId,
-            album_ids: chunk,
-            need_system: 0,
-            need_covers: 1,
-            photo_sizes: 1
-        });
-        all.push(...(Array.isArray(response?.items) ? response.items : []));
-    }
-
-    return normalizeAlbumsForCurrentGroup(all);
+    // Не передаём album_ids в photos.getAlbums. В некоторых контекстах
+    // VKWebAppCallAPIMethod отклоняет массив значений с ошибкой
+    // `album_ids not integer`. Один раз получаем список альбомов сообщества
+    // обычной пагинацией и фильтруем его локально по home_group_album_ids.
+    // Для сообщества с <1000 альбомов это по-прежнему ровно 1 вызов API.
+    return fetchAllAlbums();
 }
 
 async function fetchAllAlbums() {

@@ -1,6 +1,6 @@
-import { state } from "./state.js?v=20260928-client03-groups";
-import { dom } from "./dom.js?v=20260928-client03-groups";
-import { handleOverlayPopState } from "./overlay-history.js?v=20260928-client03-groups";
+import { state } from "./state.js?v=20260928-client04-albumfix";
+import { dom } from "./dom.js?v=20260928-client04-albumfix";
+import { handleOverlayPopState } from "./overlay-history.js?v=20260928-client04-albumfix";
 
 let initialized = false;
 let openAlbumFromHistory = null;
