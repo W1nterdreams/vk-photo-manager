@@ -1,4 +1,4 @@
-export const CACHE_VERSION = "20260929-client10-whitelist";
+export const CACHE_VERSION = "20260929-client11-albumlongpress";
 export const VK_API_VERSION = "5.199";
 
 const DEFAULT_CONFIG = {

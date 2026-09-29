@@ -30,5 +30,6 @@ export const state = {
     globalScrollTop: 0,
 
     currentScreen: "albums",
-    suppressPhotoOpenUntil: 0
+    suppressPhotoOpenUntil: 0,
+    suppressAlbumOpenUntil: 0
 };

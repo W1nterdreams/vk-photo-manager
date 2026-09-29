@@ -1,11 +1,11 @@
-import { state } from "./state.js?v=20260929-client10-whitelist";
-import { dom } from "./dom.js?v=20260929-client10-whitelist";
-import { vkApi } from "./vk-api.js?v=20260929-client10-whitelist";
-import { getPhotoPreviewUrl, matchesAllTokens, searchTokens, formatPhotoDate, getErrorMessage } from "./helpers.js?v=20260929-client10-whitelist";
-import { getOwnerId } from "./group-context.js?v=20260929-client10-whitelist";
-import { pushAlbumHistory, showPhotosScreen } from "./navigation.js?v=20260929-client10-whitelist";
-import { bindPhotoLongPress } from "./photo-actions.js?v=20260929-client10-whitelist";
-import { updateAlbumMetadataFromPhotos } from "./albums.js?v=20260929-client10-whitelist";
+import { state } from "./state.js?v=20260929-client11-albumlongpress";
+import { dom } from "./dom.js?v=20260929-client11-albumlongpress";
+import { vkApi } from "./vk-api.js?v=20260929-client11-albumlongpress";
+import { getPhotoPreviewUrl, matchesAllTokens, searchTokens, formatPhotoDate, getErrorMessage } from "./helpers.js?v=20260929-client11-albumlongpress";
+import { getOwnerId } from "./group-context.js?v=20260929-client11-albumlongpress";
+import { pushAlbumHistory, showPhotosScreen } from "./navigation.js?v=20260929-client11-albumlongpress";
+import { bindPhotoLongPress } from "./photo-actions.js?v=20260929-client11-albumlongpress";
+import { updateAlbumMetadataFromPhotos } from "./albums.js?v=20260929-client11-albumlongpress";
 
 const API_PAGE_SIZE = 1000;
 const RENDER_BATCH_SIZE = 10;

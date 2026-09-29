@@ -1,8 +1,8 @@
-import { state } from "./state.js?v=20260929-client10-whitelist";
-import { getBestPhotoUrl, copyText } from "./helpers.js?v=20260929-client10-whitelist";
-import { openVkPhoto } from "./vk-links.js?v=20260929-client10-whitelist";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260929-client10-whitelist";
-import { armLongPressReleaseGuard, consumeLongPressSyntheticClick } from "./long-press-guard.js?v=20260929-client10-whitelist";
+import { state } from "./state.js?v=20260929-client11-albumlongpress";
+import { getBestPhotoUrl, copyText } from "./helpers.js?v=20260929-client11-albumlongpress";
+import { openVkPhoto } from "./vk-links.js?v=20260929-client11-albumlongpress";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260929-client11-albumlongpress";
+import { armLongPressReleaseGuard, consumeLongPressSyntheticClick } from "./long-press-guard.js?v=20260929-client11-albumlongpress";
 
 const LONG_PRESS_MS = 900;
 const MOVE_CANCEL_PX = 15;

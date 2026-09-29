@@ -1,15 +1,15 @@
-import { state } from "./state.js?v=20260929-client10-whitelist";
-import { dom } from "./dom.js?v=20260929-client10-whitelist";
-import { loadClientConfig } from "./config.js?v=20260929-client10-whitelist";
-import { initGroupContext } from "./group-context.js?v=20260929-client10-whitelist";
-import { vkInit, loadLaunchParams, loadUser, getAccessToken } from "./vk-api.js?v=20260929-client10-whitelist";
-import { initNavigation, showAlbumsScreen } from "./navigation.js?v=20260929-client10-whitelist";
-import { initAlbums, loadSearchAlbums } from "./albums.js?v=20260929-client10-whitelist";
-import { initPhotos, openAlbum, refreshCurrentAlbum } from "./photos.js?v=20260929-client10-whitelist";
-import { initPhotoViewer, openPhotoViewer } from "./photo-viewer.js?v=20260929-client10-whitelist";
-import { initGlobalPhotoSearch, refreshGlobalSearch } from "./global-photo-search.js?v=20260929-client10-whitelist";
-import { searchTokens } from "./helpers.js?v=20260929-client10-whitelist";
-import { getErrorMessage, logError } from "./helpers.js?v=20260929-client10-whitelist";
+import { state } from "./state.js?v=20260929-client11-albumlongpress";
+import { dom } from "./dom.js?v=20260929-client11-albumlongpress";
+import { loadClientConfig } from "./config.js?v=20260929-client11-albumlongpress";
+import { initGroupContext } from "./group-context.js?v=20260929-client11-albumlongpress";
+import { vkInit, loadLaunchParams, loadUser, getAccessToken } from "./vk-api.js?v=20260929-client11-albumlongpress";
+import { initNavigation, showAlbumsScreen } from "./navigation.js?v=20260929-client11-albumlongpress";
+import { initAlbums, loadSearchAlbums } from "./albums.js?v=20260929-client11-albumlongpress";
+import { initPhotos, openAlbum, refreshCurrentAlbum } from "./photos.js?v=20260929-client11-albumlongpress";
+import { initPhotoViewer, openPhotoViewer } from "./photo-viewer.js?v=20260929-client11-albumlongpress";
+import { initGlobalPhotoSearch, refreshGlobalSearch } from "./global-photo-search.js?v=20260929-client11-albumlongpress";
+import { searchTokens } from "./helpers.js?v=20260929-client11-albumlongpress";
+import { getErrorMessage, logError } from "./helpers.js?v=20260929-client11-albumlongpress";
 
 let hiddenAt = 0;
 let refreshing = false;

@@ -1,6 +1,6 @@
-import { state } from "./state.js?v=20260929-client10-whitelist";
-import { dom } from "./dom.js?v=20260929-client10-whitelist";
-import { handleOverlayPopState } from "./overlay-history.js?v=20260929-client10-whitelist";
+import { state } from "./state.js?v=20260929-client11-albumlongpress";
+import { dom } from "./dom.js?v=20260929-client11-albumlongpress";
+import { handleOverlayPopState } from "./overlay-history.js?v=20260929-client11-albumlongpress";
 
 let initialized = false;
 let openAlbumFromHistory = null;

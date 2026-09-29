@@ -1,4 +1,4 @@
-import { state } from "./state.js?v=20260929-client10-whitelist";
+import { state } from "./state.js?v=20260929-client11-albumlongpress";
 
 function urlLaunchGroupId() {
     const params = new URLSearchParams(window.location.search);

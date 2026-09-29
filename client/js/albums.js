@@ -1,8 +1,9 @@
-import { state } from "./state.js?v=20260929-client10-whitelist";
-import { dom } from "./dom.js?v=20260929-client10-whitelist";
-import { vkApi } from "./vk-api.js?v=20260929-client10-whitelist";
-import { getAlbumCover, matchesAllTokens, searchTokens } from "./helpers.js?v=20260929-client10-whitelist";
-import { getOwnerId, usesRestrictedAlbums, getConfiguredHomeAlbumIds } from "./group-context.js?v=20260929-client10-whitelist";
+import { state } from "./state.js?v=20260929-client11-albumlongpress";
+import { dom } from "./dom.js?v=20260929-client11-albumlongpress";
+import { vkApi } from "./vk-api.js?v=20260929-client11-albumlongpress";
+import { getAlbumCover, matchesAllTokens, searchTokens } from "./helpers.js?v=20260929-client11-albumlongpress";
+import { getOwnerId, usesRestrictedAlbums, getConfiguredHomeAlbumIds } from "./group-context.js?v=20260929-client11-albumlongpress";
+import { bindAlbumLongPress } from "./album-actions.js?v=20260929-client11-albumlongpress";
 
 // Не полагаемся на незафиксированный большой размер страницы photos.getAlbums.
 // 100 элементов + пагинация по response.count надёжно получает полный список.
@@ -149,7 +150,14 @@ function createAlbumCard(album) {
     info.append(name, count);
     card.appendChild(info);
 
-    card.addEventListener("click", () => {
+    bindAlbumLongPress(card, album);
+
+    card.addEventListener("click", event => {
+        if (Date.now() < Number(state.suppressAlbumOpenUntil || 0)) {
+            event.preventDefault();
+            event.stopPropagation();
+            return;
+        }
         if (typeof openAlbumHandler === "function") void openAlbumHandler(album);
     });
 
