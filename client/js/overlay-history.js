@@ -1,4 +1,4 @@
-import { state } from "./state.js?v=20260929-client11-albumlongpress";
+import { state } from "./state.js?v=20260929-client12-privacy";
 
 let activeOverlay = null;
 let closingPromise = null;

@@ -1,9 +1,9 @@
-import { state } from "./state.js?v=20260929-client11-albumlongpress";
-import { dom } from "./dom.js?v=20260929-client11-albumlongpress";
-import { getBestPhotoUrl, getPhotoPreviewUrl } from "./helpers.js?v=20260929-client11-albumlongpress";
-import { showPhotoViewerScreen, pushPhotoHistory, replacePhotoHistory } from "./navigation.js?v=20260929-client11-albumlongpress";
-import { bindPhotoLongPress, openPhotoComments } from "./photo-actions.js?v=20260929-client11-albumlongpress";
-import { ensureAlbumFreshForGlobal, isAlbumFresh } from "./photos.js?v=20260929-client11-albumlongpress";
+import { state } from "./state.js?v=20260929-client12-privacy";
+import { dom } from "./dom.js?v=20260929-client12-privacy";
+import { getBestPhotoUrl, getPhotoPreviewUrl } from "./helpers.js?v=20260929-client12-privacy";
+import { showPhotoViewerScreen, pushPhotoHistory, replacePhotoHistory } from "./navigation.js?v=20260929-client12-privacy";
+import { bindPhotoLongPress, openPhotoComments } from "./photo-actions.js?v=20260929-client12-privacy";
+import { ensureAlbumFreshForGlobal, isAlbumFresh } from "./photos.js?v=20260929-client12-privacy";
 
 let initialized = false;
 let activePhoto = null;

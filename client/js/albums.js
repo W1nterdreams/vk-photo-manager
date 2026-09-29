@@ -1,9 +1,9 @@
-import { state } from "./state.js?v=20260929-client11-albumlongpress";
-import { dom } from "./dom.js?v=20260929-client11-albumlongpress";
-import { vkApi } from "./vk-api.js?v=20260929-client11-albumlongpress";
-import { getAlbumCover, matchesAllTokens, searchTokens } from "./helpers.js?v=20260929-client11-albumlongpress";
-import { getOwnerId, usesRestrictedAlbums, getConfiguredHomeAlbumIds } from "./group-context.js?v=20260929-client11-albumlongpress";
-import { bindAlbumLongPress } from "./album-actions.js?v=20260929-client11-albumlongpress";
+import { state } from "./state.js?v=20260929-client12-privacy";
+import { dom } from "./dom.js?v=20260929-client12-privacy";
+import { vkApi } from "./vk-api.js?v=20260929-client12-privacy";
+import { getAlbumCover, matchesAllTokens, searchTokens } from "./helpers.js?v=20260929-client12-privacy";
+import { getOwnerId, usesRestrictedAlbums, getConfiguredHomeAlbumIds } from "./group-context.js?v=20260929-client12-privacy";
+import { bindAlbumLongPress } from "./album-actions.js?v=20260929-client12-privacy";
 
 // Не полагаемся на незафиксированный большой размер страницы photos.getAlbums.
 // 100 элементов + пагинация по response.count надёжно получает полный список.

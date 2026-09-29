@@ -13,11 +13,78 @@ export function getErrorMessage(error) {
     return error.message || error.error_msg || error.error?.error_msg || error.error_data?.error_msg || String(error);
 }
 
+function redactSensitive(value, seen = new WeakSet()) {
+    if (value == null || typeof value !== "object") return value;
+    if (seen.has(value)) return "[Circular]";
+    seen.add(value);
+
+    if (Array.isArray(value)) {
+        return value.map(item => redactSensitive(item, seen));
+    }
+
+    const result = {};
+    for (const [key, item] of Object.entries(value)) {
+        if (/token|access[_-]?token|authorization|secret/i.test(key)) {
+            result[key] = "[REDACTED]";
+            continue;
+        }
+
+        // VK API sometimes returns request_params as [{key, value}].
+        if (key === "request_params" && Array.isArray(item)) {
+            result[key] = item.map(param => {
+                if (!param || typeof param !== "object") return param;
+                if (/token|access[_-]?token|authorization|secret/i.test(String(param.key || ""))) {
+                    return { ...param, value: "[REDACTED]" };
+                }
+                return redactSensitive(param, seen);
+            });
+            continue;
+        }
+
+        result[key] = redactSensitive(item, seen);
+    }
+    return result;
+}
+
 export function logError(title, error) {
-    console.error(title, error);
+    console.error(title, getErrorMessage(error));
     try {
-        if (error && typeof error === "object") console.error(JSON.stringify(error, null, 2));
+        if (error && typeof error === "object") {
+            console.error(JSON.stringify(redactSensitive(error), null, 2));
+        }
     } catch {}
+}
+
+export function renderMessage(container, message, className = "status-message") {
+    if (!container) return null;
+    container.replaceChildren();
+    const block = document.createElement("div");
+    block.className = className;
+    block.textContent = String(message ?? "");
+    container.appendChild(block);
+    return block;
+}
+
+export function renderError(container, title, error) {
+    if (!container) return null;
+    container.replaceChildren();
+    const block = document.createElement("div");
+    block.className = "error";
+
+    const heading = document.createElement("div");
+    heading.textContent = String(title || "Произошла ошибка.");
+    block.appendChild(heading);
+
+    const details = getErrorMessage(error);
+    if (details) {
+        const text = document.createElement("div");
+        text.className = "error-details";
+        text.textContent = details;
+        block.appendChild(text);
+    }
+
+    container.appendChild(block);
+    return block;
 }
 
 export function normalizeSearchText(value = "") {

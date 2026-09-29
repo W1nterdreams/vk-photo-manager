@@ -1,7 +1,7 @@
-import { VK_API_VERSION, resolveVkAppId } from "./config.js?v=20260929-client11-albumlongpress";
-import { state } from "./state.js?v=20260929-client11-albumlongpress";
-import { dom } from "./dom.js?v=20260929-client11-albumlongpress";
-import { logError } from "./helpers.js?v=20260929-client11-albumlongpress";
+import { VK_API_VERSION, resolveVkAppId } from "./config.js?v=20260929-client12-privacy";
+import { state } from "./state.js?v=20260929-client12-privacy";
+import { dom } from "./dom.js?v=20260929-client12-privacy";
+import { logError } from "./helpers.js?v=20260929-client12-privacy";
 
 let apiStats = { startedAt: Date.now(), total: 0, methods: {}, errors: {} };
 

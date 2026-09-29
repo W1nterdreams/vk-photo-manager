@@ -1,4 +1,4 @@
-import { state } from "./state.js?v=20260929-client11-albumlongpress";
+import { state } from "./state.js?v=20260929-client12-privacy";
 
 function urlLaunchGroupId() {
     const params = new URLSearchParams(window.location.search);
@@ -31,10 +31,13 @@ export function initGroupContext(config, currentUser, launchParams = null) {
         // Группы работают по белому списку. Пользовательский прямой запуск
         // разрешён отдельно ниже и не зависит от этого списка.
         /*
+         * ВРЕМЕННО ДЛЯ МОДЕРАЦИИ VK: доступ из всех сообществ разрешён.
+         * После модерации удалите маркеры комментария вокруг блока ниже.
+         *
         if (blockedGroups.has(launchedGroupId) || !allowedGroups.has(launchedGroupId)) {
             throw new Error("Доступ к приложению для этого сообщества не разрешён.");
         }
-        */
+         */
 
         state.groupId = launchedGroupId;
         state.ownerId = -Math.abs(launchedGroupId);

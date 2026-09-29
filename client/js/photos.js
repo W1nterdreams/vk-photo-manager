@@ -1,11 +1,11 @@
-import { state } from "./state.js?v=20260929-client11-albumlongpress";
-import { dom } from "./dom.js?v=20260929-client11-albumlongpress";
-import { vkApi } from "./vk-api.js?v=20260929-client11-albumlongpress";
-import { getPhotoPreviewUrl, matchesAllTokens, searchTokens, formatPhotoDate, getErrorMessage } from "./helpers.js?v=20260929-client11-albumlongpress";
-import { getOwnerId } from "./group-context.js?v=20260929-client11-albumlongpress";
-import { pushAlbumHistory, showPhotosScreen } from "./navigation.js?v=20260929-client11-albumlongpress";
-import { bindPhotoLongPress } from "./photo-actions.js?v=20260929-client11-albumlongpress";
-import { updateAlbumMetadataFromPhotos } from "./albums.js?v=20260929-client11-albumlongpress";
+import { state } from "./state.js?v=20260929-client12-privacy";
+import { dom } from "./dom.js?v=20260929-client12-privacy";
+import { vkApi } from "./vk-api.js?v=20260929-client12-privacy";
+import { getPhotoPreviewUrl, matchesAllTokens, searchTokens, formatPhotoDate, renderError } from "./helpers.js?v=20260929-client12-privacy";
+import { getOwnerId } from "./group-context.js?v=20260929-client12-privacy";
+import { pushAlbumHistory, showPhotosScreen } from "./navigation.js?v=20260929-client12-privacy";
+import { bindPhotoLongPress } from "./photo-actions.js?v=20260929-client12-privacy";
+import { updateAlbumMetadataFromPhotos } from "./albums.js?v=20260929-client12-privacy";
 
 const API_PAGE_SIZE = 1000;
 const RENDER_BATCH_SIZE = 10;
@@ -342,7 +342,7 @@ export async function openAlbum(album, { fromHistory = false, restoreScroll = 0 
         }
     } catch (error) {
         if (Number(state.currentAlbum?.id) !== Number(album.id)) return;
-        dom.photos.innerHTML = `<div class="error">Не удалось загрузить фотографии.<br><br>${getErrorMessage(error)}</div>`;
+        renderError(dom.photos, "Не удалось загрузить фотографии.", error);
     }
 }
 
@@ -357,7 +357,7 @@ export async function refreshCurrentAlbum() {
         dom.photoCount.textContent = `${photos.length} фото`;
         renderPhotos({ reset: true });
     } catch (error) {
-        dom.photos.innerHTML = `<div class="error">Не удалось обновить альбом.<br><br>${getErrorMessage(error)}</div>`;
+        renderError(dom.photos, "Не удалось обновить альбом.", error);
     }
 }
 

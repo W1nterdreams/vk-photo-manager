@@ -1,31 +1,22 @@
-import { state } from "./state.js?v=20260929-client11-albumlongpress";
-import { dom } from "./dom.js?v=20260929-client11-albumlongpress";
-import { loadClientConfig } from "./config.js?v=20260929-client11-albumlongpress";
-import { initGroupContext } from "./group-context.js?v=20260929-client11-albumlongpress";
-import { vkInit, loadLaunchParams, loadUser, getAccessToken } from "./vk-api.js?v=20260929-client11-albumlongpress";
-import { initNavigation, showAlbumsScreen } from "./navigation.js?v=20260929-client11-albumlongpress";
-import { initAlbums, loadSearchAlbums } from "./albums.js?v=20260929-client11-albumlongpress";
-import { initPhotos, openAlbum, refreshCurrentAlbum } from "./photos.js?v=20260929-client11-albumlongpress";
-import { initPhotoViewer, openPhotoViewer } from "./photo-viewer.js?v=20260929-client11-albumlongpress";
-import { initGlobalPhotoSearch, refreshGlobalSearch } from "./global-photo-search.js?v=20260929-client11-albumlongpress";
-import { searchTokens } from "./helpers.js?v=20260929-client11-albumlongpress";
-import { getErrorMessage, logError } from "./helpers.js?v=20260929-client11-albumlongpress";
+import { state } from "./state.js?v=20260929-client12-privacy";
+import { dom } from "./dom.js?v=20260929-client12-privacy";
+import { loadClientConfig } from "./config.js?v=20260929-client12-privacy";
+import { initGroupContext } from "./group-context.js?v=20260929-client12-privacy";
+import { vkInit, loadLaunchParams, loadUser, getAccessToken } from "./vk-api.js?v=20260929-client12-privacy";
+import { initNavigation, showAlbumsScreen } from "./navigation.js?v=20260929-client12-privacy";
+import { initAlbums, loadSearchAlbums } from "./albums.js?v=20260929-client12-privacy";
+import { initPhotos, openAlbum, refreshCurrentAlbum } from "./photos.js?v=20260929-client12-privacy";
+import { initPhotoViewer, openPhotoViewer } from "./photo-viewer.js?v=20260929-client12-privacy";
+import { initGlobalPhotoSearch, refreshGlobalSearch } from "./global-photo-search.js?v=20260929-client12-privacy";
+import { searchTokens, getErrorMessage, logError, renderError } from "./helpers.js?v=20260929-client12-privacy";
 
 let hiddenAt = 0;
 let refreshing = false;
 
 function showFatalError(error) {
-    const message = getErrorMessage(error);
     if (dom.user) dom.user.textContent = "Ошибка";
-    if (dom.albums) {
-        dom.albums.innerHTML = `
-            <div class="error client-fatal-error">
-                Не удалось запустить приложение.<br><br>${String(message)
-                    .replaceAll("&", "&amp;")
-                    .replaceAll("<", "&lt;")
-                    .replaceAll(">", "&gt;")}
-            </div>`;
-    }
+    const block = renderError(dom.albums, "Не удалось запустить приложение.", error);
+    block?.classList.add("client-fatal-error");
 }
 
 async function refreshCurrentScreen() {
