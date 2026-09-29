@@ -1,4 +1,4 @@
-export const CACHE_VERSION = "20260928-client06-memorysearch";
+export const CACHE_VERSION = "20260929-client07-contextfix";
 export const VK_API_VERSION = "5.199";
 
 const DEFAULT_CONFIG = {

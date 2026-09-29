@@ -1,8 +1,8 @@
-import { state } from "./state.js?v=20260928-client06-memorysearch";
-import { getBestPhotoUrl, copyText } from "./helpers.js?v=20260928-client06-memorysearch";
-import { openVkPhoto } from "./vk-links.js?v=20260928-client06-memorysearch";
-import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260928-client06-memorysearch";
-import { armLongPressReleaseGuard, consumeLongPressSyntheticClick } from "./long-press-guard.js?v=20260928-client06-memorysearch";
+import { state } from "./state.js?v=20260929-client07-contextfix";
+import { getBestPhotoUrl, copyText } from "./helpers.js?v=20260929-client07-contextfix";
+import { openVkPhoto } from "./vk-links.js?v=20260929-client07-contextfix";
+import { openSwipeOverlay, closeSwipeOverlay } from "./overlay-history.js?v=20260929-client07-contextfix";
+import { armLongPressReleaseGuard, consumeLongPressSyntheticClick } from "./long-press-guard.js?v=20260929-client07-contextfix";
 
 const LONG_PRESS_MS = 900;
 const MOVE_CANCEL_PX = 15;

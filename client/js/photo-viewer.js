@@ -1,9 +1,9 @@
-import { state } from "./state.js?v=20260928-client06-memorysearch";
-import { dom } from "./dom.js?v=20260928-client06-memorysearch";
-import { getBestPhotoUrl, getPhotoPreviewUrl } from "./helpers.js?v=20260928-client06-memorysearch";
-import { showPhotoViewerScreen, pushPhotoHistory, replacePhotoHistory } from "./navigation.js?v=20260928-client06-memorysearch";
-import { bindPhotoLongPress, openPhotoComments } from "./photo-actions.js?v=20260928-client06-memorysearch";
-import { ensureAlbumFreshForGlobal, isAlbumFresh } from "./photos.js?v=20260928-client06-memorysearch";
+import { state } from "./state.js?v=20260929-client07-contextfix";
+import { dom } from "./dom.js?v=20260929-client07-contextfix";
+import { getBestPhotoUrl, getPhotoPreviewUrl } from "./helpers.js?v=20260929-client07-contextfix";
+import { showPhotoViewerScreen, pushPhotoHistory, replacePhotoHistory } from "./navigation.js?v=20260929-client07-contextfix";
+import { bindPhotoLongPress, openPhotoComments } from "./photo-actions.js?v=20260929-client07-contextfix";
+import { ensureAlbumFreshForGlobal, isAlbumFresh } from "./photos.js?v=20260929-client07-contextfix";
 
 let initialized = false;
 let activePhoto = null;

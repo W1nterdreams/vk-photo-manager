@@ -1,15 +1,15 @@
-import { state } from "./state.js?v=20260928-client06-memorysearch";
-import { dom } from "./dom.js?v=20260928-client06-memorysearch";
-import { loadClientConfig } from "./config.js?v=20260928-client06-memorysearch";
-import { initGroupContext } from "./group-context.js?v=20260928-client06-memorysearch";
-import { vkInit, loadUser, getAccessToken } from "./vk-api.js?v=20260928-client06-memorysearch";
-import { initNavigation, showAlbumsScreen } from "./navigation.js?v=20260928-client06-memorysearch";
-import { initAlbums, loadSearchAlbums } from "./albums.js?v=20260928-client06-memorysearch";
-import { initPhotos, openAlbum, refreshCurrentAlbum } from "./photos.js?v=20260928-client06-memorysearch";
-import { initPhotoViewer, openPhotoViewer } from "./photo-viewer.js?v=20260928-client06-memorysearch";
-import { initGlobalPhotoSearch, refreshGlobalSearch } from "./global-photo-search.js?v=20260928-client06-memorysearch";
-import { searchTokens } from "./helpers.js?v=20260928-client06-memorysearch";
-import { getErrorMessage, logError } from "./helpers.js?v=20260928-client06-memorysearch";
+import { state } from "./state.js?v=20260929-client07-contextfix";
+import { dom } from "./dom.js?v=20260929-client07-contextfix";
+import { loadClientConfig } from "./config.js?v=20260929-client07-contextfix";
+import { initGroupContext } from "./group-context.js?v=20260929-client07-contextfix";
+import { vkInit, loadUser, getAccessToken } from "./vk-api.js?v=20260929-client07-contextfix";
+import { initNavigation, showAlbumsScreen } from "./navigation.js?v=20260929-client07-contextfix";
+import { initAlbums, loadSearchAlbums } from "./albums.js?v=20260929-client07-contextfix";
+import { initPhotos, openAlbum, refreshCurrentAlbum } from "./photos.js?v=20260929-client07-contextfix";
+import { initPhotoViewer, openPhotoViewer } from "./photo-viewer.js?v=20260929-client07-contextfix";
+import { initGlobalPhotoSearch, refreshGlobalSearch } from "./global-photo-search.js?v=20260929-client07-contextfix";
+import { searchTokens } from "./helpers.js?v=20260929-client07-contextfix";
+import { getErrorMessage, logError } from "./helpers.js?v=20260929-client07-contextfix";
 
 let hiddenAt = 0;
 let refreshing = false;
@@ -72,10 +72,10 @@ async function start() {
         if (!window.vkBridge?.send) throw new Error("VK Bridge не загружен.");
 
         state.config = await loadClientConfig();
-        initGroupContext(state.config);
 
         await vkInit();
         await loadUser();
+        initGroupContext(state.config, state.currentUser);
         await getAccessToken();
 
         initAlbums({ onOpenAlbum: openAlbum });

@@ -1,8 +1,8 @@
-import { state } from "./state.js?v=20260928-client06-memorysearch";
-import { dom } from "./dom.js?v=20260928-client06-memorysearch";
-import { vkApi } from "./vk-api.js?v=20260928-client06-memorysearch";
-import { getAlbumCover, matchesAllTokens, searchTokens } from "./helpers.js?v=20260928-client06-memorysearch";
-import { getOwnerId, usesRestrictedAlbums, getConfiguredHomeAlbumIds } from "./group-context.js?v=20260928-client06-memorysearch";
+import { state } from "./state.js?v=20260929-client07-contextfix";
+import { dom } from "./dom.js?v=20260929-client07-contextfix";
+import { vkApi } from "./vk-api.js?v=20260929-client07-contextfix";
+import { getAlbumCover, matchesAllTokens, searchTokens } from "./helpers.js?v=20260929-client07-contextfix";
+import { getOwnerId, usesRestrictedAlbums, getConfiguredHomeAlbumIds } from "./group-context.js?v=20260929-client07-contextfix";
 
 const ALL_ALBUMS_PAGE_SIZE = 1000;
 const MAX_ALBUM_PAGES = 100;
@@ -15,7 +15,7 @@ function restrictionSignature() {
 }
 
 function cacheKey() {
-    return `vk-photo-client:albums:v2:${state.groupId}:${restrictionSignature()}`;
+    return `vk-photo-client:albums:v3:${state.ownerId}:${restrictionSignature()}`;
 }
 
 function loadCache() {
