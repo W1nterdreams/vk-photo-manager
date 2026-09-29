@@ -1,4 +1,4 @@
-export const CACHE_VERSION = "20260929-client08-authfix";
+export const CACHE_VERSION = "20260929-client09-albumsfix";
 export const VK_API_VERSION = "5.199";
 
 const DEFAULT_CONFIG = {

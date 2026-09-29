@@ -1,58 +1,30 @@
-import { state } from "./state.js?v=20260929-client08-authfix";
-import { dom } from "./dom.js?v=20260929-client08-authfix";
-import { vkApi } from "./vk-api.js?v=20260929-client08-authfix";
-import { getAlbumCover, matchesAllTokens, searchTokens } from "./helpers.js?v=20260929-client08-authfix";
-import { getOwnerId, usesRestrictedAlbums, getConfiguredHomeAlbumIds } from "./group-context.js?v=20260929-client08-authfix";
+import { state } from "./state.js?v=20260929-client09-albumsfix";
+import { dom } from "./dom.js?v=20260929-client09-albumsfix";
+import { vkApi } from "./vk-api.js?v=20260929-client09-albumsfix";
+import { getAlbumCover, matchesAllTokens, searchTokens } from "./helpers.js?v=20260929-client09-albumsfix";
+import { getOwnerId, usesRestrictedAlbums, getConfiguredHomeAlbumIds } from "./group-context.js?v=20260929-client09-albumsfix";
 
-const ALL_ALBUMS_PAGE_SIZE = 1000;
-const MAX_ALBUM_PAGES = 100;
+// Не полагаемся на незафиксированный большой размер страницы photos.getAlbums.
+// 100 элементов + пагинация по response.count надёжно получает полный список.
+const ALL_ALBUMS_PAGE_SIZE = 100;
+const MAX_ALBUM_PAGES = 1000;
 
 let initialized = false;
 let openAlbumHandler = null;
-
-function restrictionSignature() {
-    return usesRestrictedAlbums() ? getConfiguredHomeAlbumIds().join(",") : "all";
-}
-
-function cacheKey() {
-    return `vk-photo-client:albums:v3:${state.ownerId}:${restrictionSignature()}`;
-}
-
-function loadCache() {
-    try {
-        const raw = localStorage.getItem(cacheKey());
-        if (!raw) return null;
-        const value = JSON.parse(raw);
-        if (!Array.isArray(value?.items)) return null;
-        return value;
-    } catch {
-        return null;
-    }
-}
-
-function saveCache(items) {
-    try {
-        localStorage.setItem(cacheKey(), JSON.stringify({ savedAt: Date.now(), items }));
-    } catch {}
-}
-
-function metadataTtlMs() {
-    return Math.max(60_000, Number(state.config?.album_metadata_ttl_minutes || 30) * 60_000);
-}
 
 function uniqueAlbums(items) {
     const seen = new Set();
     const result = [];
     for (const album of Array.isArray(items) ? items : []) {
         const id = Number(album?.id || 0);
-        if (!id || seen.has(id)) continue;
+        if (!Number.isInteger(id) || id === 0 || seen.has(id)) continue;
         seen.add(id);
         result.push(album);
     }
     return result;
 }
 
-function normalizeAlbumsForCurrentGroup(items) {
+function normalizeAlbumsForCurrentContext(items) {
     const unique = uniqueAlbums(items);
     if (!usesRestrictedAlbums()) return unique;
 
@@ -63,25 +35,19 @@ function normalizeAlbumsForCurrentGroup(items) {
         .sort((a, b) => Number(order.get(Number(a.id))) - Number(order.get(Number(b.id))));
 }
 
-async function fetchRestrictedAlbums() {
-    // Не передаём album_ids в photos.getAlbums. В некоторых контекстах
-    // VKWebAppCallAPIMethod отклоняет массив значений с ошибкой
-    // `album_ids not integer`. Один раз получаем список альбомов сообщества
-    // обычной пагинацией и фильтруем его локально по home_group_album_ids.
-    // Для сообщества с <1000 альбомов это по-прежнему ровно 1 вызов API.
-    return fetchAllAlbums();
-}
-
 async function fetchAllAlbums() {
     const ownerId = getOwnerId();
     const all = [];
     let offset = 0;
-    let total = Infinity;
+    let total = null;
 
-    for (let page = 0; page < MAX_ALBUM_PAGES && offset < total; page += 1) {
+    for (let page = 0; page < MAX_ALBUM_PAGES; page += 1) {
         const response = await vkApi("photos.getAlbums", {
             owner_id: ownerId,
-            need_system: 0,
+            // Для обычных групп и пользователей нужны также системные альбомы
+            // (фото профиля/стены/сохранённые и т.п.). В домашней группе они
+            // всё равно будут отброшены фильтром home_group_album_ids.
+            need_system: 1,
             need_covers: 1,
             photo_sizes: 1,
             count: ALL_ALBUMS_PAGE_SIZE,
@@ -95,20 +61,19 @@ async function fetchAllAlbums() {
         all.push(...items);
         offset += items.length;
 
-        if (!items.length || items.length < ALL_ALBUMS_PAGE_SIZE) break;
+        if (!items.length) break;
+        if (total !== null && offset >= total) break;
+        // Если count в ответе отсутствует, только тогда ориентируемся на размер страницы.
+        if (total === null && items.length < ALL_ALBUMS_PAGE_SIZE) break;
     }
 
-    return normalizeAlbumsForCurrentGroup(all);
-}
-
-async function fetchAlbumsForCurrentGroup() {
-    return usesRestrictedAlbums() ? fetchRestrictedAlbums() : fetchAllAlbums();
+    return normalizeAlbumsForCurrentContext(all);
 }
 
 export function getSearchAlbumIds() {
     return state.albums
         .map(album => Number(album?.id || 0))
-        .filter(id => Number.isInteger(id) && id > 0);
+        .filter(id => Number.isInteger(id) && id !== 0);
 }
 
 export async function loadSearchAlbums({ force = false } = {}) {
@@ -118,38 +83,18 @@ export async function loadSearchAlbums({ force = false } = {}) {
         return [];
     }
 
-    const cached = loadCache();
-    const cacheFresh = cached && Date.now() - Number(cached.savedAt || 0) < metadataTtlMs();
+    // После верификации бизнес-профиля экономить один photos.getAlbums на
+    // запуск нет смысла. Постоянный localStorage-кэш намеренно не используем:
+    // каждый новый запуск получает список именно текущего владельца.
+    dom.albums.innerHTML = `<div class="status-message">${force ? "Обновляем альбомы..." : "Загружаем альбомы..."}</div>`;
 
-    if (!force && cached?.items?.length) {
-        state.albums = normalizeAlbumsForCurrentGroup(cached.items);
-        renderAlbums();
-        if (cacheFresh) return state.albums;
-    }
-
-    if (!cached?.items?.length || force) {
-        dom.albums.innerHTML = `<div class="status-message">${force ? "Обновляем альбомы..." : "Загружаем альбомы..."}</div>`;
-    }
-
-    try {
-        const items = await fetchAlbumsForCurrentGroup();
-        state.albums = items;
-        state.albumsFetchedAt = Date.now();
-        saveCache(items);
-        renderAlbums();
-        return items;
-    } catch (error) {
-        if (cached?.items?.length) {
-            state.albums = normalizeAlbumsForCurrentGroup(cached.items);
-            renderAlbums();
-            console.warn("Не удалось обновить альбомы, используем локальный список:", error);
-            if (!force) return state.albums;
-        }
-        throw error;
-    }
+    const items = await fetchAllAlbums();
+    state.albums = items;
+    state.albumsFetchedAt = Date.now();
+    renderAlbums();
+    return items;
 }
 
-// Совместимый экспорт для старых импортов/кэшей модулей.
 export const loadAllowedAlbums = loadSearchAlbums;
 
 export function updateAlbumMetadataFromPhotos(albumId, photoCount) {
@@ -158,7 +103,6 @@ export function updateAlbumMetadataFromPhotos(albumId, photoCount) {
         ? { ...album, size: Math.max(0, Number(photoCount || 0)) }
         : album
     );
-    saveCache(state.albums);
 }
 
 export function getFilteredAlbums() {
@@ -200,7 +144,7 @@ function createAlbumCard(album) {
 
     const count = document.createElement("div");
     count.className = "album-count";
-    count.textContent = String(Number(album.size || 0));
+    count.textContent = String(Math.max(0, Number(album.size || 0)));
 
     info.append(name, count);
     card.appendChild(info);
@@ -215,8 +159,6 @@ function createAlbumCard(album) {
 export function renderAlbums() {
     if (!dom.albums) return;
 
-    // Если введён запрос по фотографиям, главный экран показывает
-    // результаты фото-поиска, а не карточки альбомов.
     if (searchTokens(state.globalQuery || "").length) {
         dom.albums.classList.add("hidden");
         return;

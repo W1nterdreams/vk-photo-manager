@@ -1,7 +1,7 @@
-import { VK_API_VERSION, resolveVkAppId } from "./config.js?v=20260929-client08-authfix";
-import { state } from "./state.js?v=20260929-client08-authfix";
-import { dom } from "./dom.js?v=20260929-client08-authfix";
-import { logError } from "./helpers.js?v=20260929-client08-authfix";
+import { VK_API_VERSION, resolveVkAppId } from "./config.js?v=20260929-client09-albumsfix";
+import { state } from "./state.js?v=20260929-client09-albumsfix";
+import { dom } from "./dom.js?v=20260929-client09-albumsfix";
+import { logError } from "./helpers.js?v=20260929-client09-albumsfix";
 
 let apiStats = { startedAt: Date.now(), total: 0, methods: {}, errors: {} };
 
@@ -29,6 +29,20 @@ export async function vkInit() {
     await window.vkBridge.send("VKWebAppInit");
 }
 
+export async function loadLaunchParams() {
+    try {
+        const params = await window.vkBridge.send("VKWebAppGetLaunchParams");
+        state.launchParams = params || {};
+        return state.launchParams;
+    } catch (error) {
+        // Старый клиент VK может не поддержать метод. Тогда group-context
+        // использует query-параметры как запасной источник.
+        console.warn("VKWebAppGetLaunchParams недоступен, используем URL:", error);
+        state.launchParams = {};
+        return state.launchParams;
+    }
+}
+
 export async function loadUser() {
     const user = await window.vkBridge.send("VKWebAppGetUserInfo");
     state.currentUser = user;
@@ -38,10 +52,12 @@ export async function loadUser() {
     return user;
 }
 
-// Для вызовов photos.getAlbums/photos.get через пользовательский токен
-// VK требуется право photos. Без него API возвращает Access denied.
 export async function getAccessToken() {
-    const appId = resolveVkAppId(state.config);
+    const launchAppId = Number(state.launchParams?.vk_app_id || 0);
+    const appId = Number.isInteger(launchAppId) && launchAppId > 0
+        ? launchAppId
+        : resolveVkAppId(state.config);
+
     const result = await window.vkBridge.send("VKWebAppGetAuthToken", {
         app_id: appId,
         scope: "photos"
@@ -81,6 +97,14 @@ export async function vkApi(method, params = {}) {
 if (typeof window !== "undefined") {
     window.vkApiDebug = {
         stats: getVkApiStats,
-        reset: resetVkApiStats
+        reset: resetVkApiStats,
+        context: () => ({
+            launchParams: state.launchParams,
+            contextType: state.contextType,
+            groupId: state.groupId,
+            ownerId: state.ownerId,
+            restrictAlbums: state.restrictAlbums,
+            albums: state.albums.map(a => ({ id: a.id, title: a.title, size: a.size }))
+        })
     };
 }

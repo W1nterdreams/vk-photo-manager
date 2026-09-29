@@ -1,15 +1,16 @@
-import { state } from "./state.js?v=20260929-client08-authfix";
-import { dom } from "./dom.js?v=20260929-client08-authfix";
-import { vkApi } from "./vk-api.js?v=20260929-client08-authfix";
-import { getPhotoPreviewUrl, matchesAllTokens, searchTokens, formatPhotoDate, getErrorMessage } from "./helpers.js?v=20260929-client08-authfix";
-import { getOwnerId } from "./group-context.js?v=20260929-client08-authfix";
-import { pushAlbumHistory, showPhotosScreen } from "./navigation.js?v=20260929-client08-authfix";
-import { bindPhotoLongPress } from "./photo-actions.js?v=20260929-client08-authfix";
-import { updateAlbumMetadataFromPhotos } from "./albums.js?v=20260929-client08-authfix";
+import { state } from "./state.js?v=20260929-client09-albumsfix";
+import { dom } from "./dom.js?v=20260929-client09-albumsfix";
+import { vkApi } from "./vk-api.js?v=20260929-client09-albumsfix";
+import { getPhotoPreviewUrl, matchesAllTokens, searchTokens, formatPhotoDate, getErrorMessage } from "./helpers.js?v=20260929-client09-albumsfix";
+import { getOwnerId } from "./group-context.js?v=20260929-client09-albumsfix";
+import { pushAlbumHistory, showPhotosScreen } from "./navigation.js?v=20260929-client09-albumsfix";
+import { bindPhotoLongPress } from "./photo-actions.js?v=20260929-client09-albumsfix";
+import { updateAlbumMetadataFromPhotos } from "./albums.js?v=20260929-client09-albumsfix";
 
 const API_PAGE_SIZE = 1000;
 const RENDER_BATCH_SIZE = 10;
 const MAX_PAGES = 100;
+const GET_ALL_PAGE_SIZE = 200;
 
 let initialized = false;
 let openPhotoHandler = null;
@@ -17,6 +18,8 @@ let renderedCount = 0;
 let currentRenderList = [];
 let scrollTicking = false;
 let loadingAlbumPromise = null;
+let allOwnerPhotosCache = null;
+let allOwnerPhotosPromise = null;
 
 function freshWindowMs() {
     return Math.max(5_000, Number(state.config?.album_session_fresh_seconds || 60) * 1000);
@@ -48,8 +51,64 @@ function findAlbum(albumId) {
         (state.currentAlbum && Number(state.currentAlbum.id) === id ? state.currentAlbum : null);
 }
 
+async function fetchAllOwnerPhotos() {
+    const ownerId = getOwnerId();
+    if (allOwnerPhotosCache?.ownerId === ownerId) return allOwnerPhotosCache.photos;
+    if (allOwnerPhotosPromise?.ownerId === ownerId) return allOwnerPhotosPromise.promise;
+
+    const promise = (async () => {
+        let offset = 0;
+        let total = Infinity;
+        const all = [];
+
+        for (let page = 0; page < MAX_PAGES && offset < total; page += 1) {
+            const response = await vkApi("photos.getAll", {
+                owner_id: ownerId,
+                extended: 1,
+                photo_sizes: 1,
+                no_service_albums: 0,
+                count: GET_ALL_PAGE_SIZE,
+                offset
+            });
+
+            const items = Array.isArray(response?.items) ? response.items : [];
+            const reported = Number(response?.count);
+            if (Number.isFinite(reported) && reported >= 0) total = reported;
+
+            const seen = new Set(all.map(photo => `${photo.owner_id}_${photo.id}`));
+            const added = items.filter(photo => !seen.has(`${photo.owner_id}_${photo.id}`));
+            all.push(...added);
+            offset += items.length;
+
+            if (!items.length || offset >= total) break;
+            if (!added.length) throw new Error("VK повторил страницу photos.getAll.");
+        }
+
+        allOwnerPhotosCache = { ownerId, photos: all, fetchedAt: Date.now() };
+        return all;
+    })().finally(() => {
+        if (allOwnerPhotosPromise?.ownerId === ownerId) allOwnerPhotosPromise = null;
+    });
+
+    allOwnerPhotosPromise = { ownerId, promise };
+    return promise;
+}
+
 async function fetchAllAlbumPhotos(album) {
     const ownerId = getOwnerId();
+    const albumId = Number(album?.id || 0);
+
+    // Системные альбомы имеют отрицательные id. photos.get официально
+    // документирует service-album строки, поэтому для универсальности берём
+    // photos.getAll (включая service albums) один раз за сеанс и фильтруем.
+    if (albumId < 0) {
+        const ownerPhotos = await fetchAllOwnerPhotos();
+        const photos = ownerPhotos.filter(photo => Number(photo?.album_id || 0) === albumId);
+        updateAlbumMetadataFromPhotos(albumId, photos.length);
+        storeAlbumPhotos(albumId, photos);
+        return photos;
+    }
+
     let offset = 0;
     let all = [];
     let total = Number(album?.size || 0);
@@ -57,7 +116,7 @@ async function fetchAllAlbumPhotos(album) {
     for (let page = 0; page < MAX_PAGES; page += 1) {
         const response = await vkApi("photos.get", {
             owner_id: ownerId,
-            album_id: Number(album.id),
+            album_id: String(albumId),
             extended: 1,
             photo_sizes: 1,
             count: API_PAGE_SIZE,

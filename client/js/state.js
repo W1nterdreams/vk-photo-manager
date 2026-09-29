@@ -1,5 +1,6 @@
 export const state = {
     config: null,
+    launchParams: null,
     currentUser: null,
     accessToken: null,
     groupId: 0,
