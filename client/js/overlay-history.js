@@ -1,4 +1,4 @@
-import { state } from "./state.js?v=20260929-client07-contextfix";
+import { state } from "./state.js?v=20260929-client08-authfix";
 
 let activeOverlay = null;
 let closingPromise = null;

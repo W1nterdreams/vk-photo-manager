@@ -1,15 +1,15 @@
-import { state } from "./state.js?v=20260929-client07-contextfix";
-import { dom } from "./dom.js?v=20260929-client07-contextfix";
-import { loadClientConfig } from "./config.js?v=20260929-client07-contextfix";
-import { initGroupContext } from "./group-context.js?v=20260929-client07-contextfix";
-import { vkInit, loadUser, getAccessToken } from "./vk-api.js?v=20260929-client07-contextfix";
-import { initNavigation, showAlbumsScreen } from "./navigation.js?v=20260929-client07-contextfix";
-import { initAlbums, loadSearchAlbums } from "./albums.js?v=20260929-client07-contextfix";
-import { initPhotos, openAlbum, refreshCurrentAlbum } from "./photos.js?v=20260929-client07-contextfix";
-import { initPhotoViewer, openPhotoViewer } from "./photo-viewer.js?v=20260929-client07-contextfix";
-import { initGlobalPhotoSearch, refreshGlobalSearch } from "./global-photo-search.js?v=20260929-client07-contextfix";
-import { searchTokens } from "./helpers.js?v=20260929-client07-contextfix";
-import { getErrorMessage, logError } from "./helpers.js?v=20260929-client07-contextfix";
+import { state } from "./state.js?v=20260929-client08-authfix";
+import { dom } from "./dom.js?v=20260929-client08-authfix";
+import { loadClientConfig } from "./config.js?v=20260929-client08-authfix";
+import { initGroupContext } from "./group-context.js?v=20260929-client08-authfix";
+import { vkInit, loadUser, getAccessToken } from "./vk-api.js?v=20260929-client08-authfix";
+import { initNavigation, showAlbumsScreen } from "./navigation.js?v=20260929-client08-authfix";
+import { initAlbums, loadSearchAlbums } from "./albums.js?v=20260929-client08-authfix";
+import { initPhotos, openAlbum, refreshCurrentAlbum } from "./photos.js?v=20260929-client08-authfix";
+import { initPhotoViewer, openPhotoViewer } from "./photo-viewer.js?v=20260929-client08-authfix";
+import { initGlobalPhotoSearch, refreshGlobalSearch } from "./global-photo-search.js?v=20260929-client08-authfix";
+import { searchTokens } from "./helpers.js?v=20260929-client08-authfix";
+import { getErrorMessage, logError } from "./helpers.js?v=20260929-client08-authfix";
 
 let hiddenAt = 0;
 let refreshing = false;

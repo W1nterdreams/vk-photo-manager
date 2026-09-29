@@ -1,9 +1,9 @@
-import { state } from "./state.js?v=20260929-client07-contextfix";
-import { dom } from "./dom.js?v=20260929-client07-contextfix";
-import { searchTokens, matchesAllTokens, getPhotoPreviewUrl, formatPhotoDate } from "./helpers.js?v=20260929-client07-contextfix";
-import { getFilteredAlbums, renderAlbums } from "./albums.js?v=20260929-client07-contextfix";
-import { getFreshAlbumPhotos } from "./photos.js?v=20260929-client07-contextfix";
-import { bindPhotoLongPress } from "./photo-actions.js?v=20260929-client07-contextfix";
+import { state } from "./state.js?v=20260929-client08-authfix";
+import { dom } from "./dom.js?v=20260929-client08-authfix";
+import { searchTokens, matchesAllTokens, getPhotoPreviewUrl, formatPhotoDate } from "./helpers.js?v=20260929-client08-authfix";
+import { getFilteredAlbums, renderAlbums } from "./albums.js?v=20260929-client08-authfix";
+import { getFreshAlbumPhotos } from "./photos.js?v=20260929-client08-authfix";
+import { bindPhotoLongPress } from "./photo-actions.js?v=20260929-client08-authfix";
 
 // На телефоне две колонки × пять строк дают первую порцию примерно из 10 фото.
 const RENDER_BATCH = 10;

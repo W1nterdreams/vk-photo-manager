@@ -1,11 +1,11 @@
-import { state } from "./state.js?v=20260929-client07-contextfix";
-import { dom } from "./dom.js?v=20260929-client07-contextfix";
-import { vkApi } from "./vk-api.js?v=20260929-client07-contextfix";
-import { getPhotoPreviewUrl, matchesAllTokens, searchTokens, formatPhotoDate, getErrorMessage } from "./helpers.js?v=20260929-client07-contextfix";
-import { getOwnerId } from "./group-context.js?v=20260929-client07-contextfix";
-import { pushAlbumHistory, showPhotosScreen } from "./navigation.js?v=20260929-client07-contextfix";
-import { bindPhotoLongPress } from "./photo-actions.js?v=20260929-client07-contextfix";
-import { updateAlbumMetadataFromPhotos } from "./albums.js?v=20260929-client07-contextfix";
+import { state } from "./state.js?v=20260929-client08-authfix";
+import { dom } from "./dom.js?v=20260929-client08-authfix";
+import { vkApi } from "./vk-api.js?v=20260929-client08-authfix";
+import { getPhotoPreviewUrl, matchesAllTokens, searchTokens, formatPhotoDate, getErrorMessage } from "./helpers.js?v=20260929-client08-authfix";
+import { getOwnerId } from "./group-context.js?v=20260929-client08-authfix";
+import { pushAlbumHistory, showPhotosScreen } from "./navigation.js?v=20260929-client08-authfix";
+import { bindPhotoLongPress } from "./photo-actions.js?v=20260929-client08-authfix";
+import { updateAlbumMetadataFromPhotos } from "./albums.js?v=20260929-client08-authfix";
 
 const API_PAGE_SIZE = 1000;
 const RENDER_BATCH_SIZE = 10;

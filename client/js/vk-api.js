@@ -1,7 +1,7 @@
-import { VK_API_VERSION, resolveVkAppId } from "./config.js?v=20260929-client07-contextfix";
-import { state } from "./state.js?v=20260929-client07-contextfix";
-import { dom } from "./dom.js?v=20260929-client07-contextfix";
-import { logError } from "./helpers.js?v=20260929-client07-contextfix";
+import { VK_API_VERSION, resolveVkAppId } from "./config.js?v=20260929-client08-authfix";
+import { state } from "./state.js?v=20260929-client08-authfix";
+import { dom } from "./dom.js?v=20260929-client08-authfix";
+import { logError } from "./helpers.js?v=20260929-client08-authfix";
 
 let apiStats = { startedAt: Date.now(), total: 0, methods: {}, errors: {} };
 
@@ -38,13 +38,13 @@ export async function loadUser() {
     return user;
 }
 
-// Клиенту не нужен доступ к его личным фотографиям. Для чтения публичных
-// альбомов сообщества запрашиваем обычный токен без специальных scope.
+// Для вызовов photos.getAlbums/photos.get через пользовательский токен
+// VK требуется право photos. Без него API возвращает Access denied.
 export async function getAccessToken() {
     const appId = resolveVkAppId(state.config);
     const result = await window.vkBridge.send("VKWebAppGetAuthToken", {
         app_id: appId,
-        scope: ""
+        scope: "photos"
     });
 
     state.accessToken = result?.access_token || "";

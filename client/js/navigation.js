@@ -1,6 +1,6 @@
-import { state } from "./state.js?v=20260929-client07-contextfix";
-import { dom } from "./dom.js?v=20260929-client07-contextfix";
-import { handleOverlayPopState } from "./overlay-history.js?v=20260929-client07-contextfix";
+import { state } from "./state.js?v=20260929-client08-authfix";
+import { dom } from "./dom.js?v=20260929-client08-authfix";
+import { handleOverlayPopState } from "./overlay-history.js?v=20260929-client08-authfix";
 
 let initialized = false;
 let openAlbumFromHistory = null;

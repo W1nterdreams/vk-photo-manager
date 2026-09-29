@@ -1,8 +1,8 @@
-import { state } from "./state.js?v=20260929-client07-contextfix";
-import { dom } from "./dom.js?v=20260929-client07-contextfix";
-import { vkApi } from "./vk-api.js?v=20260929-client07-contextfix";
-import { getAlbumCover, matchesAllTokens, searchTokens } from "./helpers.js?v=20260929-client07-contextfix";
-import { getOwnerId, usesRestrictedAlbums, getConfiguredHomeAlbumIds } from "./group-context.js?v=20260929-client07-contextfix";
+import { state } from "./state.js?v=20260929-client08-authfix";
+import { dom } from "./dom.js?v=20260929-client08-authfix";
+import { vkApi } from "./vk-api.js?v=20260929-client08-authfix";
+import { getAlbumCover, matchesAllTokens, searchTokens } from "./helpers.js?v=20260929-client08-authfix";
+import { getOwnerId, usesRestrictedAlbums, getConfiguredHomeAlbumIds } from "./group-context.js?v=20260929-client08-authfix";
 
 const ALL_ALBUMS_PAGE_SIZE = 1000;
 const MAX_ALBUM_PAGES = 100;
