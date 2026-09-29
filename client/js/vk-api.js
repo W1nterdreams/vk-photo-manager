@@ -1,7 +1,7 @@
-import { VK_API_VERSION, resolveVkAppId } from "./config.js?v=20260929-client09-albumsfix";
-import { state } from "./state.js?v=20260929-client09-albumsfix";
-import { dom } from "./dom.js?v=20260929-client09-albumsfix";
-import { logError } from "./helpers.js?v=20260929-client09-albumsfix";
+import { VK_API_VERSION, resolveVkAppId } from "./config.js?v=20260929-client10-whitelist";
+import { state } from "./state.js?v=20260929-client10-whitelist";
+import { dom } from "./dom.js?v=20260929-client10-whitelist";
+import { logError } from "./helpers.js?v=20260929-client10-whitelist";
 
 let apiStats = { startedAt: Date.now(), total: 0, methods: {}, errors: {} };
 
@@ -104,6 +104,7 @@ if (typeof window !== "undefined") {
             groupId: state.groupId,
             ownerId: state.ownerId,
             restrictAlbums: state.restrictAlbums,
+            allowedGroupIds: state.config?.allowed_group_ids || [],
             albums: state.albums.map(a => ({ id: a.id, title: a.title, size: a.size }))
         })
     };

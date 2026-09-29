@@ -1,15 +1,15 @@
-import { state } from "./state.js?v=20260929-client09-albumsfix";
-import { dom } from "./dom.js?v=20260929-client09-albumsfix";
-import { loadClientConfig } from "./config.js?v=20260929-client09-albumsfix";
-import { initGroupContext } from "./group-context.js?v=20260929-client09-albumsfix";
-import { vkInit, loadLaunchParams, loadUser, getAccessToken } from "./vk-api.js?v=20260929-client09-albumsfix";
-import { initNavigation, showAlbumsScreen } from "./navigation.js?v=20260929-client09-albumsfix";
-import { initAlbums, loadSearchAlbums } from "./albums.js?v=20260929-client09-albumsfix";
-import { initPhotos, openAlbum, refreshCurrentAlbum } from "./photos.js?v=20260929-client09-albumsfix";
-import { initPhotoViewer, openPhotoViewer } from "./photo-viewer.js?v=20260929-client09-albumsfix";
-import { initGlobalPhotoSearch, refreshGlobalSearch } from "./global-photo-search.js?v=20260929-client09-albumsfix";
-import { searchTokens } from "./helpers.js?v=20260929-client09-albumsfix";
-import { getErrorMessage, logError } from "./helpers.js?v=20260929-client09-albumsfix";
+import { state } from "./state.js?v=20260929-client10-whitelist";
+import { dom } from "./dom.js?v=20260929-client10-whitelist";
+import { loadClientConfig } from "./config.js?v=20260929-client10-whitelist";
+import { initGroupContext } from "./group-context.js?v=20260929-client10-whitelist";
+import { vkInit, loadLaunchParams, loadUser, getAccessToken } from "./vk-api.js?v=20260929-client10-whitelist";
+import { initNavigation, showAlbumsScreen } from "./navigation.js?v=20260929-client10-whitelist";
+import { initAlbums, loadSearchAlbums } from "./albums.js?v=20260929-client10-whitelist";
+import { initPhotos, openAlbum, refreshCurrentAlbum } from "./photos.js?v=20260929-client10-whitelist";
+import { initPhotoViewer, openPhotoViewer } from "./photo-viewer.js?v=20260929-client10-whitelist";
+import { initGlobalPhotoSearch, refreshGlobalSearch } from "./global-photo-search.js?v=20260929-client10-whitelist";
+import { searchTokens } from "./helpers.js?v=20260929-client10-whitelist";
+import { getErrorMessage, logError } from "./helpers.js?v=20260929-client10-whitelist";
 
 let hiddenAt = 0;
 let refreshing = false;

@@ -1,8 +1,9 @@
-export const CACHE_VERSION = "20260929-client09-albumsfix";
+export const CACHE_VERSION = "20260929-client10-whitelist";
 export const VK_API_VERSION = "5.199";
 
 const DEFAULT_CONFIG = {
     vk_app_id: 0,
+    allowed_group_ids: [],
     home_group_id: 0,
     home_group_album_ids: [],
     blocked_group_ids: [],
@@ -49,6 +50,7 @@ export async function loadClientConfig({ force = false } = {}) {
         ...DEFAULT_CONFIG,
         ...raw,
         vk_app_id: Math.max(0, Number(raw?.vk_app_id || 0)),
+        allowed_group_ids: normalizePositiveIds(raw?.allowed_group_ids),
         home_group_id: Number.isInteger(homeGroupId) && homeGroupId > 0 ? homeGroupId : 0,
         home_group_album_ids: normalizePositiveIds(homeAlbumIds),
         blocked_group_ids: normalizePositiveIds(raw?.blocked_group_ids),

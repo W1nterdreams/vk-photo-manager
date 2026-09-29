@@ -1,8 +1,8 @@
-import { state } from "./state.js?v=20260929-client09-albumsfix";
-import { dom } from "./dom.js?v=20260929-client09-albumsfix";
-import { vkApi } from "./vk-api.js?v=20260929-client09-albumsfix";
-import { getAlbumCover, matchesAllTokens, searchTokens } from "./helpers.js?v=20260929-client09-albumsfix";
-import { getOwnerId, usesRestrictedAlbums, getConfiguredHomeAlbumIds } from "./group-context.js?v=20260929-client09-albumsfix";
+import { state } from "./state.js?v=20260929-client10-whitelist";
+import { dom } from "./dom.js?v=20260929-client10-whitelist";
+import { vkApi } from "./vk-api.js?v=20260929-client10-whitelist";
+import { getAlbumCover, matchesAllTokens, searchTokens } from "./helpers.js?v=20260929-client10-whitelist";
+import { getOwnerId, usesRestrictedAlbums, getConfiguredHomeAlbumIds } from "./group-context.js?v=20260929-client10-whitelist";
 
 // Не полагаемся на незафиксированный большой размер страницы photos.getAlbums.
 // 100 элементов + пагинация по response.count надёжно получает полный список.

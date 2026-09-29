@@ -1,4 +1,4 @@
-import { state } from "./state.js?v=20260929-client09-albumsfix";
+import { state } from "./state.js?v=20260929-client10-whitelist";
 
 function urlLaunchGroupId() {
     const params = new URLSearchParams(window.location.search);
@@ -24,11 +24,14 @@ export function initGroupContext(config, currentUser, launchParams = null) {
     // как запасной вариант для старых клиентов/режимов запуска.
     const launchedGroupId = bridgeLaunchGroupId(launchParams) || urlLaunchGroupId();
     const homeGroupId = Number(config?.home_group_id || 0);
-    const blocked = new Set((config?.blocked_group_ids || []).map(Number));
+    const allowedGroups = new Set((config?.allowed_group_ids || []).map(Number));
+    const blockedGroups = new Set((config?.blocked_group_ids || []).map(Number));
 
     if (launchedGroupId > 0) {
-        if (blocked.has(launchedGroupId)) {
-            throw new Error("Доступ к приложению для этого сообщества запрещён.");
+        // Группы работают по белому списку. Пользовательский прямой запуск
+        // разрешён отдельно ниже и не зависит от этого списка.
+        if (blockedGroups.has(launchedGroupId) || !allowedGroups.has(launchedGroupId)) {
+            throw new Error("Доступ к приложению для этого сообщества не разрешён.");
         }
 
         state.groupId = launchedGroupId;
@@ -45,7 +48,8 @@ export function initGroupContext(config, currentUser, launchParams = null) {
         };
     }
 
-    // Прямой запуск: работаем с альбомами именно текущего пользователя.
+    // Прямой запуск пользователем всегда разрешён: показываем его собственные
+    // доступные фотоальбомы. Белый список групп на пользовательский режим не влияет.
     const userId = currentUserId(currentUser, launchParams);
     if (!userId) {
         throw new Error("Не удалось определить пользователя или сообщество запуска.");

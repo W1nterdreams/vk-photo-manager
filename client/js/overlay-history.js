@@ -1,4 +1,4 @@
-import { state } from "./state.js?v=20260929-client09-albumsfix";
+import { state } from "./state.js?v=20260929-client10-whitelist";
 
 let activeOverlay = null;
 let closingPromise = null;
