@@ -30,9 +30,11 @@ export function initGroupContext(config, currentUser, launchParams = null) {
     if (launchedGroupId > 0) {
         // Группы работают по белому списку. Пользовательский прямой запуск
         // разрешён отдельно ниже и не зависит от этого списка.
+        /*
         if (blockedGroups.has(launchedGroupId) || !allowedGroups.has(launchedGroupId)) {
             throw new Error("Доступ к приложению для этого сообщества не разрешён.");
         }
+        */
 
         state.groupId = launchedGroupId;
         state.ownerId = -Math.abs(launchedGroupId);
