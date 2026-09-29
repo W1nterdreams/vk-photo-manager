@@ -2793,3 +2793,35 @@ img {
         grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 }
+
+/* =========================================================
+   CLIENT 12 — PRIVACY / LEGAL FOOTER
+   ========================================================= */
+.legal-footer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 7px;
+    padding: 18px 12px calc(18px + env(safe-area-inset-bottom));
+    color: #7d8187;
+    font-size: 12px;
+    line-height: 1.4;
+    text-align: center;
+}
+
+.legal-footer a {
+    color: #8c9198;
+    text-decoration: none;
+}
+
+.legal-footer a:active,
+.legal-footer a:hover {
+    text-decoration: underline;
+}
+
+.error-details {
+    margin-top: 14px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}

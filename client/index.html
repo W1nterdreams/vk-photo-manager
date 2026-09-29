@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <!-- CACHE_VERSION: 20260929-client11-albumlongpress -->
+    <!-- CACHE_VERSION: 20260929-client12-privacy -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Поиск пряжи VK</title>
-    <link rel="stylesheet" href="./style.css?v=20260929-client11-albumlongpress">
-    <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
+    <link rel="stylesheet" href="./style.css?v=20260929-client12-privacy">
+    <script src="./vendor/vk-bridge.js?v=20260929-client12-privacy"></script>
 </head>
 <body>
 <div id="app">
@@ -85,8 +85,14 @@
             <button id="openPhotoCommentsButton" class="primary-button client-comments-button" type="button">Перейти к комментариям</button>
         </div>
     </main>
+
+    <footer class="legal-footer" aria-label="Правовая информация">
+        <a href="./privacy.html" target="_blank" rel="noopener noreferrer">Политика конфиденциальности</a>
+        <span aria-hidden="true">·</span>
+        <a href="./terms.html" target="_blank" rel="noopener noreferrer">Пользовательское соглашение</a>
+    </footer>
 </div>
 
-<script type="module" src="./js/app.js?v=20260929-client11-albumlongpress"></script>
+<script type="module" src="./js/app.js?v=20260929-client12-privacy"></script>
 </body>
 </html>
