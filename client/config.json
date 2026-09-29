@@ -1,5 +1,8 @@
 {
   "vk_app_id": 0,
+  "allowed_group_ids": [
+    173909287
+  ],
   "home_group_id": 173909287,
   "home_group_album_ids": [
     282549589,
@@ -22,9 +25,7 @@
     282549737,
     282549844
   ],
-  "blocked_group_ids": [
-    164747280
-  ],
+  "blocked_group_ids": [],
   "album_metadata_ttl_minutes": 30,
   "album_session_fresh_seconds": 60
 }
