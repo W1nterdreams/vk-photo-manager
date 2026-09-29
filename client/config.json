@@ -22,7 +22,9 @@
     282549737,
     282549844
   ],
-  "blocked_group_ids": [],
+  "blocked_group_ids": [
+    164747280
+  ],
   "album_metadata_ttl_minutes": 30,
   "album_session_fresh_seconds": 60
 }
