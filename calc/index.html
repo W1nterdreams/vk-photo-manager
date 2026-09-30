@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#5b65c8">
+  <meta name="description" content="Калькулятор расхода пряжи сообщества «Мания пряжи»: изделие, размер, плотность, метраж и сложения.">
+  <title>Калькулятор пряжи — Мания пряжи</title>
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <svg class="svg-defs" aria-hidden="true" width="0" height="0">
+    <defs>
+      <symbol id="i-pullover" viewBox="0 0 64 64"><path d="M18 13 28 8h8l10 5 11 13-9 7-5-7v28H21V26l-5 7-9-7 11-13Z"/><path d="M27 9c1 5 9 5 10 0"/></symbol>
+      <symbol id="i-cardigan" viewBox="0 0 64 64"><path d="M18 13 28 8h8l10 5 11 13-9 7-5-7v28H21V26l-5 7-9-7 11-13Z"/><path d="M32 9v45M27 9c1 5 9 5 10 0"/><circle cx="36" cy="25" r="1.2"/><circle cx="36" cy="33" r="1.2"/><circle cx="36" cy="41" r="1.2"/></symbol>
+      <symbol id="i-vest" viewBox="0 0 64 64"><path d="M18 15 27 8h10l9 7-6 11v28H24V26l-6-11Z"/><path d="M27 9c1 5 9 5 10 0M24 27c-7-2-8-8-6-12M40 27c7-2 8-8 6-12"/></symbol>
+      <symbol id="i-socks" viewBox="0 0 64 64"><path d="M16 8h15v27c0 7-7 9-12 12-6 3-12 0-12-5 0-4 4-6 9-8V8Zm27 0h14v28c0 7-7 9-12 12-6 3-12 0-12-5 0-4 4-6 10-8V8Z"/></symbol>
+      <symbol id="i-hat" viewBox="0 0 64 64"><path d="M14 39c0-17 7-27 18-27s18 10 18 27H14Z"/><path d="M11 39h42v10H11z"/><circle cx="32" cy="9" r="5"/></symbol>
+      <symbol id="i-scarf" viewBox="0 0 64 64"><path d="M18 7h28v40H18z"/><path d="M18 47v9m7-9v9m7-9v9m7-9v9m7-9v9"/></symbol>
+      <symbol id="i-shawl" viewBox="0 0 64 64"><path d="M7 18c17 2 33 2 50 0L32 54 7 18Z"/><path d="M12 22 32 48l20-26M17 25l-3 5m9 2-3 5m9 2-3 5m20-19 3 5m-9 2 3 5m-9 2 3 5"/></symbol>
+      <symbol id="i-mittens" viewBox="0 0 64 64"><path d="M19 18c0-8 10-8 10 0v7c3-4 8-2 8 3v17c0 8-6 12-13 12S12 52 12 45V28c0-5 7-7 8-2l-1-8Zm26 0c0-8 10-8 10 0v7c3-4 7-2 7 3v17c0 8-5 12-12 12s-12-5-12-12V28c0-5 7-7 8-2l-1-8Z"/></symbol>
+      <symbol id="i-blanket" viewBox="0 0 64 64"><rect x="8" y="10" width="48" height="42" rx="5"/><path d="M8 21h48M19 10v42m13-42v42m13-42v42M10 52v6m8-6v6m8-6v6m8-6v6m8-6v6m8-6v6"/></symbol>
+      <symbol id="i-yarn" viewBox="0 0 64 64"><circle cx="31" cy="31" r="22"/><path d="M16 17c12 3 22 13 28 28M14 30c14-6 27-6 39 1M18 47c8-13 18-24 31-31M42 49c8 0 13 4 13 9"/></symbol>
+      <symbol id="i-spark" viewBox="0 0 64 64"><path d="m32 5 5 17 17 5-17 5-5 17-5-17-17-5 17-5 5-17Z"/><path d="m50 42 2 7 7 2-7 2-2 7-2-7-7-2 7-2 2-7Z"/></symbol>
+    </defs>
+  </svg>
+
+  <div class="app-shell" id="app">
+    <header class="brand-header">
+      <div class="brand-mark" aria-hidden="true"><svg><use href="#i-yarn"></use></svg></div>
+      <div class="brand-copy">
+        <div class="brand-name">Мания <strong>ПРЯЖИ</strong></div>
+        <div class="brand-subtitle">Калькулятор расхода пряжи</div>
+      </div>
+      <div class="vk-state" id="vkState" title="Состояние VK Mini App"><span class="dot"></span><span>Web</span></div>
+    </header>
+
+    <nav class="tabs" aria-label="Разделы приложения">
+      <button class="tab is-active" type="button" data-view="calc">Расчёт</button>
+      <button class="tab" type="button" data-view="match">Подбор пряжи</button>
+      <button class="tab" type="button" data-view="catalog">Каталог / парсер</button>
+    </nav>
+
+    <main>
+      <section class="view is-active" id="view-calc">
+        <div class="hero-card">
+          <div>
+            <span class="eyebrow">5 параметров</span>
+            <h1>Сколько пряжи понадобится?</h1>
+            <p>Выберите изделие и размер, укажите плотность вязания, метраж вашей пряжи и количество сложений.</p>
+          </div>
+          <div class="hero-yarn" aria-hidden="true"><svg><use href="#i-yarn"></use></svg><svg class="spark"><use href="#i-spark"></use></svg></div>
+        </div>
+
+        <section class="step-card">
+          <div class="step-title"><span>1</span><div><h2>Изделие</h2><p>Расход зависит от формы и площади изделия.</p></div></div>
+          <div class="garment-grid" id="garmentGrid"></div>
+        </section>
+
+        <section class="step-card">
+          <div class="step-title"><span>2</span><div><h2>Размер</h2><p id="sizeHint">Выберите изделие, чтобы увидеть доступные размеры.</p></div></div>
+          <div class="chip-row" id="sizeChips"></div>
+        </section>
+
+        <section class="step-card compact-grid">
+          <div class="input-block">
+            <div class="step-title small"><span>3</span><div><h2>Плотность</h2><p>Количество петель в 10 см образца.</p></div></div>
+            <div class="range-line">
+              <input id="gaugeRange" type="range" min="8" max="30" step="1" value="20">
+              <div class="number-with-unit"><input id="gaugeInput" type="number" min="8" max="30" step="1" value="20" inputmode="numeric"><span>п./10 см</span></div>
+            </div>
+            <div class="meter-hint" id="gaugeHint"></div>
+          </div>
+          <div class="input-block">
+            <div class="step-title small"><span>4</span><div><h2>Метраж пряжи</h2><p>Можно вводить данные с этикетки или бобины.</p></div></div>
+            <div class="ratio-inputs">
+              <label><span>Длина</span><div><input id="yarnMeters" type="number" min="1" step="1" value="1400" inputmode="decimal"><b>м</b></div></label>
+              <span class="slash">/</span>
+              <label><span>Вес</span><div><input id="yarnWeight" type="number" min="1" step="1" value="100" inputmode="decimal"><b>г</b></div></label>
+            </div>
+          </div>
+          <div class="input-block full-span">
+            <div class="step-title small"><span>5</span><div><h2>Сложения</h2><p>Для бобинной пряжи можно сразу посчитать 2, 3, 4 и больше нитей.</p></div></div>
+            <div class="plies-row" id="pliesChips"></div>
+          </div>
+        </section>
+
+        <button class="primary-btn" id="calculateBtn" type="button">Рассчитать расход</button>
+        <div class="validation" id="validation" role="alert" aria-live="polite"></div>
+
+        <section class="result-card" id="resultCard" aria-live="polite" hidden>
+          <div class="result-top">
+            <div><span class="eyebrow">Ориентировочный расчёт</span><h2 id="resultTitle">Женский пуловер</h2></div>
+            <div class="compat-badge" id="compatBadge"></div>
+          </div>
+          <div class="result-main">
+            <div class="big-number"><strong id="resultGrams">—</strong><span>г с запасом</span></div>
+            <div class="result-facts">
+              <div><span>Расход готовой нити</span><b id="resultMeters">—</b></div>
+              <div><span>Рабочий метраж</span><b id="resultEffective">—</b></div>
+              <div><span>Без запаса</span><b id="resultRawGrams">—</b></div>
+              <div><span>Запас</span><b id="resultReserve">10%</b></div>
+            </div>
+          </div>
+          <p class="result-note" id="resultNote"></p>
+          <div class="result-actions">
+            <button class="secondary-btn" id="goMatchBtn" type="button">Подобрать из каталога</button>
+            <button class="ghost-btn" id="copyBtn" type="button">Скопировать результат</button>
+          </div>
+        </section>
+      </section>
+
+      <section class="view" id="view-match">
+        <div class="section-head"><div><span class="eyebrow">По описаниям фотографий</span><h1>Подбор пряжи</h1><p>Приложение сравнивает рабочий метраж и рассчитывает, сколько граммов потребуется из каждой позиции.</p></div></div>
+        <div class="empty-state" id="matchEmpty"><svg><use href="#i-yarn"></use></svg><h3>Сначала сделайте расчёт</h3><p>После расчёта здесь появятся подходящие позиции из каталога.</p><button class="secondary-btn" type="button" data-go="calc">Перейти к расчёту</button></div>
+        <div id="matchContent" hidden>
+          <div class="match-summary" id="matchSummary"></div>
+          <div class="product-grid" id="matchGrid"></div>
+        </div>
+      </section>
+
+      <section class="view" id="view-catalog">
+        <div class="section-head"><div><span class="eyebrow">Свободный текст → данные</span><h1>Каталог и парсер описаний</h1><p>Описание фотографии остаётся обычным текстом. Парсер извлекает метраж, состав, остаток, цену, цвет, бренд и другие поля.</p></div></div>
+
+        <section class="parser-box">
+          <label for="descriptionInput">Описание пряжи</label>
+          <textarea id="descriptionInput" rows="7" spellcheck="false">Италия. Cariaggi. Art. T2000 Cashmere plus. Col. C2425 navy (темно-синий). 100% кашемир. 100г/1400м (1/28). В наличии 97г. 100г/1190 руб.</textarea>
+          <div class="parser-actions"><button class="primary-btn small-btn" id="parseBtn" type="button">Распознать</button><button class="ghost-btn" id="addCatalogBtn" type="button">Добавить в локальный каталог</button></div>
+          <div class="parsed-preview" id="parsedPreview"></div>
+        </section>
+
+        <div class="catalog-toolbar"><h2>Тестовый каталог</h2><div><span id="catalogCount"></span><button class="ghost-btn tiny" id="resetCatalogBtn" type="button">Сбросить демо</button></div></div>
+        <div class="product-grid" id="catalogGrid"></div>
+      </section>
+    </main>
+
+    <footer class="app-footer"><span>Мания пряжи · Великий Новгород</span><span>Расчёт ориентировочный, рекомендуется запас 10%.</span></footer>
+  </div>
+
+  <script src="https://unpkg.com/@vkontakte/vk-bridge@2.14.0/dist/browser.min.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/parser.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
