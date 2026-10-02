@@ -169,6 +169,28 @@ jobs:
           gradle.write_text(text)
           PY
 
+      - name: Inspect VK text builder
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          src = Path('yarn-notebook-android/app/src/main/java/ru/yarnnotebook/app/MainActivity.java').read_text()
+          marker = 'private String buildVkText(YarnRecord r)'
+          start = src.index(marker)
+          brace = src.index('{', start)
+          depth = 0
+          end = brace
+          for i in range(brace, len(src)):
+              if src[i] == '{':
+                  depth += 1
+              elif src[i] == '}':
+                  depth -= 1
+                  if depth == 0:
+                      end = i + 1
+                      break
+          print(src[start:end])
+          PY
+
       - name: Build debug APK
         working-directory: yarn-notebook-android
         run: gradle --no-daemon :app:assembleDebug
