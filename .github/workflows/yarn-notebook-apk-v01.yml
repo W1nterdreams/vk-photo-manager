@@ -169,7 +169,7 @@ jobs:
           gradle.write_text(text)
           PY
 
-      - name: Apply v0.2.12 calculator tag
+      - name: Apply v0.2.13 calculator tag
         shell: bash
         run: |
           python3 - <<'PY'
@@ -178,7 +178,7 @@ jobs:
           p = Path('yarn-notebook-android/app/src/main/java/ru/yarnnotebook/app/MainActivity.java')
           src = p.read_text()
           old = 'StringBuilder b = new StringBuilder();\n        addLine(b, "Страна", r.country);'
-          new = 'StringBuilder b = new StringBuilder();\n        b.append("#Калькулятор\\\\n\\\\n");\n        addLine(b, "Страна", r.country);'
+          new = 'StringBuilder b = new StringBuilder();\n        b.append("#Калькулятор\\n\\n");\n        addLine(b, "Страна", r.country);'
           if old not in src:
               raise SystemExit('VK text builder target not found')
           p.write_text(src.replace(old, new, 1))
@@ -187,9 +187,21 @@ jobs:
           txt = g.read_text()
           if 'versionCode 12' not in txt or "versionName '0.2.11'" not in txt:
               raise SystemExit('expected v0.2.11 version not found')
-          txt = txt.replace('versionCode 12', 'versionCode 13')
-          txt = txt.replace("versionName '0.2.11'", "versionName '0.2.12'")
+          txt = txt.replace('versionCode 12', 'versionCode 14')
+          txt = txt.replace("versionName '0.2.11'", "versionName '0.2.13'")
           g.write_text(txt)
+          PY
+
+      - name: Verify calculator tag newlines
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          src = Path('yarn-notebook-android/app/src/main/java/ru/yarnnotebook/app/MainActivity.java').read_text()
+          good = 'b.append("#Калькулятор\\n\\n");'
+          bad = 'b.append("#Калькулятор\\\\n\\\\n");'
+          if good not in src or bad in src:
+              raise SystemExit('calculator tag newline escaping is wrong')
           PY
 
       - name: Build debug APK
@@ -203,6 +215,6 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: moya-pryazha-v0.2.12-debug-apk
+          name: moya-pryazha-v0.2.13-debug-apk
           path: yarn-notebook-android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
