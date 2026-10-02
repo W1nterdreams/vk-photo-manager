@@ -1,0 +1,41 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'ru.yarnnotebook.app'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId 'ru.yarnnotebook.app'
+        minSdk 23
+        targetSdk 36
+        versionCode 4
+        versionName '0.2.2'
+    }
+
+    signingConfigs {
+        debug {
+            storeFile file('yarn-debug.p12')
+            storePassword 'yarnnotebook'
+            keyAlias 'yarnnotebook'
+            keyPassword 'yarnnotebook'
+            storeType 'PKCS12'
+        }
+    }
+
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
