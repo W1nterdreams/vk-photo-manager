@@ -45,19 +45,18 @@ jobs:
           p = Path('yarn-notebook-android/app/src/main/java/ru/yarnnotebook/app/MainActivity.java')
           s = p.read_text()
           s = s.replace('import android.view.WindowInsetsController;\n', '')
-          old = '''        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-              WindowInsetsController controller = getWindow().getInsetsController();
-              if (controller != null) {
-                  controller.setSystemBarsAppearance(
-                          WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS,
-                          WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS |
-                                  WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS);
+          start = s.index('    private void configureWindow() {')
+          end = s.index('    private void registerSystemBackGesture()', start)
+          replacement = '''    private void configureWindow() {
+              getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
+              if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                  getWindow().setStatusBarColor(PRIMARY);
+                  getWindow().setNavigationBarColor(BG);
               }
           }
+
           '''
-          if old not in s:
-              raise SystemExit('WindowInsetsController block not found')
-          p.write_text(s.replace(old, ''))
+          p.write_text(s[:start] + replacement + s[end:])
           PY
 
       - name: Build debug APK
