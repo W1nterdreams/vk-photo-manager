@@ -31,10 +31,24 @@ jobs:
         with:
           gradle-version: '9.6.0'
 
-      - name: Restore Android project
+      - name: Restore base project
         shell: bash
         run: |
-          unzip -q ci/yarn-notebook-v0.2.3.zip -d "$GITHUB_WORKSPACE"
+          cat ci/yarn-notebook-v0.2.zip.b64.part1 ci/yarn-notebook-v0.2.zip.b64.part2 > /tmp/yarn-base.b64
+          base64 -d /tmp/yarn-base.b64 > /tmp/yarn-base.zip
+          unzip -q /tmp/yarn-base.zip -d "$GITHUB_WORKSPACE"
+          cp ci/yarn-debug.p12 yarn-notebook-android/app/yarn-debug.p12
+
+      - name: Apply v0.2.3 sources
+        shell: bash
+        run: |
+          for f in MainActivity.java DbHelper.java YarnRecord.java build.gradle; do
+            base64 -d "ci/v023/$f.gz.b64" | gzip -dc > "/tmp/$f"
+          done
+          cp /tmp/MainActivity.java yarn-notebook-android/app/src/main/java/ru/yarnnotebook/app/MainActivity.java
+          cp /tmp/DbHelper.java yarn-notebook-android/app/src/main/java/ru/yarnnotebook/app/DbHelper.java
+          cp /tmp/YarnRecord.java yarn-notebook-android/app/src/main/java/ru/yarnnotebook/app/YarnRecord.java
+          cp /tmp/build.gradle yarn-notebook-android/app/build.gradle
 
       - name: Build debug APK
         working-directory: yarn-notebook-android
