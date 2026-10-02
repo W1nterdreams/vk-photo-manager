@@ -34,11 +34,11 @@ jobs:
           base64 -d /tmp/yarn-base.b64 > /tmp/yarn-base.zip
           unzip -q /tmp/yarn-base.zip -d "$GITHUB_WORKSPACE"
           cp ci/yarn-debug.p12 yarn-notebook-android/app/yarn-debug.p12
-      - name: Apply v0.2.4 sources
+      - name: Apply v0.2.5 sources
         shell: bash
         run: |
           for f in MainActivity.java DbHelper.java YarnRecord.java build.gradle; do
-            base64 -d "ci/v024/$f.gz.b64" | gzip -dc > "/tmp/$f"
+            base64 -d "ci/v025/$f.gz.b64" | gzip -dc > "/tmp/$f"
           done
           cp /tmp/MainActivity.java yarn-notebook-android/app/src/main/java/ru/yarnnotebook/app/MainActivity.java
           cp /tmp/DbHelper.java yarn-notebook-android/app/src/main/java/ru/yarnnotebook/app/DbHelper.java
@@ -53,6 +53,6 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: yarn-notebook-v0.2.4-debug-apk
+          name: yarn-notebook-v0.2.5-debug-apk
           path: yarn-notebook-android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
