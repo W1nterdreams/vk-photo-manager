@@ -1,0 +1,49 @@
+name: Build Yarn Notebook APK
+
+on:
+  push:
+    branches:
+      - yarn-notebook-android
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.6.0'
+
+      - name: Restore Android project
+        shell: bash
+        run: |
+          cat ci/yarn-notebook-v0.1.zip.b64.part1 ci/yarn-notebook-v0.1.zip.b64.part2 > /tmp/yarn-notebook.zip.b64
+          base64 -d /tmp/yarn-notebook.zip.b64 > /tmp/yarn-notebook.zip
+          unzip -q /tmp/yarn-notebook.zip -d "$GITHUB_WORKSPACE"
+
+      - name: Build debug APK
+        working-directory: yarn-notebook-android
+        run: gradle --no-daemon :app:assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: yarn-notebook-v0.1-debug-apk
+          path: yarn-notebook-android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
