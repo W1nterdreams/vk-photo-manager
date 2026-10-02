@@ -40,18 +40,37 @@ jobs:
           cp ci/yarn-debug.p12 yarn-notebook-android/app/yarn-debug.p12
           cp ci/yarn-build.gradle yarn-notebook-android/app/build.gradle
 
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('yarn-notebook-android/app/src/main/java/ru/yarnnotebook/app/MainActivity.java')
+          s = p.read_text()
+          s = s.replace('import android.view.WindowInsetsController;\n', '')
+          old = '''        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+              WindowInsetsController controller = getWindow().getInsetsController();
+              if (controller != null) {
+                  controller.setSystemBarsAppearance(
+                          WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS,
+                          WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS |
+                                  WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS);
+              }
+          }
+          '''
+          if old not in s:
+              raise SystemExit('WindowInsetsController block not found')
+          p.write_text(s.replace(old, ''))
+          PY
+
       - name: Build debug APK
         working-directory: yarn-notebook-android
         run: gradle --no-daemon :app:assembleDebug
 
       - name: Verify APK certificate
         shell: bash
-        run: |
-          keytool -printcert -jarfile yarn-notebook-android/app/build/outputs/apk/debug/app-debug.apk
+        run: keytool -printcert -jarfile yarn-notebook-android/app/build/outputs/apk/debug/app-debug.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: yarn-notebook-v0.2-stable-debug-apk
+          name: yarn-notebook-v0.2.1-debug-apk
           path: yarn-notebook-android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
