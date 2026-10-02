@@ -31,7 +31,7 @@ jobs:
         with:
           gradle-version: '9.6.0'
 
-      - name: Restore Android project
+      - name: Restore and patch Android project
         shell: bash
         run: |
           cat ci/yarn-notebook-v0.2.zip.b64.part1 ci/yarn-notebook-v0.2.zip.b64.part2 > /tmp/yarn-notebook.zip.b64
@@ -44,7 +44,9 @@ jobs:
           from pathlib import Path
           p = Path('yarn-notebook-android/app/src/main/java/ru/yarnnotebook/app/MainActivity.java')
           s = p.read_text()
+
           s = s.replace('import android.view.WindowInsetsController;\n', '')
+
           start = s.index('    private void configureWindow() {')
           end = s.index('    private void registerSystemBackGesture()', start)
           replacement = '''    private void configureWindow() {
@@ -56,7 +58,139 @@ jobs:
           }
 
           '''
-          p.write_text(s[:start] + replacement + s[end:])
+          s = s[:start] + replacement + s[end:]
+
+          old_actions = '''    private void showYarnActions(YarnRecord y) {
+              new AlertDialog.Builder(this)
+                      .setTitle(displayTitle(y))
+                      .setItems(new String[]{"Дублировать", "Удалить"}, (dialog, which) -> {
+                          if (which == 0) {
+                              long copyId = db.duplicateYarn(y.id);
+                              if (copyId != 0) {
+                                  Toast.makeText(this, "Создана копия · НЕ СОХРАНЕНА", Toast.LENGTH_SHORT).show();
+                                  showLayout(y.layoutId, "");
+                              }
+                          } else {
+                              new AlertDialog.Builder(this)
+                                      .setTitle("Удалить карточку?")
+                                      .setMessage("Это действие нельзя отменить.")
+                                      .setNegativeButton("Отмена", null)
+                                      .setPositiveButton("Удалить", (d, w) -> {
+                                          db.deleteYarn(y.id);
+                                          showLayout(y.layoutId, "");
+                                      })
+                                      .show();
+                          }
+                      })
+                      .show();
+          }
+          '''
+          new_actions = '''    private void showYarnActions(YarnRecord y) {
+              new AlertDialog.Builder(this)
+                      .setTitle(displayTitle(y))
+                      .setItems(new String[]{"Скопировать описание для VK", "Дублировать", "Удалить"}, (dialog, which) -> {
+                          if (which == 0) {
+                              copyVkText(y);
+                          } else if (which == 1) {
+                              long copyId = db.duplicateYarn(y.id);
+                              if (copyId != 0) {
+                                  Toast.makeText(this, "Создана копия · НЕ СОХРАНЕНА", Toast.LENGTH_SHORT).show();
+                                  showLayout(y.layoutId, "");
+                              }
+                          } else {
+                              new AlertDialog.Builder(this)
+                                      .setTitle("Удалить карточку?")
+                                      .setMessage("Это действие нельзя отменить.")
+                                      .setNegativeButton("Отмена", null)
+                                      .setPositiveButton("Удалить", (d, w) -> {
+                                          db.deleteYarn(y.id);
+                                          showLayout(y.layoutId, "");
+                                      })
+                                      .show();
+                          }
+                      })
+                      .show();
+          }
+          '''
+          if old_actions not in s:
+              raise SystemExit('showYarnActions block not found')
+          s = s.replace(old_actions, new_actions)
+
+          old_focus = '''        fDescription.setOnFocusChangeListener((v, hasFocus) -> {
+              if (hasFocus) {
+                  scroll.postDelayed(() -> scroll.smoothScrollTo(0, Math.max(0, fDescription.getTop() - dp(70))), 300);
+              }
+          });
+          '''
+          new_focus = '''        View.OnFocusChangeListener descriptionFocus = (v, hasFocus) -> {
+              if (hasFocus) scheduleDescriptionVisibility(scroll);
+          };
+          fDescription.setOnFocusChangeListener(descriptionFocus);
+          fDescription.setOnClickListener(v -> scheduleDescriptionVisibility(scroll));
+          scroll.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
+              if (fDescription != null && fDescription.hasFocus() && (bottom - top) != (oldBottom - oldTop)) {
+                  scroll.post(() -> ensureDescriptionVisible(scroll));
+              }
+          });
+          '''
+          if old_focus not in s:
+              raise SystemExit('description focus block not found')
+          s = s.replace(old_focus, new_focus)
+
+          old_copy = '''        copy.setOnClickListener(v -> {
+              YarnRecord r = collect(existing);
+              String text = buildVkText(r);
+              if (text.trim().isEmpty()) {
+                  Toast.makeText(this, "Карточка пока пустая", Toast.LENGTH_SHORT).show();
+                  return;
+              }
+              ClipboardManager cm = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+              cm.setPrimaryClip(ClipData.newPlainText("Карточка пряжи", text));
+              Toast.makeText(this, "Текст скопирован", Toast.LENGTH_SHORT).show();
+          });
+          '''
+          new_copy = '''        copy.setOnClickListener(v -> copyVkText(collect(existing)));
+          '''
+          if old_copy not in s:
+              raise SystemExit('copy button block not found')
+          s = s.replace(old_copy, new_copy)
+
+          helper = '''
+          private void scheduleDescriptionVisibility(ScrollView scroll) {
+              scroll.post(() -> ensureDescriptionVisible(scroll));
+              scroll.postDelayed(() -> ensureDescriptionVisible(scroll), 180);
+              scroll.postDelayed(() -> ensureDescriptionVisible(scroll), 420);
+              scroll.postDelayed(() -> ensureDescriptionVisible(scroll), 700);
+          }
+
+          private void ensureDescriptionVisible(ScrollView scroll) {
+              if (fDescription == null || !fDescription.hasFocus()) return;
+              int viewport = scroll.getHeight() - scroll.getPaddingTop() - scroll.getPaddingBottom();
+              if (viewport <= 0) return;
+              int desiredY = fDescription.getBottom() - viewport + dp(24);
+              scroll.smoothScrollTo(0, Math.max(0, desiredY));
+          }
+
+          private void copyVkText(YarnRecord r) {
+              String text = buildVkText(r);
+              if (text.trim().isEmpty()) {
+                  Toast.makeText(this, "Карточка пока пустая", Toast.LENGTH_SHORT).show();
+                  return;
+              }
+              ClipboardManager cm = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+              if (cm != null) {
+                  cm.setPrimaryClip(ClipData.newPlainText("Карточка пряжи", text));
+                  Toast.makeText(this, "Описание для VK скопировано", Toast.LENGTH_SHORT).show();
+              }
+          }
+
+          '''
+          marker = '    private String buildVkText(YarnRecord r) {'
+          if marker not in s:
+              raise SystemExit('buildVkText marker not found')
+          s = s.replace(marker, helper + marker)
+
+          p.write_text(s)
           PY
 
       - name: Build debug APK
@@ -70,6 +204,6 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: yarn-notebook-v0.2.1-debug-apk
+          name: yarn-notebook-v0.2.2-debug-apk
           path: yarn-notebook-android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
