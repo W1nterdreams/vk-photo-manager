@@ -44,12 +44,18 @@ jobs:
           from pathlib import Path
           p = Path('yarn-notebook-android/app/src/main/java/ru/yarnnotebook/app/MainActivity.java')
           s = p.read_text()
-
           s = s.replace('import android.view.WindowInsetsController;\n', '')
 
-          start = s.index('    private void configureWindow() {')
-          end = s.index('    private void registerSystemBackGesture()', start)
-          replacement = '''    private void configureWindow() {
+          def replace_between(text, start_marker, end_marker, replacement):
+              start = text.index(start_marker)
+              end = text.index(end_marker, start)
+              return text[:start] + replacement + text[end:]
+
+          s = replace_between(
+              s,
+              '    private void configureWindow() {',
+              '    private void registerSystemBackGesture()',
+              '''    private void configureWindow() {
               getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
               if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                   getWindow().setStatusBarColor(PRIMARY);
@@ -58,34 +64,13 @@ jobs:
           }
 
           '''
-          s = s[:start] + replacement + s[end:]
+          )
 
-          old_actions = '''    private void showYarnActions(YarnRecord y) {
-              new AlertDialog.Builder(this)
-                      .setTitle(displayTitle(y))
-                      .setItems(new String[]{"Дублировать", "Удалить"}, (dialog, which) -> {
-                          if (which == 0) {
-                              long copyId = db.duplicateYarn(y.id);
-                              if (copyId != 0) {
-                                  Toast.makeText(this, "Создана копия · НЕ СОХРАНЕНА", Toast.LENGTH_SHORT).show();
-                                  showLayout(y.layoutId, "");
-                              }
-                          } else {
-                              new AlertDialog.Builder(this)
-                                      .setTitle("Удалить карточку?")
-                                      .setMessage("Это действие нельзя отменить.")
-                                      .setNegativeButton("Отмена", null)
-                                      .setPositiveButton("Удалить", (d, w) -> {
-                                          db.deleteYarn(y.id);
-                                          showLayout(y.layoutId, "");
-                                      })
-                                      .show();
-                          }
-                      })
-                      .show();
-          }
-          '''
-          new_actions = '''    private void showYarnActions(YarnRecord y) {
+          s = replace_between(
+              s,
+              '    private void showYarnActions(YarnRecord y) {',
+              '    private void showGlobalSearch(String query) {',
+              '''    private void showYarnActions(YarnRecord y) {
               new AlertDialog.Builder(this)
                       .setTitle(displayTitle(y))
                       .setItems(new String[]{"Скопировать описание для VK", "Дублировать", "Удалить"}, (dialog, which) -> {
@@ -111,18 +96,13 @@ jobs:
                       })
                       .show();
           }
-          '''
-          if old_actions not in s:
-              raise SystemExit('showYarnActions block not found')
-          s = s.replace(old_actions, new_actions)
 
-          old_focus = '''        fDescription.setOnFocusChangeListener((v, hasFocus) -> {
-              if (hasFocus) {
-                  scroll.postDelayed(() -> scroll.smoothScrollTo(0, Math.max(0, fDescription.getTop() - dp(70))), 300);
-              }
-          });
           '''
-          new_focus = '''        View.OnFocusChangeListener descriptionFocus = (v, hasFocus) -> {
+          )
+
+          focus_start = s.index('        fDescription.setOnFocusChangeListener')
+          focus_end = s.index('        if (existing != null) fillFields(existing);', focus_start)
+          focus_block = '''        View.OnFocusChangeListener descriptionFocus = (v, hasFocus) -> {
               if (hasFocus) scheduleDescriptionVisibility(scroll);
           };
           fDescription.setOnFocusChangeListener(descriptionFocus);
@@ -132,31 +112,15 @@ jobs:
                   scroll.post(() -> ensureDescriptionVisible(scroll));
               }
           });
-          '''
-          if old_focus not in s:
-              raise SystemExit('description focus block not found')
-          s = s.replace(old_focus, new_focus)
 
-          old_copy = '''        copy.setOnClickListener(v -> {
-              YarnRecord r = collect(existing);
-              String text = buildVkText(r);
-              if (text.trim().isEmpty()) {
-                  Toast.makeText(this, "Карточка пока пустая", Toast.LENGTH_SHORT).show();
-                  return;
-              }
-              ClipboardManager cm = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-              cm.setPrimaryClip(ClipData.newPlainText("Карточка пряжи", text));
-              Toast.makeText(this, "Текст скопирован", Toast.LENGTH_SHORT).show();
-          });
           '''
-          new_copy = '''        copy.setOnClickListener(v -> copyVkText(collect(existing)));
-          '''
-          if old_copy not in s:
-              raise SystemExit('copy button block not found')
-          s = s.replace(old_copy, new_copy)
+          s = s[:focus_start] + focus_block + s[focus_end:]
 
-          helper = '''
-          private void scheduleDescriptionVisibility(ScrollView scroll) {
+          copy_start = s.index('        copy.setOnClickListener(v -> {')
+          copy_end = s.index('        if (existing != null) {', copy_start)
+          s = s[:copy_start] + '        copy.setOnClickListener(v -> copyVkText(collect(existing)));\n\n' + s[copy_end:]
+
+          helper = '''    private void scheduleDescriptionVisibility(ScrollView scroll) {
               scroll.post(() -> ensureDescriptionVisible(scroll));
               scroll.postDelayed(() -> ensureDescriptionVisible(scroll), 180);
               scroll.postDelayed(() -> ensureDescriptionVisible(scroll), 420);
@@ -186,9 +150,7 @@ jobs:
 
           '''
           marker = '    private String buildVkText(YarnRecord r) {'
-          if marker not in s:
-              raise SystemExit('buildVkText marker not found')
-          s = s.replace(marker, helper + marker)
+          s = s.replace(marker, helper + marker, 1)
 
           p.write_text(s)
           PY
