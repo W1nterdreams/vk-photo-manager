@@ -31,129 +31,10 @@ jobs:
         with:
           gradle-version: '9.6.0'
 
-      - name: Restore and patch Android project
+      - name: Restore Android project
         shell: bash
         run: |
-          cat ci/yarn-notebook-v0.2.zip.b64.part1 ci/yarn-notebook-v0.2.zip.b64.part2 > /tmp/yarn-notebook.zip.b64
-          base64 -d /tmp/yarn-notebook.zip.b64 > /tmp/yarn-notebook.zip
-          unzip -q /tmp/yarn-notebook.zip -d "$GITHUB_WORKSPACE"
-          cp ci/yarn-debug.p12 yarn-notebook-android/app/yarn-debug.p12
-          cp ci/yarn-build.gradle yarn-notebook-android/app/build.gradle
-
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path('yarn-notebook-android/app/src/main/java/ru/yarnnotebook/app/MainActivity.java')
-          s = p.read_text()
-          s = s.replace('import android.view.WindowInsetsController;\n', '')
-
-          def replace_between(text, start_marker, end_marker, replacement):
-              start = text.index(start_marker)
-              end = text.index(end_marker, start)
-              return text[:start] + replacement + text[end:]
-
-          s = replace_between(
-              s,
-              '    private void configureWindow() {',
-              '    private void registerSystemBackGesture()',
-              '''    private void configureWindow() {
-              getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
-              if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                  getWindow().setStatusBarColor(PRIMARY);
-                  getWindow().setNavigationBarColor(BG);
-              }
-          }
-
-          '''
-          )
-
-          s = replace_between(
-              s,
-              '    private void showYarnActions(YarnRecord y) {',
-              '    private void showGlobalSearch(String query) {',
-              '''    private void showYarnActions(YarnRecord y) {
-              new AlertDialog.Builder(this)
-                      .setTitle(displayTitle(y))
-                      .setItems(new String[]{"Скопировать описание для VK", "Дублировать", "Удалить"}, (dialog, which) -> {
-                          if (which == 0) {
-                              copyVkText(y);
-                          } else if (which == 1) {
-                              long copyId = db.duplicateYarn(y.id);
-                              if (copyId != 0) {
-                                  Toast.makeText(this, "Создана копия · НЕ СОХРАНЕНА", Toast.LENGTH_SHORT).show();
-                                  showLayout(y.layoutId, "");
-                              }
-                          } else {
-                              new AlertDialog.Builder(this)
-                                      .setTitle("Удалить карточку?")
-                                      .setMessage("Это действие нельзя отменить.")
-                                      .setNegativeButton("Отмена", null)
-                                      .setPositiveButton("Удалить", (d, w) -> {
-                                          db.deleteYarn(y.id);
-                                          showLayout(y.layoutId, "");
-                                      })
-                                      .show();
-                          }
-                      })
-                      .show();
-          }
-
-          '''
-          )
-
-          focus_start = s.index('        fDescription.setOnFocusChangeListener')
-          focus_end = s.index('        if (existing != null) fillFields(existing);', focus_start)
-          focus_block = '''        View.OnFocusChangeListener descriptionFocus = (v, hasFocus) -> {
-              if (hasFocus) scheduleDescriptionVisibility(scroll);
-          };
-          fDescription.setOnFocusChangeListener(descriptionFocus);
-          fDescription.setOnClickListener(v -> scheduleDescriptionVisibility(scroll));
-          scroll.addOnLayoutChangeListener((v, l, t, r, b, oldL, oldT, oldR, oldB) -> {
-              if (fDescription != null && fDescription.hasFocus() && (b - t) != (oldB - oldT)) {
-                  scroll.post(() -> ensureDescriptionVisible(scroll));
-              }
-          });
-
-          '''
-          s = s[:focus_start] + focus_block + s[focus_end:]
-
-          copy_start = s.index('        copy.setOnClickListener(v -> {')
-          copy_end = s.index('        if (existing != null) {', copy_start)
-          s = s[:copy_start] + '        copy.setOnClickListener(v -> copyVkText(collect(existing)));\n\n' + s[copy_end:]
-
-          helper = '''    private void scheduleDescriptionVisibility(ScrollView scroll) {
-              scroll.post(() -> ensureDescriptionVisible(scroll));
-              scroll.postDelayed(() -> ensureDescriptionVisible(scroll), 180);
-              scroll.postDelayed(() -> ensureDescriptionVisible(scroll), 420);
-              scroll.postDelayed(() -> ensureDescriptionVisible(scroll), 700);
-          }
-
-          private void ensureDescriptionVisible(ScrollView scroll) {
-              if (fDescription == null || !fDescription.hasFocus()) return;
-              int viewport = scroll.getHeight() - scroll.getPaddingTop() - scroll.getPaddingBottom();
-              if (viewport <= 0) return;
-              int desiredY = fDescription.getBottom() - viewport + dp(24);
-              scroll.smoothScrollTo(0, Math.max(0, desiredY));
-          }
-
-          private void copyVkText(YarnRecord r) {
-              String text = buildVkText(r);
-              if (text.trim().isEmpty()) {
-                  Toast.makeText(this, "Карточка пока пустая", Toast.LENGTH_SHORT).show();
-                  return;
-              }
-              ClipboardManager cm = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-              if (cm != null) {
-                  cm.setPrimaryClip(ClipData.newPlainText("Карточка пряжи", text));
-                  Toast.makeText(this, "Описание для VK скопировано", Toast.LENGTH_SHORT).show();
-              }
-          }
-
-          '''
-          marker = '    private String buildVkText(YarnRecord r) {'
-          s = s.replace(marker, helper + marker, 1)
-
-          p.write_text(s)
-          PY
+          unzip -q ci/yarn-notebook-v0.2.3.zip -d "$GITHUB_WORKSPACE"
 
       - name: Build debug APK
         working-directory: yarn-notebook-android
@@ -166,6 +47,6 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: yarn-notebook-v0.2.2-debug-apk
+          name: yarn-notebook-v0.2.3-debug-apk
           path: yarn-notebook-android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
