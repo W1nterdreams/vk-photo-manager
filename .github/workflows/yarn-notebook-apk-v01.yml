@@ -142,6 +142,33 @@ jobs:
           gradle.write_text(text)
           PY
 
+      - name: Apply v0.2.11 app name
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+
+          manifest = Path('yarn-notebook-android/app/src/main/AndroidManifest.xml')
+          android_ns = 'http://schemas.android.com/apk/res/android'
+          ET.register_namespace('android', android_ns)
+          tree = ET.parse(manifest)
+          root = tree.getroot()
+          app = root.find('application')
+          if app is None:
+              raise SystemExit('application tag not found')
+          app.set(f'{{{android_ns}}}label', 'Моя пряжа')
+          tree.write(manifest, encoding='utf-8', xml_declaration=True)
+
+          gradle = Path('yarn-notebook-android/app/build.gradle')
+          text = gradle.read_text()
+          if 'versionCode 11' not in text or "versionName '0.2.10'" not in text:
+              raise SystemExit('expected v0.2.10 version not found')
+          text = text.replace('versionCode 11', 'versionCode 12')
+          text = text.replace("versionName '0.2.10'", "versionName '0.2.11'")
+          gradle.write_text(text)
+          PY
+
       - name: Build debug APK
         working-directory: yarn-notebook-android
         run: gradle --no-daemon :app:assembleDebug
@@ -153,6 +180,6 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: yarn-notebook-v0.2.10-debug-apk
+          name: yarn-notebook-v0.2.11-debug-apk
           path: yarn-notebook-android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
