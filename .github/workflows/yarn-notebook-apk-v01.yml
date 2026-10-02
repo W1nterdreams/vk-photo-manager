@@ -204,6 +204,21 @@ jobs:
               raise SystemExit('calculator tag newline escaping is wrong')
           PY
 
+      - name: Inspect overlay integration points
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          src = Path('yarn-notebook-android/app/src/main/java/ru/yarnnotebook/app/MainActivity.java').read_text()
+          for marker in ['private LinearLayout toolbar(', 'private void showDataMenu(', 'protected void onResume(', 'protected void onCreate(']:
+              i = src.find(marker)
+              print('\n===== ' + marker + ' =====')
+              if i >= 0:
+                  print(src[i:i+4500])
+              else:
+                  print('NOT FOUND')
+          PY
+
       - name: Build debug APK
         working-directory: yarn-notebook-android
         run: gradle --no-daemon :app:assembleDebug
