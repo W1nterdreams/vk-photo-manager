@@ -12,25 +12,21 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Set up JDK 17
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
-
       - name: Install Android SDK packages
         shell: bash
         run: |
           SDKMANAGER=/usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager
           yes | "$SDKMANAGER" --licenses >/dev/null || true
           "$SDKMANAGER" "platform-tools" "platforms;android-36" "build-tools;36.0.0"
-
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.6.0'
-
       - name: Restore base project
         shell: bash
         run: |
@@ -38,29 +34,25 @@ jobs:
           base64 -d /tmp/yarn-base.b64 > /tmp/yarn-base.zip
           unzip -q /tmp/yarn-base.zip -d "$GITHUB_WORKSPACE"
           cp ci/yarn-debug.p12 yarn-notebook-android/app/yarn-debug.p12
-
-      - name: Apply v0.2.3 sources
+      - name: Apply v0.2.4 sources
         shell: bash
         run: |
           for f in MainActivity.java DbHelper.java YarnRecord.java build.gradle; do
-            base64 -d "ci/v023/$f.gz.b64" | gzip -dc > "/tmp/$f"
+            base64 -d "ci/v024/$f.gz.b64" | gzip -dc > "/tmp/$f"
           done
           cp /tmp/MainActivity.java yarn-notebook-android/app/src/main/java/ru/yarnnotebook/app/MainActivity.java
           cp /tmp/DbHelper.java yarn-notebook-android/app/src/main/java/ru/yarnnotebook/app/DbHelper.java
           cp /tmp/YarnRecord.java yarn-notebook-android/app/src/main/java/ru/yarnnotebook/app/YarnRecord.java
           cp /tmp/build.gradle yarn-notebook-android/app/build.gradle
-
       - name: Build debug APK
         working-directory: yarn-notebook-android
         run: gradle --no-daemon :app:assembleDebug
-
       - name: Verify APK certificate
         shell: bash
         run: keytool -printcert -jarfile yarn-notebook-android/app/build/outputs/apk/debug/app-debug.apk
-
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: yarn-notebook-v0.2.3-debug-apk
+          name: yarn-notebook-v0.2.4-debug-apk
           path: yarn-notebook-android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
