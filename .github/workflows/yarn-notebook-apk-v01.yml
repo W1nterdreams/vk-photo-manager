@@ -84,6 +84,13 @@ jobs:
           g.write_text(txt)
           PY
 
+      - name: Apply v0.2.8 layout description patch
+        shell: bash
+        run: |
+          base64 -d ci/v028/patch.b64 > /tmp/v028.patch
+          cd yarn-notebook-android
+          patch -p1 < /tmp/v028.patch
+
       - name: Build debug APK
         working-directory: yarn-notebook-android
         run: gradle --no-daemon :app:assembleDebug
@@ -95,6 +102,6 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: yarn-notebook-v0.2.7-debug-apk
+          name: yarn-notebook-v0.2.8-debug-apk
           path: yarn-notebook-android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
