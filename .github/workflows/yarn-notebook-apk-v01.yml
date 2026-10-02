@@ -107,8 +107,8 @@ jobs:
           };
           fDescription.setOnFocusChangeListener(descriptionFocus);
           fDescription.setOnClickListener(v -> scheduleDescriptionVisibility(scroll));
-          scroll.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
-              if (fDescription != null && fDescription.hasFocus() && (bottom - top) != (oldBottom - oldTop)) {
+          scroll.addOnLayoutChangeListener((v, l, t, r, b, oldL, oldT, oldR, oldB) -> {
+              if (fDescription != null && fDescription.hasFocus() && (b - t) != (oldB - oldT)) {
                   scroll.post(() -> ensureDescriptionVisible(scroll));
               }
           });
