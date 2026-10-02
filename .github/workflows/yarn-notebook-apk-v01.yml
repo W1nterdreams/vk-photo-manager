@@ -91,6 +91,26 @@ jobs:
           cd yarn-notebook-android
           patch -p1 < /tmp/v028.patch
 
+      - name: Apply v0.2.9 autocomplete height fix
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path('yarn-notebook-android/app/src/main/java/ru/yarnnotebook/app/MainActivity.java')
+          src = p.read_text()
+          old = 'e.setDropDownHeight(dp(100));'
+          if old not in src:
+              raise SystemExit('autocomplete dropdown height target not found')
+          p.write_text(src.replace(old, 'e.setDropDownHeight(ViewGroup.LayoutParams.WRAP_CONTENT);', 1))
+
+          g = Path('yarn-notebook-android/app/build.gradle')
+          txt = g.read_text()
+          txt = txt.replace('versionCode 9', 'versionCode 10')
+          txt = txt.replace("versionName '0.2.8'", "versionName '0.2.9'")
+          g.write_text(txt)
+          PY
+
       - name: Build debug APK
         working-directory: yarn-notebook-android
         run: gradle --no-daemon :app:assembleDebug
@@ -102,6 +122,6 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: yarn-notebook-v0.2.8-debug-apk
+          name: yarn-notebook-v0.2.9-debug-apk
           path: yarn-notebook-android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
