@@ -1,0 +1,6 @@
+Project: Моя пряжа
+Version name: 0.2.32
+Version code: 33
+Source repository: W1nterdreams/yarn-notebook-android
+Source commit: aa4e62ab7ebe6c1467ef6adbaa40ed29220d13b0
+Snapshot folder: moya-pryazha-v0.2.32-source
